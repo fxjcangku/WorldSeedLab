@@ -125,3 +125,17 @@ tasks.register('p2DetailSmokeTest', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('p2DetailSmokeTest')
 }
+
+ 
+// 扫描覆盖足迹、采样缺口与坐标隐私边界：在两个游戏版本均执行。
+tasks.register('coverageSmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Verify sampled region counts, altitude bins, and fail-closed diagnostics.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.CoverageSmokeTest'
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('coverageSmokeTest')
+}
