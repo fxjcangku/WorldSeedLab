@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/worldseedlab-hero.svg" alt="WorldSeedLab — Minecraft 世界生成研究" width="100%" />
+<img src="assets/worldseedlab-hero.webp" alt="WorldSeedLab — Minecraft 世界生成研究动态横幅" width="100%" />
 
 <br />
 
