@@ -67,6 +67,11 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                                 + " | " + probe.status()));
                         return 1;
                     }))
+                    .then(ClientCommands.literal("path").executes(context -> {
+                        context.getSource().sendFeedback(Component.literal(
+                                "WorldSeedLab 本地证据目录: " + probe.dataRoot().toAbsolutePath()));
+                        return 1;
+                    }))
                     .then(ClientCommands.literal("about").executes(context -> {
                         context.getSource().sendFeedback(Component.literal(
                                 "独立世界生成研究 | F8 打开液态玻璃面板 | 仅本地已加载区块 | 无 Seed 破解功能"));
