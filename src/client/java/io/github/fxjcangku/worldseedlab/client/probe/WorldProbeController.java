@@ -145,7 +145,7 @@ public final class WorldProbeController {
     }
 
     private static final Set<String> MANUAL_STRUCTURES = Set.of(
-            "minecraft:shipwreck", "minecraft:desert_pyramid", "minecraft:village_plains");
+            "minecraft:shipwreck", "minecraft:desert_pyramid", "worldseedlab:village_unclassified");
 
     public long writtenManualMarks() {
         return writer == null ? 0 : writer.writtenManualMarks();

@@ -47,7 +47,7 @@ public final class GlassDashboard extends Screen {
         button(bx + 18, by + 183, side - 33, 25, () -> "标记沙漠神殿",
                 () -> controller.markStructure(Minecraft.getInstance(), "minecraft:desert_pyramid"), false);
         button(bx + 18, by + 217, side - 33, 25, () -> "标记村庄",
-                () -> controller.markStructure(Minecraft.getInstance(), "minecraft:village_plains"), false);
+                () -> controller.markStructure(Minecraft.getInstance(), "worldseedlab:village_unclassified"), false);
 
         int tileW = Math.max(80, (cw - 20) / 3);
         int sy = by + 228;
