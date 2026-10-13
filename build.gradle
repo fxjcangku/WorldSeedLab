@@ -79,3 +79,8 @@ tasks.named('check') {
     dependsOn tasks.named('coreSmokeTest')
 }
 
+// CoreSmokeTest is a standalone JavaExec acceptance test; no JUnit methods exist yet.
+// Gradle 9 would otherwise treat the empty built-in JUnit discovery as an error.
+tasks.named('test', Test) {
+    failOnNoDiscoveredTests = false
+}
