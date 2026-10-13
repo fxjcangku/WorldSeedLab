@@ -125,3 +125,16 @@ tasks.register('p2DetailSmokeTest', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('p2DetailSmokeTest')
 }
+
+// P2.5：已知种子对照数据与人工结构位置之间的严格可信度边界。
+tasks.register('p25CompatibilitySmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate structure evidence provenance, holdouts and coverage diagnostics.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P25CompatibilitySmokeTest'
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('p25CompatibilitySmokeTest')
+}
