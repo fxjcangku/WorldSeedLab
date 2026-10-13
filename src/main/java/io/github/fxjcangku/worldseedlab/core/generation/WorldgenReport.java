@@ -25,6 +25,23 @@ public final class WorldgenReport {
             long pendingWrites,
             boolean currentlyActive
     ) {
+        return render(profile, terrain, observedBiomes, observedQuartSamples,
+                persistedBiomeSamples, persistedStructureMarks, pendingWrites,
+                currentlyActive, null);
+    }
+
+    /** 可分享报告：区分公布的维度 ID 与真正进入的当前维度。 */
+    public static String render(
+            DimensionProfile profile,
+            GenerationDiagnostics.Snapshot terrain,
+            Map<String, Long> observedBiomes,
+            long observedQuartSamples,
+            long persistedBiomeSamples,
+            long persistedStructureMarks,
+            long pendingWrites,
+            boolean currentlyActive,
+            AdvertisedDimensions registry
+    ) {
         StringBuilder out = new StringBuilder(2400);
         out.append("WorldSeedLab / P2 世界生成研究日志\n");
         out.append("导出时间（UTC）: ").append(Instant.now()).append('\n');
@@ -44,7 +61,30 @@ public final class WorldgenReport {
         out.append("天空光照: ").append(profile.skylight() ? "有" : "无").append('\n');
         out.append("有顶维度: ").append(profile.ceiling() ? "是" : "否").append('\n');
         out.append("超高温环境: ").append(profile.ultraWarm() == null ? "未知（客户端 API 未确认）" : profile.ultraWarm() ? "是" : "否").append('\n');
-        out.append("维度元数据源: 普通客户端可见信息（非服务端完整生成器配置）\n\n");
+        out.append("维度元数据源: 普通客户端可见信息（非服务端完整生成器配置）\n");
+        if (registry == null) {
+            out.append("连接公布的维度键: 未记录（旧版本报告）\n");
+        } else {
+            out.append("维度清单来源: ")
+                    .append(registry.source() == AdvertisedDimensions.Source.ADVERTISED
+                            ? "客户端连接通知" : "仅当前维度（其余未知）")
+                    .append('\n');
+            out.append("客户端已知维度键数量: ")
+                    .append(registry.dimensionIds().size()).append('\n');
+            out.append("其中非 minecraft 命名空间键: ")
+                    .append(registry.nonVanillaCount()).append('\n');
+            for (String id : registry.dimensionIds()) {
+                out.append("  · ").append(id);
+                if (id.equals(registry.currentDimension())) {
+                    out.append(" [当前进入]");
+                } else {
+                    out.append(" [仅获知 ID，未证明已访问]");
+                }
+                out.append('\n');
+            }
+            out.append("上述维度键不等于生成器设置、可进入性或真实世界 Seed。\n");
+        }
+        out.append('\n');
 
         out.append("【跑图与地形取证】\n");
         out.append("当前采集: ").append(currentlyActive ? "开启" : "关闭").append('\n');
