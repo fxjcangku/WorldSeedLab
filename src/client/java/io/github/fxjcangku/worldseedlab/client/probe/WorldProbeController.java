@@ -25,6 +25,7 @@ import io.github.fxjcangku.worldseedlab.core.probe.ChunkSamplingCursor;
 import io.github.fxjcangku.worldseedlab.core.probe.CompletedChunkStore;
 import io.github.fxjcangku.worldseedlab.core.probe.ProbeConfigFile;
 import io.github.fxjcangku.worldseedlab.core.probe.ProbeGate;
+import io.github.fxjcangku.worldseedlab.core.probe.ProbeCoverage;
 import io.github.fxjcangku.worldseedlab.core.probe.ProbeSettings;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -69,6 +70,7 @@ public final class WorldProbeController {
     private final Map<String, Long> markedStructureCounts = new HashMap<>();
     private final Map<String, Long> biomes = new HashMap<>();
     private ProbeSettings settings;
+    private ProbeCoverage coverage = new ProbeCoverage();
     private DimensionProfile dimensionProfile;
     private AdvertisedDimensions advertisedDimensions;
     private GenerationDiagnostics generationDiagnostics;
@@ -104,6 +106,11 @@ public final class WorldProbeController {
     public long writtenChunks() { return previouslyCompleted + (writer == null ? 0 : writer.writtenChunks()); }
     public int pendingWrites() { return writer == null ? 0 : writer.pending(); }
     public int queuedChunks() { return pending.size(); }
+
+    /** 玩家当前会话中可以确认的采样机会及已知丢弃，不能估算全地图覆盖率。 */
+    public ProbeCoverage.Snapshot coverage() {
+        return coverage.snapshot();
+    }
     public Path dataRoot() { return configRoot.resolve("observations"); }
 
     /** 游戏当前维度的客户端可见元数据，不能视为服务端完整生成器配置。 */
@@ -158,7 +165,8 @@ public final class WorldProbeController {
             extended.append("说明：方块状态可能经过玩家/服务器修改，不是原始生成器输入。\n")
                     .append("地下剖面为分层抽样，不能据此判断未采样区域无矿物或洞穴。\n");
             report = extended.toString() + DetailReportAppendix.render(
-                    detailStats == null ? null : detailStats.snapshot());
+                    detailStats == null ? null : detailStats.snapshot())
+                    + "\n【采样质量 / 已知遗漏】\n" + coverage.snapshot().chineseSummary();
             Path path = new ResearchReportStore(dataRoot()).export(dimensionProfile, report);
             status = "P2 研究日志已导出：" + path.toAbsolutePath();
             return status;
@@ -302,6 +310,7 @@ public final class WorldProbeController {
             biomes.clear();
             previouslyCompleted = resume.size();
             observedSamples = 0;
+            coverage = new ProbeCoverage();
             ticks = 0;
             cursor = null;
             chunk = null;
@@ -380,6 +389,7 @@ public final class WorldProbeController {
             while (budget > 0) {
                 if (cursor == null && !beginChunk(client.level)) break;
                 if (cursor.hasNext() && !isLoaded(client.level, chunk)) {
+                    coverage.abandonedPartialChunk();
                     enqueued.remove(chunk); cursor = null; chunk = null; samples = null;
                     continue;
                 }
@@ -398,6 +408,7 @@ public final class WorldProbeController {
                 if (cursor.hasNext()) break;
                 // 磁盘写入队列满时保留已完成的采样数据，等待后续 Tick 重试。
                 if (!writer.offer(chunk, samples)) {
+                    coverage.writerBackpressure();
                     status = "写入队列繁忙，暂时等待";
                     break;
                 }
@@ -405,6 +416,7 @@ public final class WorldProbeController {
                     biomes.merge(record.observedIdentifier(), 1L, Long::sum);
                 }
                 observedSamples += samples.size();
+                coverage.accepted();
                 seen.add(chunk); enqueued.remove(chunk);
                 cursor = null; chunk = null; samples = null;
                 status = "正在记录群系观测证据";
@@ -477,6 +489,7 @@ public final class WorldProbeController {
             if (detailCursor == null) return;
         }
         if (!detailCursor.isStillLoaded(client.level)) {
+            coverage.abandonedDetailScan();
             detailCursor = null; // 未完成证据全部撤销，可在下次访问区块时重试。
             return;
         }
@@ -484,6 +497,7 @@ public final class WorldProbeController {
         if (detailCursor.isComplete()) {
             TerrainDetailSample detailed = detailCursor.result();
             if (!writer.offerDetail(detailed)) {
+                coverage.writerBackpressure();
                 status = "扩展地形写盘队列繁忙，暂停本次取证";
                 return;
             }
@@ -537,6 +551,7 @@ public final class WorldProbeController {
                             && isLoaded(client.level, next)) {
                         pending.addLast(next);
                         enqueued.add(next);
+                        coverage.queued();
                     }
                 }
             }
@@ -546,7 +561,11 @@ public final class WorldProbeController {
     private boolean beginChunk(ClientLevel level) {
         while (!pending.isEmpty()) {
             ChunkKey next = pending.removeFirst();
-            if (!isLoaded(level, next)) { enqueued.remove(next); continue; }
+            if (!isLoaded(level, next)) {
+                enqueued.remove(next);
+                coverage.unloadedBeforeSampling();
+                continue;
+            }
             cursor = new ChunkSamplingCursor(next, level.getMinY(), level.getMaxY());
             chunk = next;
             samples = new ArrayList<>(512);
