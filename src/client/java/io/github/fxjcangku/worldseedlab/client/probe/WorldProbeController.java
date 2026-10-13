@@ -10,6 +10,8 @@ import io.github.fxjcangku.worldseedlab.core.generation.DimensionProfile;
 import io.github.fxjcangku.worldseedlab.core.generation.GenerationDiagnostics;
 import io.github.fxjcangku.worldseedlab.core.generation.ResearchReportStore;
 import io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkKey;
+import io.github.fxjcangku.worldseedlab.core.generation.TerrainDetailKey;
+import io.github.fxjcangku.worldseedlab.core.probe.DetailMode;
 import io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkSample;
 import io.github.fxjcangku.worldseedlab.core.generation.WorldgenReport;
 import io.github.fxjcangku.worldseedlab.core.privacy.LocalSecret;
@@ -56,6 +58,11 @@ public final class WorldProbeController {
     private final Set<ChunkKey> seen = new HashSet<>();
     // P2 使用独立区块索引：P1 旧数据不会阻止地形补采。
     private final Set<TerrainChunkKey> terrainSeen = new HashSet<>();
+    /** 与 P1 群系及 P2 高度图分离，升级档位仍可补采旧区块。 */
+    private final Set<TerrainDetailKey> detailSeen = new HashSet<>();
+    private TerrainDetailCursor detailCursor;
+    private long detailCompletedAtStart;
+    private final Map<String, Long> markedStructureCounts = new HashMap<>();
     private final Map<String, Long> biomes = new HashMap<>();
     private ProbeSettings settings;
     private DimensionProfile dimensionProfile;
@@ -109,6 +116,18 @@ public final class WorldProbeController {
         return generationDiagnostics == null ? null : generationDiagnostics.snapshot();
     }
 
+    public long detailChunksWritten() {
+        return detailCompletedAtStart + (writer == null ? 0 : writer.writtenDetailChunks());
+    }
+
+    public long markedStructureTypes() {
+        return markedStructureCounts.size();
+    }
+
+    public long observedDetailBlockStates() {
+        return detailCursor == null ? 0 : detailCursor.collectedBlockStates();
+    }
+
     public long terrainChunksWritten() {
         return terrainCompletedAtStart + (writer == null ? 0 : writer.writtenTerrainChunks());
     }
@@ -123,6 +142,18 @@ public final class WorldProbeController {
                     dimensionProfile, generationDiagnostics.snapshot(), Map.copyOf(biomes),
                     observedSamples, writtenSamples(), writtenManualMarks(),
                     pendingWrites(), active(), advertisedDimensions);
+            StringBuilder extended = new StringBuilder(report)
+                    .append("\n【扩展地形证据】\n")
+                    .append("当前档位: ").append(settings.detailMode().chineseLabel()).append('\n')
+                    .append("本次及历史已完成详情区块: ").append(detailChunksWritten()).append('\n')
+                    .append("本次标记建筑类型数: ").append(markedStructureCounts.size()).append('\n');
+            markedStructureCounts.entrySet().stream()
+                    .sorted(Map.Entry.comparingByKey())
+                    .forEach(e -> extended.append("  ").append(e.getKey())
+                            .append(" : ").append(e.getValue()).append("\n"));
+            extended.append("说明：方块状态可能经过玩家/服务器修改，不是原始生成器输入。\n")
+                    .append("地下剖面为分层抽样，不能据此判断未采样区域无矿物或洞穴。\n");
+            report = extended.toString();
             Path path = new ResearchReportStore(dataRoot()).export(dimensionProfile, report);
             status = "P2 研究日志已导出：" + path.toAbsolutePath();
             return status;
@@ -151,8 +182,39 @@ public final class WorldProbeController {
         }
     }
 
-    private static final Set<String> MANUAL_STRUCTURES = Set.of(
-            "minecraft:shipwreck", "minecraft:desert_pyramid", "worldseedlab:village_unclassified");
+    /** 可记录的建筑类别。全部仅为“人工观察候选”，不是已识别的生成起点。 */
+    private static final Map<String, String> STRUCTURE_CATALOG = Map.ofEntries(
+            Map.entry("shipwreck", "minecraft:shipwreck"),
+            Map.entry("desert_pyramid", "minecraft:desert_pyramid"),
+            Map.entry("jungle_temple", "minecraft:jungle_temple"),
+            Map.entry("igloo", "minecraft:igloo"),
+            Map.entry("swamp_hut", "minecraft:swamp_hut"),
+            Map.entry("ocean_monument", "minecraft:monument"),
+            Map.entry("pillager_outpost", "minecraft:pillager_outpost"),
+            Map.entry("ruined_portal", "minecraft:ruined_portal"),
+            Map.entry("buried_treasure", "minecraft:buried_treasure"),
+            Map.entry("village", "worldseedlab:village_unclassified"),
+            Map.entry("stronghold", "minecraft:stronghold"),
+            Map.entry("ancient_city", "minecraft:ancient_city"),
+            Map.entry("mineshaft", "minecraft:mineshaft"),
+            Map.entry("nether_fortress", "minecraft:fortress"),
+            Map.entry("bastion", "minecraft:bastion_remnant"),
+            Map.entry("end_city", "minecraft:end_city"),
+            Map.entry("trial_chambers", "minecraft:trial_chambers")
+    );
+
+    public static Map<String, String> structureCatalog() {
+        return STRUCTURE_CATALOG;
+    }
+
+    public void markStructureByAlias(Minecraft client, String alias) {
+        String id = STRUCTURE_CATALOG.get(alias);
+        if (id == null) {
+            status = "未知建筑类型：" + alias;
+            return;
+        }
+        markStructure(client, id);
+    }
 
     public long writtenManualMarks() {
         return writer == null ? 0 : writer.writtenManualMarks();
@@ -163,7 +225,7 @@ public final class WorldProbeController {
      * 记录只属于当前世界、当前维度；禁止把此数据冒充已证明的随机结构位置。
      */
     public void markStructure(Minecraft client, String structureId) {
-        if (!MANUAL_STRUCTURES.contains(structureId)) {
+        if (!STRUCTURE_CATALOG.containsValue(structureId)) {
             status = "不支持的结构类型，拒绝标记";
             return;
         }
@@ -174,17 +236,21 @@ public final class WorldProbeController {
             return;
         }
         var position = client.player.blockPosition();
+        String localBiome = client.level.getBiome(position).unwrapKey()
+                .map(key -> key.identifier().toString()).orElse("unknown");
         EvidenceRecord evidence = new EvidenceRecord(UUID.randomUUID(),
                 fingerprint, dimension, gameVersion,
                 EvidenceKind.STRUCTURE_OBSERVATION, structureId,
                 position.getX(), position.getY(), position.getZ(),
                 EvidenceOrigin.MANUAL_MARK, Instant.now(),
-                "manual-player-position;unverified;NOT-structure-generation-origin");
+                "manual-player-position;observed-biome=" + localBiome
+                        + ";natural-origin-unknown;NOT-structure-generation-origin");
         if (!gate.allows(evidence) || !writer.offerManual(evidence)) {
             status = "结构标记未加入写入队列，请检查磁盘或重试";
             return;
         }
-        status = "已提交手动结构标记（位置不是生成起点）";
+        markedStructureCounts.merge(structureId, 1L, Long::sum);
+        status = "已提交手动结构标记（并非真实生成起点）";
     }
 
     public void start(Minecraft client) {
@@ -207,6 +273,7 @@ public final class WorldProbeController {
             CompletedChunkStore nextStore = new CompletedChunkStore(dataRoot());
             Set<ChunkKey> resume = nextStore.loadCompleted(f, d);
             Set<TerrainChunkKey> terrainResume = nextStore.loadTerrainCompleted(f, d);
+            Set<TerrainDetailKey> detailsResume = nextStore.loadDetailCompleted(f, d);
             DimensionProfile nextProfile =
                     TerrainObserver.dimensionProfile(client.level, f, gameVersion);
             AdvertisedDimensions registry = inspectAvailableDimensions(client, f, d);
@@ -216,6 +283,12 @@ public final class WorldProbeController {
             seen.addAll(resume);
             terrainSeen.clear();
             terrainSeen.addAll(terrainResume);
+            detailSeen.clear();
+            detailSeen.addAll(detailsResume);
+            detailCursor = null;
+            markedStructureCounts.clear();
+            detailCompletedAtStart = (int) detailsResume.stream()
+                    .filter(k -> k.mode() == settings.detailMode()).count();
             dimensionProfile = nextProfile;
             advertisedDimensions = registry;
             generationDiagnostics = new GenerationDiagnostics(nextProfile);
@@ -252,6 +325,7 @@ public final class WorldProbeController {
         cursor = null;
         chunk = null;
         samples = null;
+        detailCursor = null;
         scopeLevel = null;
         scopeName = null;
         if (writer != null) writer.close(); // drains accepted chunks asynchronously
@@ -294,6 +368,8 @@ public final class WorldProbeController {
                 observeNearbyTerrain(client);
                 findChunks(client);
             }
+            // 附加方块扫描每 Tick 最多 24 次 BlockState 读取，独立于群系预算。
+            advanceDetail(client, 24);
             int budget = settings.samplesPerTick();
             while (budget > 0) {
                 if (cursor == null && !beginChunk(client.level)) break;
@@ -361,6 +437,51 @@ public final class WorldProbeController {
                     accepted++;
                 }
             }
+        }
+    }
+
+    /**
+     * 扩展证据只针对已加载区块。每 Tick 固定预算，防止鞘翅高速跑图时扫完整块卡帧。
+     *
+     * <p>完成后才提交异步队列；磁盘队列满则持有已完成游标，等待下次 Tick，
+     * 不会静默遗失或伪报为已写盘。
+     */
+    private void advanceDetail(Minecraft client, int budget) {
+        if (settings.detailMode() == DetailMode.OFF || writer.pending() >= 12) return;
+        if (detailCursor == null) {
+            if (ticks % 8 != 1) return;
+            int centerX = client.player.blockPosition().getX() >> 4;
+            int centerZ = client.player.blockPosition().getZ() >> 4;
+            int radius = settings.radiusChunks();
+            outer:
+            for (int ring = 0; ring <= radius; ring++) {
+                for (int dx = -ring; dx <= ring; dx++) {
+                    for (int dz = -ring; dz <= ring; dz++) {
+                        if (Math.max(Math.abs(dx), Math.abs(dz)) != ring) continue;
+                        TerrainDetailKey key = new TerrainDetailKey(
+                                centerX + dx, centerZ + dz, settings.detailMode());
+                        if (detailSeen.contains(key)) continue;
+                        if (client.level.getChunkSource().getChunk(key.chunkX(),
+                                key.chunkZ(), ChunkStatus.FULL, false) == null) continue;
+                        detailCursor = new TerrainDetailCursor(client.level, dimensionProfile, key);
+                        break outer;
+                    }
+                }
+            }
+            if (detailCursor == null) return;
+        }
+        if (!detailCursor.isStillLoaded(client.level)) {
+            detailCursor = null; // 未完成证据全部撤销，可在下次访问区块时重试。
+            return;
+        }
+        if (!detailCursor.isComplete()) detailCursor.advance(client.level, budget);
+        if (detailCursor.isComplete()) {
+            if (!writer.offerDetail(detailCursor.result())) {
+                status = "扩展地形写盘队列繁忙，暂停本次取证";
+                return;
+            }
+            detailSeen.add(detailCursor.key());
+            detailCursor = null;
         }
     }
 
