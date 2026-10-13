@@ -27,6 +27,25 @@ public final class GenerationJsonLines {
                 + "}";
     }
 
+    /** 登录连接已公布的维度注册键，仅代表客户端获知，不代表进入或生成。 */
+    public static String advertisedDimensions(AdvertisedDimensions sample) {
+        Objects.requireNonNull(sample, "sample");
+        StringBuilder out = new StringBuilder(350)
+                .append("{\"schema\":2,\"type\":\"advertised_dimensions\",")
+                .append("\"world_fingerprint\":").append(quote(sample.worldFingerprint())).append(',')
+                .append("\"client_version\":").append(quote(sample.clientVersion())).append(',')
+                .append("\"current_dimension\":").append(quote(sample.currentDimension())).append(',')
+                .append("\"source\":").append(quote(sample.source().name())).append(',')
+                .append("\"dimension_ids\":[");
+        for (int i = 0; i < sample.dimensionIds().size(); i++) {
+            if (i != 0) out.append(',');
+            out.append(quote(sample.dimensionIds().get(i)));
+        }
+        return out.append("],\"observed_at\":")
+                .append(quote(sample.observedAt().toString()))
+                .append('}').toString();
+    }
+
     public static String terrain(TerrainChunkSample terrain) {
         Objects.requireNonNull(terrain, "terrain");
         StringBuilder builder = new StringBuilder(380)
