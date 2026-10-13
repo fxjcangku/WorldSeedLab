@@ -42,10 +42,12 @@ public final class GlassDashboard extends Screen {
                 () -> controller.active() ? "停止采集" : "开始采集",
                 () -> { if (controller.active()) controller.stop("已手动停止，后台队列继续完成写入");
                         else controller.start(Minecraft.getInstance()); }, true);
-        button(bx + 18, by + 149, side - 33, 25, () -> "采集信息",
-                () -> {}, false).active = false;
-        button(bx + 18, by + 183, side - 33, 25, () -> "研究路线 P1",
-                () -> {}, false).active = false;
+        button(bx + 18, by + 149, side - 33, 25, () -> "标记沉船",
+                () -> controller.markStructure(Minecraft.getInstance(), "minecraft:shipwreck"), false);
+        button(bx + 18, by + 183, side - 33, 25, () -> "标记沙漠神殿",
+                () -> controller.markStructure(Minecraft.getInstance(), "minecraft:desert_pyramid"), false);
+        button(bx + 18, by + 217, side - 33, 25, () -> "标记村庄",
+                () -> controller.markStructure(Minecraft.getInstance(), "minecraft:village_plains"), false);
 
         int tileW = Math.max(80, (cw - 20) / 3);
         int sy = by + 228;
@@ -107,10 +109,10 @@ public final class GlassDashboard extends Screen {
             g.text(font, "W / S / L", bx + 21, by + 27, GlassUi.CYAN, true);
             g.text(font, "WORLDSEEDLAB", bx + 21, by + 51, GlassUi.TEXT, true);
             g.text(font, "世界生成研究", bx + 21, by + 72, GlassUi.MUTED, false);
-            GlassUi.badge(g, bx + 18, by + 237, side - 35, 27, 0x57467A92);
-            g.text(font, "P1 · OBSERVATION", bx + 27, by + 245, GlassUi.TEXT, false);
-            g.text(font, "仅分析可见数据", bx + 21, by + 284, GlassUi.MUTED, false);
-            g.text(font, "本地存储 · 无数据上传", bx + 21, by + 302, GlassUi.MUTED, false);
+            GlassUi.badge(g, bx + 18, by + 263, side - 35, 27, 0x57467A92);
+            g.text(font, "P1 · OBSERVATION", bx + 27, by + 271, GlassUi.TEXT, false);
+            g.text(font, "仅分析可见数据", bx + 21, by + 311, GlassUi.MUTED, false);
+            g.text(font, "本地存储 · 无数据上传", bx + 21, by + 329, GlassUi.MUTED, false);
 
             g.text(font, "世界生成观察台", cx, by + 29, GlassUi.TEXT, true);
             g.text(font, "WORLD PROBE / BIOME INTELLIGENCE", cx, by + 48, GlassUi.MUTED, false);
@@ -167,7 +169,7 @@ public final class GlassDashboard extends Screen {
                     line += 19;
                 }
             }
-            g.text(font, "仅记录玩家正常加载的区块 | Seed 求解器未实现",
+            g.text(font, "只读群系 + 手动结构观察 | Seed 求解器未实现",
                     bx + 20, by + bh - 17, GlassUi.MUTED, false);
         }
 
