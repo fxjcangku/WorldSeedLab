@@ -61,6 +61,16 @@ public final class P1ObservationSmokeTest {
                     "all biome evidence rows must persist");
             require(store.loadCompleted(hash, "minecraft:the_nether").isEmpty(), "dimension isolation");
 
+            EvidenceRecord manual = new EvidenceRecord(UUID.randomUUID(), hash,
+                    "minecraft:overworld", "26.2", EvidenceKind.STRUCTURE_OBSERVATION,
+                    "minecraft:shipwreck", 44, 65, 57, EvidenceOrigin.MANUAL_MARK,
+                    Instant.now(), "manual sighting; NOT a structure origin");
+            store.appendManual(manual);
+            require(Files.readAllLines(store.dataPath(hash, "minecraft:overworld")).size() == 17,
+                    "manual observation must append without overwriting chunk samples");
+            require(store.loadCompleted(hash, "minecraft:overworld").size() == 1,
+                    "manual observation must not falsely complete a chunk");
+
             List<EvidenceRecord> mixed = new ArrayList<>(records);
             mixed.add(new EvidenceRecord(UUID.randomUUID(), hash, "minecraft:the_nether", "26.2",
                     EvidenceKind.BIOME_OBSERVATION, "minecraft:nether_wastes",
@@ -72,7 +82,7 @@ public final class P1ObservationSmokeTest {
                     throw new IllegalArgumentException(e);
                 }
             }, "cross-dimensional batch must fail closed");
-            require(Files.readAllLines(store.dataPath(hash, "minecraft:overworld")).size() == 16,
+            require(Files.readAllLines(store.dataPath(hash, "minecraft:overworld")).size() == 17,
                     "invalid batch must not write");
             ProbeConfigFile file = new ProbeConfigFile(folder);
             file.save(new ProbeSettings(3, 4, 96));
