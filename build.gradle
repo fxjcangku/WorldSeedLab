@@ -125,3 +125,15 @@ tasks.register('p2DetailSmokeTest', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('p2DetailSmokeTest')
 }
+
+tasks.register('p2RichSmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate detailed biome/terrain evidence, persistence and safe reports.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P2RichEvidenceSmokeTest'
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('p2RichSmokeTest')
+}
