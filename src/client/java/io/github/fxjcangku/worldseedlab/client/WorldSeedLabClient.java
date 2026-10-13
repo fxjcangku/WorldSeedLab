@@ -82,6 +82,17 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                                 + " | " + probe.status()));
                         return 1;
                     }))
+                    .then(ClientCommands.literal("epoch")
+                            .executes(context -> {
+                                context.getSource().sendFeedback(Component.literal(
+                                        probe.worldEpochStatus(Minecraft.getInstance())));
+                                return 1;
+                            })
+                            .then(ClientCommands.literal("new").executes(context -> {
+                                context.getSource().sendFeedback(Component.literal(
+                                        probe.newWorldEpoch(Minecraft.getInstance())));
+                                return 1;
+                            })))
                     .then(ClientCommands.literal("report").executes(context -> {
                         context.getSource().sendFeedback(Component.literal(probe.exportReport()));
                         return 1;
