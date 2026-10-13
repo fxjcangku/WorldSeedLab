@@ -1,6 +1,6 @@
 package io.github.fxjcangku.worldseedlab.client.ui;
 
-import io.github.fxjcangku.worldseedlab.client.WorldProbeController;
+import io.github.fxjcangku.worldseedlab.client.probe.WorldProbeController;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;

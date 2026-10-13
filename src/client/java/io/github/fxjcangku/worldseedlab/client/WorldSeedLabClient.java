@@ -1,6 +1,7 @@
 package io.github.fxjcangku.worldseedlab.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import io.github.fxjcangku.worldseedlab.client.probe.WorldProbeController;
 import io.github.fxjcangku.worldseedlab.core.BootstrapCheck;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;

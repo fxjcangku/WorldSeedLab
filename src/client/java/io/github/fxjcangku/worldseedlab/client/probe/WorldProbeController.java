@@ -1,4 +1,6 @@
-package io.github.fxjcangku.worldseedlab.client;
+package io.github.fxjcangku.worldseedlab.client.probe;
+
+import io.github.fxjcangku.worldseedlab.client.scope.WorldScopeResolver;
 
 import io.github.fxjcangku.worldseedlab.core.evidence.EvidenceKind;
 import io.github.fxjcangku.worldseedlab.core.evidence.EvidenceOrigin;
@@ -30,7 +32,11 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.slf4j.Logger;
 
-/** Opt-in read-only biome observation; all world reads stay on the game thread. */
+/**
+ * 客户端群系观测协调器。
+ * 只在玩家主动授权后读取已加载区块；读取在游戏线程、写入在有界后台线程执行。
+ * 发生维度切换或写入异常时立即停止，绝不对服务器请求额外区块。
+ */
 public final class WorldProbeController {
     private static final int MAX_WAITING_CHUNKS = 96;
     private final Logger logger;
