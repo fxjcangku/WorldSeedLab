@@ -8,6 +8,9 @@ import io.github.fxjcangku.worldseedlab.core.evidence.EvidenceRecord;
 import io.github.fxjcangku.worldseedlab.core.generation.AdvertisedDimensions;
 import io.github.fxjcangku.worldseedlab.core.generation.DimensionProfile;
 import io.github.fxjcangku.worldseedlab.core.generation.GenerationDiagnostics;
+import io.github.fxjcangku.worldseedlab.core.generation.RichChunkSample;
+import io.github.fxjcangku.worldseedlab.core.generation.RichObservationStats;
+import io.github.fxjcangku.worldseedlab.core.generation.RichReportAppendix;
 import io.github.fxjcangku.worldseedlab.core.generation.ResearchReportStore;
 import io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkKey;
 import io.github.fxjcangku.worldseedlab.core.generation.TerrainDetailKey;
@@ -58,6 +61,7 @@ public final class WorldProbeController {
     private final Set<ChunkKey> seen = new HashSet<>();
     // P2 使用独立区块索引：P1 旧数据不会阻止地形补采。
     private final Set<TerrainChunkKey> terrainSeen = new HashSet<>();
+    private final Set<TerrainChunkKey> richSeen = new HashSet<>();
     /** 与 P1 群系及 P2 高度图分离，升级档位仍可补采旧区块。 */
     private final Set<TerrainDetailKey> detailSeen = new HashSet<>();
     private TerrainDetailCursor detailCursor;
@@ -68,6 +72,8 @@ public final class WorldProbeController {
     private DimensionProfile dimensionProfile;
     private AdvertisedDimensions advertisedDimensions;
     private GenerationDiagnostics generationDiagnostics;
+    private RichObservationStats richStats;
+    private long richCompletedAtStart;
     private long terrainCompletedAtStart;
     private ClientLevel scopeLevel;
     private String scopeName;
@@ -116,6 +122,14 @@ public final class WorldProbeController {
         return generationDiagnostics == null ? null : generationDiagnostics.snapshot();
     }
 
+    public long richChunksWritten() {
+        return richCompletedAtStart + (writer == null ? 0 : writer.writtenRichChunks());
+    }
+
+    public RichObservationStats.Snapshot richSnapshot() {
+        return richStats == null ? null : richStats.snapshot();
+    }
+
     public long detailChunksWritten() {
         return detailCompletedAtStart + (writer == null ? 0 : writer.writtenDetailChunks());
     }
@@ -153,7 +167,9 @@ public final class WorldProbeController {
                             .append(" : ").append(e.getValue()).append("\n"));
             extended.append("说明：方块状态可能经过玩家/服务器修改，不是原始生成器输入。\n")
                     .append("地下剖面为分层抽样，不能据此判断未采样区域无矿物或洞穴。\n");
-            report = extended.toString();
+            report = extended.toString()
+                    + RichReportAppendix.render(settings.richEvidence(),
+                            richChunksWritten(), richSnapshot());
             Path path = new ResearchReportStore(dataRoot()).export(dimensionProfile, report);
             status = "P2 研究日志已导出：" + path.toAbsolutePath();
             return status;
@@ -273,6 +289,8 @@ public final class WorldProbeController {
             CompletedChunkStore nextStore = new CompletedChunkStore(dataRoot());
             Set<ChunkKey> resume = nextStore.loadCompleted(f, d);
             Set<TerrainChunkKey> terrainResume = nextStore.loadTerrainCompleted(f, d);
+            Set<TerrainChunkKey> richResume = settings.richEvidence()
+                    ? nextStore.loadRichCompleted(f, d) : Set.of();
             Set<TerrainDetailKey> detailsResume = nextStore.loadDetailCompleted(f, d);
             DimensionProfile nextProfile =
                     TerrainObserver.dimensionProfile(client.level, f, gameVersion);
@@ -283,6 +301,10 @@ public final class WorldProbeController {
             seen.addAll(resume);
             terrainSeen.clear();
             terrainSeen.addAll(terrainResume);
+            richSeen.clear();
+            richSeen.addAll(richResume);
+            richStats = new RichObservationStats(f, d);
+            richCompletedAtStart = richResume.size();
             detailSeen.clear();
             detailSeen.addAll(detailsResume);
             detailCursor = null;
@@ -366,6 +388,7 @@ public final class WorldProbeController {
             if (++ticks % 12 == 1) {
                 // 地形每 12 Tick 最多取证两个已加载区块，避免鞘翅跑图时卡帧。
                 observeNearbyTerrain(client);
+                if (settings.richEvidence()) observeNearbyRichTerrain(client);
                 findChunks(client);
             }
             // 附加方块扫描每 Tick 最多 24 次 BlockState 读取，独立于群系预算。
@@ -414,6 +437,31 @@ public final class WorldProbeController {
      * 严格上限两个区块/12 tick；队列满时本次跳过，将来再重试。
      * 并不生成区块、不请求服务器更多地图数据。
      */
+    private void observeNearbyRichTerrain(Minecraft client) {
+        if (richStats == null || dimensionProfile == null || writer.pending() >= 12) return;
+        int cx = client.player.blockPosition().getX() >> 4;
+        int cz = client.player.blockPosition().getZ() >> 4;
+        for (int ring = 0; ring <= settings.radiusChunks(); ring++) {
+            for (int dx = -ring; dx <= ring; dx++) {
+                for (int dz = -ring; dz <= ring; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != ring) continue;
+                    TerrainChunkKey key = new TerrainChunkKey(cx + dx, cz + dz);
+                    if (richSeen.contains(key)) continue;
+                    RichChunkSample sample = RichTerrainObserver.observe(
+                            client.level, dimensionProfile, key);
+                    if (sample == null) continue;
+                    if (!writer.offerRich(sample)) {
+                        status = "精细取证队列忙，暂停采样等待写盘";
+                        return;
+                    }
+                    richSeen.add(key);
+                    richStats.observe(sample);
+                    return;
+                }
+            }
+        }
+    }
+
     private void observeNearbyTerrain(Minecraft client) {
         if (generationDiagnostics == null || dimensionProfile == null || writer.pending() >= 12) {
             return;
