@@ -66,6 +66,11 @@ public final class GlassDashboard extends Screen {
                 () -> "切换采样预算",
                 () -> controller.changeSettings(controller.settings().nextBudget()), false);
 
+        // 窄画面避免额外按钮与主导航重叠；所有版本仍能使用 /wsl report。
+        if (bh >= 450) {
+            button(bx + 18, by + bh - 71, side - 33, 28,
+                    () -> "导出研究日志", controller::exportReport, false);
+        }
         button(bx + bw - 92, by + 18, 70, 22, () -> "关闭", this::onClose, false);
     }
 
@@ -111,11 +116,25 @@ public final class GlassDashboard extends Screen {
             g.text(font, "世界生成研究", bx + 21, by + 72, GlassUi.MUTED, false);
             GlassUi.badge(g, bx + 18, by + 263, side - 35, 27, 0x57467A92);
             g.text(font, "P1 · OBSERVATION", bx + 27, by + 271, GlassUi.TEXT, false);
-            g.text(font, "仅分析可见数据", bx + 21, by + 311, GlassUi.MUTED, false);
-            g.text(font, "本地存储 · 无数据上传", bx + 21, by + 329, GlassUi.MUTED, false);
+            if (bh >= 355) {
+                g.text(font, "仅分析可见数据",
+                        bx + 21, by + 311, GlassUi.MUTED, false);
+            }
+            if (bh >= 370) {
+                g.text(font, "本地存储 · 无数据上传",
+                        bx + 21, by + 329, GlassUi.MUTED, false);
+            }
 
             g.text(font, "世界生成观察台", cx, by + 29, GlassUi.TEXT, true);
             g.text(font, "WORLD PROBE / BIOME INTELLIGENCE", cx, by + 48, GlassUi.MUTED, false);
+            var profile = controller.dimensionProfile();
+            if (profile != null) {
+                g.text(font, "维度 " + GlassUi.compact(profile.dimension(),
+                                Math.max(12, (cw - 260) / 7))
+                                + " · 高度 " + profile.minBuildY() + " ~ "
+                                + (profile.maxBuildYExclusive() - 1),
+                        cx, by + 63, GlassUi.MUTED, false);
+            }
             GlassUi.badge(g, cx + cw - 104, by + 24, 99, 23,
                     controller.active() ? 0x5533BD9B : 0x555B728C);
             g.text(font, controller.active() ? "采集中" : "已停止",
@@ -134,9 +153,9 @@ public final class GlassDashboard extends Screen {
             g.text(font, "状态 / " + GlassUi.compact(controller.status(),
                     Math.max(14, (cw - 18) / 6)), cx + 13, by + 184,
                     GlassUi.TEXT, false);
-            g.text(font, "待采集 " + controller.queuedChunks() + "   待写入 "
-                            + controller.pendingWrites() + "   已写入样本 "
-                            + controller.writtenSamples(),
+            g.text(font, "P1 等待 " + controller.queuedChunks() + " · 写盘 "
+                            + controller.pendingWrites() + " · P2 地形区块 "
+                            + controller.terrainChunksWritten(),
                     cx + 13, by + 200, GlassUi.MUTED, false);
 
             GlassUi.glass(g, cx, by + 223, cw, 102, false);
@@ -148,25 +167,28 @@ public final class GlassDashboard extends Screen {
             g.text(font, "预算：" + controller.settings().samplesPerTick() + " / tick",
                     cx + tileWidth * 2 + 12, by + 251, GlassUi.CYAN, false);
 
-            int listY = by + 338;
-            GlassUi.glass(g, cx, listY, cw, Math.max(55, bh - (listY - by) - 25), false);
-            g.text(font, "本次观察群系 / OBSERVED BIOMES", cx + 13, listY + 13,
-                    GlassUi.TEXT, true);
-            List<Map.Entry<String, Long>> entries = controller.topBiomes(
-                    Math.max(1, Math.min(6, (bh - (listY - by) - 49) / 19)));
-            if (entries.isEmpty()) {
-                g.text(font, "等待真实世界样本 · 不是注册表候选列表",
-                        cx + 14, listY + 39, GlassUi.MUTED, false);
-            } else {
-                int line = listY + 33;
-                for (Map.Entry<String, Long> entry : entries) {
-                    g.fill(cx + 13, line + 3, cx + 17, line + 11, 0xFF53C8E9);
-                    g.text(font, GlassUi.compact(entry.getKey(),
-                                    Math.max(10, (cw - 85) / 6)),
-                            cx + 24, line + 3, GlassUi.TEXT, false);
-                    g.text(font, String.valueOf(entry.getValue()),
-                            cx + cw - 62, line + 3, GlassUi.MUTED, false);
-                    line += 19;
+            if (bh >= 405) {
+                int listY = by + 338;
+                GlassUi.glass(g, cx, listY, cw,
+                        Math.max(55, bh - (listY - by) - 25), false);
+                g.text(font, "真实群系 / OBSERVED BIOMES", cx + 13, listY + 13,
+                        GlassUi.TEXT, true);
+                List<Map.Entry<String, Long>> entries = controller.topBiomes(
+                        Math.max(1, Math.min(6, (bh - (listY - by) - 49) / 19)));
+                if (entries.isEmpty()) {
+                    g.text(font, "等待真实采样 · 不是群系注册表候选列表",
+                            cx + 14, listY + 39, GlassUi.MUTED, false);
+                } else {
+                    int line = listY + 33;
+                    for (Map.Entry<String, Long> entry : entries) {
+                        g.fill(cx + 13, line + 3, cx + 17, line + 11, 0xFF53C8E9);
+                        g.text(font, GlassUi.compact(entry.getKey(),
+                                        Math.max(10, (cw - 85) / 6)),
+                                cx + 24, line + 3, GlassUi.TEXT, false);
+                        g.text(font, String.valueOf(entry.getValue()),
+                                cx + cw - 62, line + 3, GlassUi.MUTED, false);
+                        line += 19;
+                    }
                 }
             }
             g.text(font, "只读群系 + 手动结构观察 | Seed 求解器未实现",
