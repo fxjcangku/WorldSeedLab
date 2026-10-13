@@ -1,0 +1,71 @@
+# WorldSeedLab · P2.2 详细世界证据
+
+> 研究预览 | Java 25 · Mojmap · Minecraft 26.1.2 / 26.2。  
+> 当前模块**不能**求解或读取服务器的真实 Seed。
+
+## 采样内容
+
+用户明确点击开始采集之后，只分析客户端已加载区块。F8 液态玻璃界面提供三档精度：
+
+| 档位 | 额外读取 | 适用场景 |
+| --- | --- | --- |
+| OFF | 不扫描额外方块 | 只要 P1 群系及 P2 基本高度 |
+| SURFACE | 每区块 16 个地表格点、海床格点 | 低负载长期鞘翅跑图 |
+| STRATA | SURFACE + 跨 Y 轴的稀疏地下剖面 | 自定义洞穴 / 地层分析 |
+
+每个 SURFACE 格点的完整记录：
+
+- 实际地表方块 ID 和方块状态字符串（不会读取 NBT、箱子或标牌内容）；
+- 地表群系注册 ID、地表流体 ID；
+- 三个高度图：WORLD_SURFACE、OCEAN_FLOOR、MOTION_BLOCKING；
+- OCEAN_FLOOR 对应的海床方块 ID。
+
+STRATA 档位再选取区块中 4 个固定水平位置，沿 Y 轴按当前维度高度进行稀疏采样，记录方块、流体和群系注册 ID。全部取证都来自现存客户端区块数据；玩家改造、服务器自定义刷方块及历史旧区块可能产生干扰。
+
+## 使用
+
+1. 在服务器允许的前提下装载与游戏版本匹配的 WorldSeedLab。
+2. F8 或 `/wsl gui` → 设置地形详情档位，或者运行 `/wsl detail` 循环切换。
+3. 确认档位后，主动点击开始采集，再利用普通探索/鞘翅寻路跑图。
+4. 在自然山体、河海、神殿和洞穴经过时收集更多不同区域样本。
+5. 跑图完成先停止，再输入 `/wsl report` 导出中文研究报告，`/wsl path` 查看存储目录。
+6. 结构只能用 `/wsl marks` 查看支持的手动标签，然后 `/wsl mark <标签>` 手动记录；这些是玩家观察点，不是结构生成起始区块。
+
+启动采集总是**默认关闭**。详细档位设定可以跨重启保存，但不会自动启动采集或触发未加载区块。
+
+## 性能和磁盘约束
+
+- 详细地形采集每 tick 最多 24 步；单区块跨多个 tick 才能完成。
+- 只读取 ChunkStatus.FULL 的已加载对象，区块中途卸载则丢弃不完整结果。
+- 磁盘队列有界；先成功写证据再写完成索引；失败时安全停止而不是虚报成功。
+- 详细文件 `terrain-detail.jsonl` 限单维度 **256 MiB**；单行上限 256 KiB。
+- 详细进度独立写到 `terrain-detail-completed.csv`，可在重启后恢复；原 P1/P2 文件不会被覆盖。
+- 增强后的单条详细证据使用 JSONL `schema=4`，增加高度图和海床 ID。旧 `schema=3` 如已存在，不应假定自动升级。
+- 中文报告提供表层材质、海床材质、表层群系和地下材质的前八位统计，不包含精确区块坐标。
+
+## 本地文件与分享
+
+```text
+.minecraft/config/worldseedlab/observations/
+└── worlds/<local_hmac>/dimensions/<dimension_hash>/
+    ├── evidence.jsonl
+    ├── terrain.jsonl
+    ├── dimension-profile.jsonl
+    ├── advertised-dimensions.jsonl
+    ├── terrain-detail.jsonl            # 精细证据原件（含坐标）
+    ├── terrain-detail-completed.csv
+    └── research-report.txt             # 建议首先分享的中文摘要
+```
+
+**先发 research-report.txt**。如果需要反推世界生成算法中的空间规律，之后可自愿提供部分原始取证文件，但请确认服务器规则、坐标隐私和数据脱敏方案。**禁止上传 identity.key**。
+
+## 不应误认为
+
+- 得到自定义群系/地层 ID ≠ 获取自定义地形生成器的内部配置。
+- 当前方块、高度图 ≠ 地图最初自然生成时的方块。
+- 手动结构标记 ≠ 经验证的原版结构生成起始位置。
+- 大量跑图 ≠ 必然恢复结构种子或完整 64 位世界 Seed。
+
+## 验证边界
+
+26.1.2 与 26.2 的 CI 编译及离线 smoke test 是合并的必要条件。F8 玻璃面板、客户端真实地形采样、跨维度切换和高频鞘翅跑图性能仍需要后续真实 Minecraft 运行验收。此阶段不发布正式 Release。
