@@ -43,6 +43,14 @@ P0 基础框架及 P1/P2 研发源码已提交：**F8 或 `/wsl gui`** 打开中
 
 [开发及构建说明](docs/DEVELOPMENT.md) · [P1 真实群系采集](docs/P1_OBSERVATION.md) · [P2 跑图与维度日志](docs/P2_DIAGNOSTICS.md) · [开发习惯](%E5%BC%80%E5%8F%91%E4%B9%A0%E6%83%AF.md) · [双版本 CI](../../actions/workflows/build.yml)
 
+## P2.3 / 扩展取证预览
+
+已开发（需合并与实机验收）：可分别开启**三高度图与海床证据**、**地表方块状态/流体**、**跨维度高度的稀疏地下剖面**，并用 `/wsl marks`、`/wsl mark <类型>` 标记更多原版建筑候选。两套扩展扫描默认关闭，数据记录到相互独立的 JSONL 文件与完成索引。
+
+这些是取证数据，不是破解后的 Seed。方块可能被玩家或服务器改变，手动结构坐标也不是结构生成起始点。
+
+[P2.5 原版结构兼容性设计](docs/P2_5_STRUCTURE_COMPATIBILITY.md) · [P2 跑图和日志](docs/P2_DIAGNOSTICS.md)
+
 ## 02 / 研究边界
 
 | 研究对象 | 我们希望回答的问题 |
