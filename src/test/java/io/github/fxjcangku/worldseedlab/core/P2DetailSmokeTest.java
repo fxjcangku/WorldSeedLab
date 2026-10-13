@@ -1,5 +1,7 @@
 package io.github.fxjcangku.worldseedlab.core;
 
+import io.github.fxjcangku.worldseedlab.core.generation.DetailObservationStats;
+import io.github.fxjcangku.worldseedlab.core.generation.DetailReportAppendix;
 import io.github.fxjcangku.worldseedlab.core.generation.TerrainDetailJsonLines;
 import io.github.fxjcangku.worldseedlab.core.generation.TerrainDetailKey;
 import io.github.fxjcangku.worldseedlab.core.generation.TerrainDetailSample;
@@ -8,6 +10,9 @@ import io.github.fxjcangku.worldseedlab.core.probe.CompletedChunkStore;
 import io.github.fxjcangku.worldseedlab.core.probe.DetailMode;
 import io.github.fxjcangku.worldseedlab.core.probe.ProbeConfigFile;
 import io.github.fxjcangku.worldseedlab.core.probe.ProbeSettings;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.StandardOpenOption;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -65,6 +70,21 @@ public final class P2DetailSmokeTest {
         expect(json.contains("deeper_dark:azure_sanctuary"), "actual biome ID");
         expect(json.contains("\"vertical_stride_blocks\":16"), "depth stride saved");
         expect(json.indexOf('\n') < 0, "JSONL must remain one line");
+        var statistics = new DetailObservationStats(a, "minecraft:overworld");
+        statistics.observe(surfaceSample);
+        statistics.observe(strataSample);
+        var summary = statistics.snapshot();
+        expect(summary.acceptedChunks() == 2, "detail acceptance count");
+        expect(summary.verticalCells() == strata.size(), "strata cells counted once");
+        expect(summary.oceanFloorBlocks().get("minecraft:stone") == 32,
+                "seabed categories include both surface and strata samples");
+        expect(DetailReportAppendix.render(summary).contains("地表材质"),
+                "human readable summary");
+        expect(!DetailReportAppendix.render(summary).contains("\"chunk_x\":"),
+                "anonymized summary never exposes chunk coordinates");
+        expectFail(() -> new DetailObservationStats(b, "minecraft:overworld")
+                .observe(strataSample), "detailed statistics must reject foreign world scope");
+
         var mutable = new ArrayList<>(surface);
         var immutable = new TerrainDetailSample(a, "minecraft:overworld", "26.2",
                 0, 1, DetailMode.SURFACE, 0, mutable, List.of(), now);
@@ -113,6 +133,26 @@ public final class P2DetailSmokeTest {
                     "independent strata journal");
             expect(Files.readAllLines(rawPath, StandardCharsets.UTF_8).size() == 2,
                     "surface and strata records both survive");
+            // 使用稀疏文件模拟接近 256 MiB 的已存在日志，不消耗同等内存。
+            Path capacityRoot = folder.resolve("capacity-test");
+            CompletedChunkStore capacityStore = new CompletedChunkStore(capacityRoot);
+            Path oversized = capacityStore.dataPath(a, "minecraft:overworld")
+                    .getParent().resolve("terrain-detail.jsonl");
+            Files.createDirectories(oversized.getParent());
+            try (FileChannel channel = FileChannel.open(oversized,
+                    StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
+                channel.position(256L * 1024 * 1024 - 32);
+                channel.write(ByteBuffer.wrap(new byte[] {0}));
+            }
+            boolean rejected = false;
+            try {
+                capacityStore.appendDetail(surfaceSample);
+            } catch (java.io.IOException expected) {
+                rejected = expected.getMessage().contains("256 MiB");
+            }
+            expect(rejected, "detail log cannot silently exceed disk budget");
+            expect(capacityStore.loadDetailCompleted(a, "minecraft:overworld").isEmpty(),
+                    "capacity failure must not create completion journal");
         } finally {
             try (var walk = Files.walk(folder)) {
                 for (Path f : walk.sorted(Comparator.reverseOrder()).toList()) {
