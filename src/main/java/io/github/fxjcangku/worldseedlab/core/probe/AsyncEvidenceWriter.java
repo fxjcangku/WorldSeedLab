@@ -19,6 +19,7 @@ public final class AsyncEvidenceWriter implements AutoCloseable {
     private final AtomicReference<String> failure = new AtomicReference<>();
     private final AtomicLong writtenChunks = new AtomicLong();
     private final AtomicLong writtenSamples = new AtomicLong();
+    private final AtomicLong writtenManualMarks = new AtomicLong();
 
     public AsyncEvidenceWriter(CompletedChunkStore store, String fingerprint, String dimension) {
         this.store = store;
@@ -51,6 +52,32 @@ public final class AsyncEvidenceWriter implements AutoCloseable {
         } catch (RejectedExecutionException full) {
             return false;
         }
+    }
+
+    /** Explicit user action; serialized with the same single disk writer. */
+    public boolean offerManual(io.github.fxjcangku.worldseedlab.core.evidence.EvidenceRecord record) {
+        if (io.isShutdown() || failure.get() != null) return false;
+        try {
+            io.execute(() -> {
+                try {
+                    if (!fingerprint.equals(record.worldFingerprint())
+                            || !dimension.equals(record.dimension())) {
+                        throw new IOException("manual observation crossed a world scope");
+                    }
+                    store.appendManual(record);
+                    writtenManualMarks.incrementAndGet();
+                } catch (IOException | RuntimeException ex) {
+                    failure.compareAndSet(null, "手动标记写入失败：" + ex.getMessage());
+                }
+            });
+            return true;
+        } catch (RejectedExecutionException full) {
+            return false;
+        }
+    }
+
+    public long writtenManualMarks() {
+        return writtenManualMarks.get();
     }
 
     public int pending() {
