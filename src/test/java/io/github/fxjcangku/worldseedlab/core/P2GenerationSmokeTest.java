@@ -8,6 +8,7 @@ import io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkKey;
 import io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkSample;
 import io.github.fxjcangku.worldseedlab.core.generation.WorldgenReport;
 import io.github.fxjcangku.worldseedlab.core.probe.CompletedChunkStore;
+import io.github.fxjcangku.worldseedlab.core.probe.AsyncEvidenceWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -98,6 +99,18 @@ public final class P2GenerationSmokeTest {
                     "custom namespace disclosure");
             expect(!report.contains("192.168.") && !report.contains("server.example.com"),
                     "report must contain no supplied host");
+            // 验证队列按顺序写入：正常退出可以等待落盘，不冒充无限持久化保证。
+            Path asynchronousDir = folder.resolve("asynchronous");
+            AsyncEvidenceWriter backgroundWriter = new AsyncEvidenceWriter(
+                    new CompletedChunkStore(asynchronousDir), worldA, profile.dimension());
+            expect(backgroundWriter.offerDimension(profile), "enqueue dimension profile");
+            expect(backgroundWriter.offerTerrain(sample), "enqueue terrain profile");
+            expect(backgroundWriter.closeAndAwait(3000), "writer should drain accepted data");
+            expect(backgroundWriter.writtenTerrainChunks() == 1, "terrain async counter");
+            expect(new CompletedChunkStore(asynchronousDir)
+                    .loadTerrainCompleted(worldA, profile.dimension())
+                    .contains(new TerrainChunkKey(-3, 5)), "async journal persisted");
+
             Path reportFile = new ResearchReportStore(folder).export(profile, report);
             expect(Files.readString(reportFile, StandardCharsets.UTF_8).equals(report),
                     "round-trip human-readable report");
