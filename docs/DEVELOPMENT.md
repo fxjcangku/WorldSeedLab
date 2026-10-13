@@ -1,68 +1,72 @@
-# WorldSeedLab · 开发与验收
+# WorldSeedLab · 开发、构建与验收
 
-## 当前能力
+> 真实研发状态：P0、P1、P2 代码及双版本 CI 验证；暂未完成 `runClient` 实机观察测试，也未实现 Seed 求解器。
 
-- 双版本 Gradle 配置和 Fabric 客户端空壳。
-- `/wsl`、`/wsl status` 和 `/wsl about`：只显示基础框架状态。
-- 纯 Java 证据数据结构、JSON Lines 序列化、世界指纹和维度隔离的本地存储基础。
-- `ProbeGate` 默认禁止采集，维度或世界变化时自动失效。
-- 核心 smoke test；CI 双版本构建矩阵。
+## 项目环境
 
-**未实现：** 实际群系采样、结构自动识别、数据采集开关 UI、候选种子求解、服务器世界指纹接入与自动保存。项目不可用于获取 Seed。
-
-## 编译环境
-
-- Java 25
-- Gradle 9.6.1
-- Fabric Loom 1.17.21（`net.fabricmc.fabric-loom`）
-- Fabric Loader 0.19.5
-- Minecraft 26.1.2 + Fabric API 0.155.3+26.1.2
-- Minecraft 26.2 + Fabric API 0.161.0+26.2
-
-本项目使用 26.1 起非混淆 Minecraft 的官方类名，**不添加旧 Yarn mappings 依赖，也不使用旧的 `fabric-loom` 插件 ID**。
+- Minecraft 26.1.2 / 26.2，Fabric 纯客户端模组
+- Java 25，Gradle 9.6.1，Fabric Loom 1.17.21（`net.fabricmc.fabric-loom`）
+- Fabric Loader 0.19.5；26.1.2 Fabric API 0.155.3+26.1.2；26.2 Fabric API 0.161.0+26.2
+- Mojang 官方映射；不引入 Yarn 或迁移现有 SeedCracker 源码
+- 独立包 `io.github.fxjcangku.worldseedlab`
 
 ## 本地构建
 
-安装 JDK 25 和 Gradle 9.6.1，在仓库根目录执行：
+仓库不包含 Gradle Wrapper 二进制；请安装 JDK 25 和 Gradle 9.6.1。
 
 ```bash
 gradle -PmcVersion=26.1.2 clean build
 gradle -PmcVersion=26.2 clean build
 ```
 
-单独执行数据模型与隔离策略测试：
-
-```bash
-gradle -PmcVersion=26.2 coreSmokeTest
-```
-
-在可图形化运行的机器上启动客户端：
+运行单人测试客户端：
 
 ```bash
 gradle -PmcVersion=26.2 runClient
 ```
 
-两个版本都从相同源文件编译为**不同目标版本的 JAR**，不会把两个游戏版本一起打包。
+全部 `build` 将执行：
 
-> 暂未包含 Gradle Wrapper 的二进制启动 JAR。当前 CI 使用 `gradle/actions/setup-gradle` 安装已锁定的版本；后续将在可下载官方 Wrapper 二进制的环境生成并提交标准 Wrapper。请勿声称当前可以执行 `./gradlew`。
+- `coreSmokeTest`：世界 HMAC、默认禁用、P0 模型存储。
+- `p1SmokeTest`：三维 quart 群系取样、区块日志、维度隔离、背压约束。
+- `p2SmokeTest`：维度档案、地形高度图、独立索引、中文报告、异步退出落盘。
 
-## 首轮实机检查
+**CI 产物仅供受控实验，当前不自动发布 GitHub Release。**
 
-1. 构建 26.2，加载独立 Fabric 客户端。
-2. 在模组列表确认 `WorldSeedLab` 出现。
-3. 进入单人世界或允许该模组的服务器，在聊天输入 `/wsl status`。
-4. 确认报告的 Minecraft / Java 版本正确。
-5. 确认没有自动扫描、没有自动写入观测文件、没有网络上传和 Seed 破解活动。
-6. 切换 26.1.2，重复上述检查。
+## P1 真实群系采集
 
-## 项目边界
+进入世界后按 **F8**，或输入 `/wsl gui`。初次启动采集开关关闭。确认服务器规则后手动点击启动，可以在后台正常跑图。已加载区块的群系通过 `ClientLevel.getBiome` 读取；停止、断线或换维度后安全停机。
 
-- 唯一仓库：`fxjcangku/WorldSeedLab`。
-- 不使用或公开 yiyiaddon 私有源码，不复制第三方种子破解算法源码。
-- 禁止输出虚假完整 Seed，任何未来候选必须经过留出样本交叉验证。
-- 所有新增游戏 API 要以目标 Minecraft 版本实际源码/依赖为依据。
+参考 [P1 采样细节](P1_OBSERVATION.md)。
 
-## 验证状态
+## P2 世界生成观测
 
-项目提交前，若无法在具备 JDK 25、依赖联网的环境中完成 Gradle 构建，则**只能宣称源码已提交和静态检查完成**。CI 的真实构建结果必须单独核对后更新状态。
+采集开启后，除 P1 群系外，P2 还记录本机观察到的维度 ID、高度范围和 WORLD_SURFACE 高度图（每区块 16 点）。不获取后台生成器配置或 Seed。
 
+用户可使用：
+
+```text
+/wsl status    采样运行情况
+/wsl path      输出本机日志目录
+/wsl report    导出当前采集会话中文研究报告
+/wsl gui       打开液态玻璃面板
+/wsl about     查看模块范围
+```
+
+正常退出客户端时会等待有限时间完成已接受的磁盘任务，并尝试导出最后一份报告；非正常退出不保证完整落盘。发送日志给维护者时，优先分享 `research-report.txt`；不要公开 `identity.key`、私人服务器地址或未经脱敏的原始坐标。
+
+参考 [P2 跑图及日志说明](P2_DIAGNOSTICS.md)。
+
+## 正式验收仍需实机测试
+
+1. 在 Minecraft 26.1.2 / 26.2 的正常客户端上装载 mod。
+2. F8 / `/wsl gui` 正常打开且中文没有溢出，关闭面板后后台采样正常工作。
+3. 已知 Seed 的单人世界运行，F3 所示群系和日志 sample 对应；检查 Y 轴洞穴群系。
+4. 在自建自定义维度验证维度 ID、海平面、最高/最低高度。
+5. 切换世界、切换维度、瞬间离线时安全停止，数据不跨服。
+6. 限制扫描预算与磁盘队列、真实鞘翅高速跑图、写盘失败等场景下无卡顿或静默数据丢失。
+7. 验证报告不会把原版建筑观察点伪装成真实结构生成起始区块。
+
+开源和改动约束：[根目录《开发习惯.md》](../%E5%BC%80%E5%8F%91%E4%B9%A0%E6%83%AF.md)。
+
+**未实现：** 结构自动检测、原版结构放置模型适配与验证、完整或部分 Seed 求解、自定义生成器参数还原；没有任何可保证破解的承诺。
