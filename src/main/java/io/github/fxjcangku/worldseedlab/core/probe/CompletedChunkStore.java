@@ -104,6 +104,17 @@ public final class CompletedChunkStore {
                         + "\n");
     }
 
+    /** 服务器公布的维度键使用独立日志，不能当作用户已到达的维度。 */
+    public void appendAdvertisedDimensions(
+            io.github.fxjcangku.worldseedlab.core.generation.AdvertisedDimensions snapshot
+    ) throws IOException {
+        Path folder = base(snapshot.worldFingerprint(), snapshot.currentDimension());
+        Files.createDirectories(folder);
+        writeAndForce(folder.resolve("advertised-dimensions.jsonl"),
+                io.github.fxjcangku.worldseedlab.core.generation.GenerationJsonLines
+                        .advertisedDimensions(snapshot) + "\n");
+    }
+
     /** P2 地形采样与 P1 群系进度分别记账，保证旧数据无需重扫群系。 */
     public void appendTerrain(
             io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkSample terrain

@@ -107,6 +107,29 @@ public final class AsyncEvidenceWriter implements AutoCloseable {
         }
     }
 
+    /** 按当前世界范围异步写入客户端已获知的维度列表，不触发额外网络请求。 */
+    public boolean offerAdvertisedDimensions(
+            io.github.fxjcangku.worldseedlab.core.generation.AdvertisedDimensions snapshot
+    ) {
+        if (io.isShutdown() || failure.get() != null
+                || !fingerprint.equals(snapshot.worldFingerprint())
+                || !dimension.equals(snapshot.currentDimension())) {
+            return false;
+        }
+        try {
+            io.execute(() -> {
+                try {
+                    store.appendAdvertisedDimensions(snapshot);
+                } catch (IOException | RuntimeException ex) {
+                    failure.compareAndSet(null, "维度注册信息写入失败：" + ex.getMessage());
+                }
+            });
+            return true;
+        } catch (RejectedExecutionException queueFull) {
+            return false;
+        }
+    }
+
     /**
      * 地形记录不完成 P1 群系区块索引；维持独立去重，兼容早期 P1 数据。
      */
