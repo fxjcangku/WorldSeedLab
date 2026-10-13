@@ -21,7 +21,7 @@ public final class GenerationJsonLines {
                 + "\"sea_level\":" + profile.seaLevel() + ","
                 + "\"skylight\":" + profile.skylight() + ","
                 + "\"ceiling\":" + profile.ceiling() + ","
-                + "\"ultra_warm\":" + profile.ultraWarm() + ","
+                + "\"ultra_warm\":" + (profile.ultraWarm() == null ? "null" : profile.ultraWarm()) + ","
                 + "\"observed_at\":" + quote(profile.observedAt().toString()) + ","
                 + "\"provenance\":\"client_level_metadata\""
                 + "}";

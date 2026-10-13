@@ -19,7 +19,7 @@ public record DimensionProfile(
         int seaLevel,
         boolean skylight,
         boolean ceiling,
-        boolean ultraWarm,
+        Boolean ultraWarm,
         Instant observedAt
 ) {
     private static final Pattern FINGERPRINT = Pattern.compile("[a-f0-9]{64}");

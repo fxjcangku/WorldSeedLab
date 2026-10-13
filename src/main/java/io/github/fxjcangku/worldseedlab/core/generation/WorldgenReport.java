@@ -43,7 +43,7 @@ public final class WorldgenReport {
         out.append("参考海平面: ").append(profile.seaLevel()).append('\n');
         out.append("天空光照: ").append(profile.skylight() ? "有" : "无").append('\n');
         out.append("有顶维度: ").append(profile.ceiling() ? "是" : "否").append('\n');
-        out.append("超高温环境: ").append(profile.ultraWarm() ? "是" : "否").append('\n');
+        out.append("超高温环境: ").append(profile.ultraWarm() == null ? "未知（客户端 API 未确认）" : profile.ultraWarm() ? "是" : "否").append('\n');
         out.append("维度元数据源: 普通客户端可见信息（非服务端完整生成器配置）\n\n");
 
         out.append("【跑图与地形取证】\n");

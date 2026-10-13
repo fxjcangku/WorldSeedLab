@@ -35,7 +35,7 @@ public final class TerrainObserver {
                 level.getSeaLevel(),
                 attributes.hasSkyLight(),
                 attributes.hasCeiling(),
-                attributes.ultraWarm(),
+                null, // 26.1.2/26.2 未验证此 API，明确记录未知而非错误填假。
                 Instant.now()
         );
     }
