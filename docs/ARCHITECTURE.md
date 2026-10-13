@@ -57,6 +57,10 @@ client/ui/*   ← 只读取 Controller 当前会话快照，绝不自己取世�
 - 世界或维度变化：立即撤销采样授权，不跨源合并。
 - 不完整日志：已完成索引只在数据写盘之后记录；异常时可能少量重复但不虚报完成。
 
+## P2.2 独立详细观测
+
+`client/probe/TerrainDetailCursor` 分 Tick 读取地表方块、三种高度图、海床与可选地下剖面；`core/generation/TerrainDetailSample` 保留不可变证据；`TerrainDetailJsonLines` 按 schema=4 序列化；`CompletedChunkStore` 将详细日志与 P1/P2 分开处理并加容量上限；`DetailObservationStats` 只统计非定位信息。
+
 ## 研究结论的边界
 
 普通玩家无法直接得知服务器完整生成器配置和原始 Seed。P2 的地形/维度特征只能提供**观测证据**；是否符合某套原版世界生成规则，需要独立实现该规则并使用结构起始坐标与留出样本验证。P2 在没有确证模型时必须报告 `UNKNOWN`。

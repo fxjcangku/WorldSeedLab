@@ -74,15 +74,24 @@ public final class TerrainDetailCursor {
             if (cursor < 16) {
                 int x = (cursor / 4) * 4 + 2;
                 int z = (cursor % 4) * 4 + 2;
-                int top = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
+                int worldSurface = chunk.getHeight(Heightmap.Types.WORLD_SURFACE, x, z);
+                int oceanFloor = chunk.getHeight(Heightmap.Types.OCEAN_FLOOR, x, z);
+                int motionBlocking = chunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x, z);
+                int top = worldSurface - 1;
                 int y = Math.max(profile.minBuildY(), Math.min(
                         profile.maxBuildYExclusive() - 1, top));
                 BlockPos pos = new BlockPos((key.chunkX() << 4) + x, y,
                         (key.chunkZ() << 4) + z);
                 BlockState state = chunk.getBlockState(pos);
+                int bedY = Math.max(profile.minBuildY(), Math.min(
+                        profile.maxBuildYExclusive() - 1, oceanFloor - 1));
+                BlockPos bedPos = new BlockPos((key.chunkX() << 4) + x, bedY,
+                        (key.chunkZ() << 4) + z);
+                String bedBlock = blockId(chunk.getBlockState(bedPos));
                 surface.add(new TerrainDetailSample.SurfaceCell(
                         x, z, y, blockId(state), truncateState(state.toString()),
-                        fluidId(state), biomeId(level, pos)));
+                        fluidId(state), biomeId(level, pos),
+                        worldSurface, oceanFloor, motionBlocking, bedBlock));
                 continue;
             }
             int index = cursor - 16;

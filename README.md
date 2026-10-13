@@ -43,6 +43,16 @@ P0 基础框架及 P1/P2 研发源码已提交：**F8 或 `/wsl gui`** 打开中
 
 [开发及构建说明](docs/DEVELOPMENT.md) · [P1 真实群系采集](docs/P1_OBSERVATION.md) · [P2 跑图与维度日志](docs/P2_DIAGNOSTICS.md) · [开发习惯](%E5%BC%80%E5%8F%91%E4%B9%A0%E6%83%AF.md) · [双版本 CI](../../actions/workflows/build.yml)
 
+## 01.6 / 更细的地形与地下剖面研究
+
+研究预览已加入 **OFF / SURFACE / STRATA** 三级取证。在玩家显式启动采集后，可读取客户端已加载区块的方块状态、流体、群系与地下稀疏切片。地表每区块 16 列进一步保存 **WORLD_SURFACE、OCEAN_FLOOR、MOTION_BLOCKING** 三种高度图与海床方块 ID。
+
+扩展数据以 JSONL schema=4 保存并与 P1/P2 索引隔离。每 tick 分批读取，单维度详细日志最多 256 MiB；报告只输出没有精确坐标的材料与群系统计。
+
+**注意：** 这些只代表观察到的现存世界，不证明其自然生成来源，也不等于获取了 Seed。运行表现与真实性仍需要 Minecraft 实机测试。
+
+[详细取证说明](docs/P2_DETAIL.md) · [中文研究报告](docs/P2_DIAGNOSTICS.md)
+
 ## 02 / 研究边界
 
 | 研究对象 | 我们希望回答的问题 |

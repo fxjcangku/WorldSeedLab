@@ -3,8 +3,8 @@ package io.github.fxjcangku.worldseedlab.core.probe;
 /** 额外地形取证精度：不覆盖独立的三维群系探针。 */
 public enum DetailMode {
     OFF("关闭地表方块采集", 0),
-    SURFACE("地表材质与流体", 16),
-    STRATA("地表 + 地下分层", 256);
+    SURFACE("地表材质与流体", 32),
+    STRATA("地表 + 地下分层", 272);
 
     private final String chineseLabel;
     private final int maxSamplesPerChunk;

@@ -8,6 +8,9 @@ import io.github.fxjcangku.worldseedlab.core.evidence.EvidenceRecord;
 import io.github.fxjcangku.worldseedlab.core.generation.AdvertisedDimensions;
 import io.github.fxjcangku.worldseedlab.core.generation.DimensionProfile;
 import io.github.fxjcangku.worldseedlab.core.generation.GenerationDiagnostics;
+import io.github.fxjcangku.worldseedlab.core.generation.DetailObservationStats;
+import io.github.fxjcangku.worldseedlab.core.generation.DetailReportAppendix;
+import io.github.fxjcangku.worldseedlab.core.generation.TerrainDetailSample;
 import io.github.fxjcangku.worldseedlab.core.generation.ResearchReportStore;
 import io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkKey;
 import io.github.fxjcangku.worldseedlab.core.generation.TerrainDetailKey;
@@ -61,6 +64,7 @@ public final class WorldProbeController {
     /** 与 P1 群系及 P2 高度图分离，升级档位仍可补采旧区块。 */
     private final Set<TerrainDetailKey> detailSeen = new HashSet<>();
     private TerrainDetailCursor detailCursor;
+    private DetailObservationStats detailStats;
     private long detailCompletedAtStart;
     private final Map<String, Long> markedStructureCounts = new HashMap<>();
     private final Map<String, Long> biomes = new HashMap<>();
@@ -153,7 +157,8 @@ public final class WorldProbeController {
                             .append(" : ").append(e.getValue()).append("\n"));
             extended.append("说明：方块状态可能经过玩家/服务器修改，不是原始生成器输入。\n")
                     .append("地下剖面为分层抽样，不能据此判断未采样区域无矿物或洞穴。\n");
-            report = extended.toString();
+            report = extended.toString() + DetailReportAppendix.render(
+                    detailStats == null ? null : detailStats.snapshot());
             Path path = new ResearchReportStore(dataRoot()).export(dimensionProfile, report);
             status = "P2 研究日志已导出：" + path.toAbsolutePath();
             return status;
@@ -286,6 +291,7 @@ public final class WorldProbeController {
             detailSeen.clear();
             detailSeen.addAll(detailsResume);
             detailCursor = null;
+            detailStats = new DetailObservationStats(f, d);
             markedStructureCounts.clear();
             detailCompletedAtStart = (int) detailsResume.stream()
                     .filter(k -> k.mode() == settings.detailMode()).count();
@@ -476,10 +482,12 @@ public final class WorldProbeController {
         }
         if (!detailCursor.isComplete()) detailCursor.advance(client.level, budget);
         if (detailCursor.isComplete()) {
-            if (!writer.offerDetail(detailCursor.result())) {
+            TerrainDetailSample detailed = detailCursor.result();
+            if (!writer.offerDetail(detailed)) {
                 status = "扩展地形写盘队列繁忙，暂停本次取证";
                 return;
             }
+            detailStats.observe(detailed);
             detailSeen.add(detailCursor.key());
             detailCursor = null;
         }

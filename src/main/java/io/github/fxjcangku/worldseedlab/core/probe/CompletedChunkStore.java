@@ -162,7 +162,7 @@ public final class CompletedChunkStore {
     ) throws IOException {
         Path folder = base(detail.worldFingerprint(), detail.dimension());
         Files.createDirectories(folder);
-        writeAndForce(folder.resolve("terrain-detail.jsonl"),
+        writeDetailWithLimit(folder.resolve("terrain-detail.jsonl"),
                 io.github.fxjcangku.worldseedlab.core.generation.TerrainDetailJsonLines
                         .serialize(detail) + "\n");
         writeAndForce(folder.resolve("terrain-detail-completed.csv"),
@@ -211,6 +211,29 @@ public final class CompletedChunkStore {
             throw new IllegalArgumentException("storage path outside data root");
         }
         return result;
+    }
+
+    /**
+     * 详细证据限定每维度文件最大 256 MiB，单条记录不超过 256 KiB。
+     * 检查文件容量时持有同一写入锁；空间不足直接报错，不写入完成索引。
+     */
+    private static void writeDetailWithLimit(Path file, String record) throws IOException {
+        byte[] bytes = record.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length > 256 * 1024) {
+            throw new IOException("单个详细区块记录超出 256 KiB");
+        }
+        try (FileChannel channel = FileChannel.open(file,
+                StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND);
+             FileLock ignored = channel.lock()) {
+            if (channel.size() + bytes.length > 256L * 1024 * 1024) {
+                throw new IOException("详细证据达到单维度 256 MiB 限额，请备份后再继续跑图");
+            }
+            ByteBuffer data = ByteBuffer.wrap(bytes);
+            while (data.hasRemaining()) {
+                channel.write(data);
+            }
+            channel.force(false);
+        }
     }
 
     private static void writeAndForce(Path path, String data) throws IOException {
