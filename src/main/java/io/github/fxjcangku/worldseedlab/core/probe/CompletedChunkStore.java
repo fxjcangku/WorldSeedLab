@@ -12,16 +12,15 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
 /**
- * Append-only evidence and a durable completed-chunk journal. Evidence is forced
- * to disk before a chunk is marked complete. A crash between both writes may
- * repeat an unfinished chunk, but never silently marks unwritten evidence done.
+ * P1/P2 分离的证据日志和区块完成索引。
+ * 先强制写入证据，再记录完成状态；异常断电时可出现少量重复，
+ * 但绝不把未写入成功的区块静默标记为完成。
  */
 public final class CompletedChunkStore {
     private static final int MAX_JOURNAL_ROWS = 500_000;
@@ -90,6 +89,57 @@ public final class CompletedChunkStore {
         Files.createDirectories(folder);
         writeAndForce(folder.resolve("evidence.jsonl"),
                 EvidenceJsonLines.serialize(record) + "\n");
+    }
+
+    /**
+     * P2 维度说明独立于区块完成索引；一个维度可以保留多次会话观察快照。
+     */
+    public void appendDimensionProfile(
+            io.github.fxjcangku.worldseedlab.core.generation.DimensionProfile profile
+    ) throws IOException {
+        Path folder = base(profile.worldFingerprint(), profile.dimension());
+        Files.createDirectories(folder);
+        writeAndForce(folder.resolve("dimension-profile.jsonl"),
+                io.github.fxjcangku.worldseedlab.core.generation.GenerationJsonLines.profile(profile)
+                        + "\n");
+    }
+
+    /** P2 地形采样与 P1 群系进度分别记账，保证旧数据无需重扫群系。 */
+    public void appendTerrain(
+            io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkSample terrain
+    ) throws IOException {
+        Path folder = base(terrain.worldFingerprint(), terrain.dimension());
+        Files.createDirectories(folder);
+        writeAndForce(folder.resolve("terrain.jsonl"),
+                io.github.fxjcangku.worldseedlab.core.generation.GenerationJsonLines.terrain(terrain)
+                        + "\n");
+        writeAndForce(folder.resolve("terrain-completed.csv"),
+                terrain.chunkX() + "," + terrain.chunkZ() + "\n");
+    }
+
+    /** 从独立地形完成索引恢复，避免新阶段漏掉 P1 已扫过的区块。 */
+    public Set<io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkKey>
+    loadTerrainCompleted(String fingerprint, String dimension) throws IOException {
+        Path journal = base(fingerprint, dimension).resolve("terrain-completed.csv");
+        Set<io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkKey> result =
+                new HashSet<>();
+        if (!Files.exists(journal)) return result;
+        try (BufferedReader reader = Files.newBufferedReader(journal, StandardCharsets.UTF_8)) {
+            String line;
+            int rows = 0;
+            while ((line = reader.readLine()) != null) {
+                if (++rows > MAX_JOURNAL_ROWS) {
+                    throw new IOException("terrain-completed index exceeds safe limit");
+                }
+                try {
+                    result.add(io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkKey
+                            .parse(line));
+                } catch (RuntimeException invalid) {
+                    throw new IOException("terrain-completed index is corrupted", invalid);
+                }
+            }
+        }
+        return result;
     }
 
     public Path dataPath(String fingerprint, String dimension) {
