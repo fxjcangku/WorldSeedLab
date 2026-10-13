@@ -94,6 +94,41 @@ public final class WorldProbeController {
         }
     }
 
+    private static final Set<String> MANUAL_STRUCTURES = Set.of(
+            "minecraft:shipwreck", "minecraft:desert_pyramid", "minecraft:village_plains");
+
+    public long writtenManualMarks() {
+        return writer == null ? 0 : writer.writtenManualMarks();
+    }
+
+    /**
+     * Saves the player's observation position, explicitly NOT the structure's
+     * world-generation start chunk. Requires an active, unchanged world scope.
+     */
+    public void markStructure(Minecraft client, String structureId) {
+        if (!MANUAL_STRUCTURES.contains(structureId)) {
+            status = "不支持的结构类型，拒绝标记";
+            return;
+        }
+        if (!active() || client.player == null || client.level != scopeLevel
+                || !scopeName.equals(WorldScopeResolver.discriminator(client))) {
+            status = "请先在当前世界开启采集，再标记结构";
+            return;
+        }
+        var position = client.player.blockPosition();
+        EvidenceRecord evidence = new EvidenceRecord(UUID.randomUUID(),
+                fingerprint, dimension, gameVersion,
+                EvidenceKind.STRUCTURE_OBSERVATION, structureId,
+                position.getX(), position.getY(), position.getZ(),
+                EvidenceOrigin.MANUAL_MARK, Instant.now(),
+                "manual-player-position;unverified;NOT-structure-generation-origin");
+        if (!gate.allows(evidence) || !writer.offerManual(evidence)) {
+            status = "结构标记未加入写入队列，请检查磁盘或重试";
+            return;
+        }
+        status = "已提交手动结构标记（位置不是生成起点）";
+    }
+
     public void start(Minecraft client) {
         if (active()) return;
         if (writer != null && writer.pending() > 0) {
