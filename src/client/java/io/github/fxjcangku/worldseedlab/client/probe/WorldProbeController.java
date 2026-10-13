@@ -21,6 +21,7 @@ import io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkSample;
 import io.github.fxjcangku.worldseedlab.core.generation.WorldgenReport;
 import io.github.fxjcangku.worldseedlab.core.privacy.LocalSecret;
 import io.github.fxjcangku.worldseedlab.core.privacy.WorldFingerprint;
+import io.github.fxjcangku.worldseedlab.core.privacy.WorldEpochStore;
 import io.github.fxjcangku.worldseedlab.core.probe.AsyncEvidenceWriter;
 import io.github.fxjcangku.worldseedlab.core.probe.ChunkKey;
 import io.github.fxjcangku.worldseedlab.core.probe.ChunkSamplingCursor;
@@ -268,6 +269,53 @@ public final class WorldProbeController {
         status = "已提交手动结构标记（并非真实生成起点）";
     }
 
+    /**
+     * 本机世界纪元切换：只在采集停止且后台 I/O 已排空时允许，
+     * 为服务器同地址换地图提供显式隔离，不假称自动检测世界重置。
+     */
+    public String newWorldEpoch(Minecraft client) {
+        if (active() || (writer != null && writer.pending() != 0)) {
+            status = "请先停止采集并等待后台写入清空，再切换世界纪元";
+            return status;
+        }
+        String source = WorldScopeResolver.discriminator(client);
+        if (client.level == null || client.player == null || source == null) {
+            status = "只有已进入的世界可以创建新的数据纪元";
+            return status;
+        }
+        try {
+            byte[] secret = LocalSecret.loadOrCreate(configRoot);
+            String base = WorldFingerprint.fromLocalSecret(secret, source);
+            String next = WorldEpochStore.newEpoch(configRoot, base);
+            dimensionProfile = null;
+            advertisedDimensions = null;
+            generationDiagnostics = null;
+            samplingCoverage = null;
+            detailStats = null;
+            status = "已创建独立世界纪元 " + next.substring(0, 8)
+                    + "；旧证据保留。请重新启动采集";
+        } catch (IOException | RuntimeException error) {
+            status = "创建世界纪元失败：" + error.getMessage();
+            logger.error("World epoch rotation was rejected", error);
+        }
+        return status;
+    }
+
+    /** 本机世界纪元标签不暴露原始服务器地址。 */
+    public String worldEpochStatus(Minecraft client) {
+        String source = WorldScopeResolver.discriminator(client);
+        if (source == null) return "尚未进入可识别的世界";
+        try {
+            byte[] secret = LocalSecret.loadOrCreate(configRoot);
+            String base = WorldFingerprint.fromLocalSecret(secret, source);
+            String epoch = WorldEpochStore.load(configRoot, base);
+            return "当前世界数据纪元: " + (WorldEpochStore.LEGACY.equals(epoch)
+                    ? "legacy（保留历史目录）" : epoch.substring(0, 8));
+        } catch (IOException | RuntimeException failure) {
+            return "无法读取世界纪元，已拒绝推断: " + failure.getMessage();
+        }
+    }
+
     public void start(Minecraft client) {
         if (active()) return;
         if (writer != null && writer.pending() > 0) {
@@ -282,8 +330,10 @@ public final class WorldProbeController {
             status = "世界身份无法确认，拒绝启动"; return;
         }
         try {
-            String f = WorldFingerprint.fromLocalSecret(
-                    LocalSecret.loadOrCreate(configRoot), source);
+            byte[] secret = LocalSecret.loadOrCreate(configRoot);
+            String baseFingerprint = WorldFingerprint.fromLocalSecret(secret, source);
+            String epoch = WorldEpochStore.load(configRoot, baseFingerprint);
+            String f = WorldEpochStore.effectiveFingerprint(secret, source, epoch);
             String d = client.level.dimension().identifier().toString();
             CompletedChunkStore nextStore = new CompletedChunkStore(dataRoot());
             Set<ChunkKey> resume = nextStore.loadCompleted(f, d);
