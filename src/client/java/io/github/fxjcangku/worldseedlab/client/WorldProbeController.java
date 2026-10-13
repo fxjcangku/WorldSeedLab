@@ -111,7 +111,8 @@ public final class WorldProbeController {
             return;
         }
         if (!active() || client.player == null || client.level != scopeLevel
-                || !scopeName.equals(WorldScopeResolver.discriminator(client))) {
+                || !scopeName.equals(WorldScopeResolver.discriminator(client))
+                || !dimension.equals(client.level.dimension().identifier().toString())) {
             status = "请先在当前世界开启采集，再标记结构";
             return;
         }
