@@ -80,6 +80,18 @@ public final class CompletedChunkStore {
         writeAndForce(folder.resolve("completed-chunks.csv"), key.asJournalLine() + "\n");
     }
 
+    /** Manual structure sightings are not chunk-completion evidence. */
+    public void appendManual(EvidenceRecord record) throws IOException {
+        if (record.kind() != io.github.fxjcangku.worldseedlab.core.evidence.EvidenceKind.STRUCTURE_OBSERVATION
+                || record.origin() != io.github.fxjcangku.worldseedlab.core.evidence.EvidenceOrigin.MANUAL_MARK) {
+            throw new IOException("manual channel only accepts unverified structure sightings");
+        }
+        Path folder = base(record.worldFingerprint(), record.dimension());
+        Files.createDirectories(folder);
+        writeAndForce(folder.resolve("evidence.jsonl"),
+                EvidenceJsonLines.serialize(record) + "\n");
+    }
+
     public Path dataPath(String fingerprint, String dimension) {
         return base(fingerprint, dimension).resolve("evidence.jsonl");
     }
