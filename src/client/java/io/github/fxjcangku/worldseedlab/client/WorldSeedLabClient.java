@@ -1,11 +1,13 @@
 package io.github.fxjcangku.worldseedlab.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import io.github.fxjcangku.worldseedlab.client.probe.WorldProbeController;
 import io.github.fxjcangku.worldseedlab.core.BootstrapCheck;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
@@ -49,6 +51,9 @@ public final class WorldSeedLabClient implements ClientModInitializer {
             probe.tick(minecraft);
         });
 
+        // 客户端退出时有限等待落盘，不阻塞正常运行中的 UI。
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> probe.onClientStopping());
+
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             dispatcher.register(ClientCommands.literal("wsl")
                     .executes(context -> {
@@ -65,6 +70,10 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                                 + " | 本次群系: " + probe.biomeTypes()
                                 + " | 观测样本: " + probe.observedSamples()
                                 + " | " + probe.status()));
+                        return 1;
+                    }))
+                    .then(ClientCommands.literal("report").executes(context -> {
+                        context.getSource().sendFeedback(Component.literal(probe.exportReport()));
                         return 1;
                     }))
                     .then(ClientCommands.literal("path").executes(context -> {

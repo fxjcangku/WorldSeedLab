@@ -98,3 +98,16 @@ tasks.register('p1SmokeTest', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('p1SmokeTest')
 }
+
+// P2 的离线证据格式与生成诊断正反测试：不访问任何服务器。
+tasks.register('p2SmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Verify dimension/terrain evidence and fail-safe generation reports.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P2GenerationSmokeTest'
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('p2SmokeTest')
+}

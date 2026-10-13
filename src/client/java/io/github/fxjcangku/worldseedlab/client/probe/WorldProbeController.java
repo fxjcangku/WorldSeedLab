@@ -1,8 +1,17 @@
-package io.github.fxjcangku.worldseedlab.client;
+package io.github.fxjcangku.worldseedlab.client.probe;
+
+import io.github.fxjcangku.worldseedlab.client.scope.WorldScopeResolver;
 
 import io.github.fxjcangku.worldseedlab.core.evidence.EvidenceKind;
 import io.github.fxjcangku.worldseedlab.core.evidence.EvidenceOrigin;
 import io.github.fxjcangku.worldseedlab.core.evidence.EvidenceRecord;
+import io.github.fxjcangku.worldseedlab.core.generation.AdvertisedDimensions;
+import io.github.fxjcangku.worldseedlab.core.generation.DimensionProfile;
+import io.github.fxjcangku.worldseedlab.core.generation.GenerationDiagnostics;
+import io.github.fxjcangku.worldseedlab.core.generation.ResearchReportStore;
+import io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkKey;
+import io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkSample;
+import io.github.fxjcangku.worldseedlab.core.generation.WorldgenReport;
 import io.github.fxjcangku.worldseedlab.core.privacy.LocalSecret;
 import io.github.fxjcangku.worldseedlab.core.privacy.WorldFingerprint;
 import io.github.fxjcangku.worldseedlab.core.probe.AsyncEvidenceWriter;
@@ -30,7 +39,11 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 import org.slf4j.Logger;
 
-/** Opt-in read-only biome observation; all world reads stay on the game thread. */
+/**
+ * 客户端群系观测协调器。
+ * 只在玩家主动授权后读取已加载区块；读取在游戏线程、写入在有界后台线程执行。
+ * 发生维度切换或写入异常时立即停止，绝不对服务器请求额外区块。
+ */
 public final class WorldProbeController {
     private static final int MAX_WAITING_CHUNKS = 96;
     private final Logger logger;
@@ -41,8 +54,14 @@ public final class WorldProbeController {
     private final ArrayDeque<ChunkKey> pending = new ArrayDeque<>();
     private final Set<ChunkKey> enqueued = new HashSet<>();
     private final Set<ChunkKey> seen = new HashSet<>();
+    // P2 使用独立区块索引：P1 旧数据不会阻止地形补采。
+    private final Set<TerrainChunkKey> terrainSeen = new HashSet<>();
     private final Map<String, Long> biomes = new HashMap<>();
     private ProbeSettings settings;
+    private DimensionProfile dimensionProfile;
+    private AdvertisedDimensions advertisedDimensions;
+    private GenerationDiagnostics generationDiagnostics;
+    private long terrainCompletedAtStart;
     private ClientLevel scopeLevel;
     private String scopeName;
     private String fingerprint;
@@ -76,6 +95,44 @@ public final class WorldProbeController {
     public int queuedChunks() { return pending.size(); }
     public Path dataRoot() { return configRoot.resolve("observations"); }
 
+    /** 游戏当前维度的客户端可见元数据，不能视为服务端完整生成器配置。 */
+    public DimensionProfile dimensionProfile() {
+        return dimensionProfile;
+    }
+
+    /** 仅代表连接时服务器向客户端公布过的维度键，不代表已经探索。 */
+    public AdvertisedDimensions advertisedDimensions() {
+        return advertisedDimensions;
+    }
+
+    public GenerationDiagnostics.Snapshot terrainStats() {
+        return generationDiagnostics == null ? null : generationDiagnostics.snapshot();
+    }
+
+    public long terrainChunksWritten() {
+        return terrainCompletedAtStart + (writer == null ? 0 : writer.writtenTerrainChunks());
+    }
+
+    public String exportReport() {
+        if (dimensionProfile == null || generationDiagnostics == null) {
+            status = "尚未进入采集会话，没有可导出的维度诊断信息";
+            return status;
+        }
+        try {
+            String report = WorldgenReport.render(
+                    dimensionProfile, generationDiagnostics.snapshot(), Map.copyOf(biomes),
+                    observedSamples, writtenSamples(), writtenManualMarks(),
+                    pendingWrites(), active(), advertisedDimensions);
+            Path path = new ResearchReportStore(dataRoot()).export(dimensionProfile, report);
+            status = "P2 研究日志已导出：" + path.toAbsolutePath();
+            return status;
+        } catch (IOException | RuntimeException error) {
+            status = "研究日志导出失败：" + error.getMessage();
+            logger.error("P2 report export failed", error);
+            return status;
+        }
+    }
+
     public List<Map.Entry<String, Long>> topBiomes(int count) {
         return biomes.entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue(Comparator.reverseOrder()))
@@ -95,15 +152,15 @@ public final class WorldProbeController {
     }
 
     private static final Set<String> MANUAL_STRUCTURES = Set.of(
-            "minecraft:shipwreck", "minecraft:desert_pyramid", "minecraft:village_plains");
+            "minecraft:shipwreck", "minecraft:desert_pyramid", "worldseedlab:village_unclassified");
 
     public long writtenManualMarks() {
         return writer == null ? 0 : writer.writtenManualMarks();
     }
 
     /**
-     * Saves the player's observation position, explicitly NOT the structure's
-     * world-generation start chunk. Requires an active, unchanged world scope.
+     * 用户显式标记的是“发现建筑时的玩家脚下坐标”，并非结构生成起始区块。
+     * 记录只属于当前世界、当前维度；禁止把此数据冒充已证明的随机结构位置。
      */
     public void markStructure(Minecraft client, String structureId) {
         if (!MANUAL_STRUCTURES.contains(structureId)) {
@@ -149,10 +206,20 @@ public final class WorldProbeController {
             String d = client.level.dimension().identifier().toString();
             CompletedChunkStore nextStore = new CompletedChunkStore(dataRoot());
             Set<ChunkKey> resume = nextStore.loadCompleted(f, d);
+            Set<TerrainChunkKey> terrainResume = nextStore.loadTerrainCompleted(f, d);
+            DimensionProfile nextProfile =
+                    TerrainObserver.dimensionProfile(client.level, f, gameVersion);
+            AdvertisedDimensions registry = inspectAvailableDimensions(client, f, d);
             pending.clear();
             enqueued.clear();
             seen.clear();
             seen.addAll(resume);
+            terrainSeen.clear();
+            terrainSeen.addAll(terrainResume);
+            dimensionProfile = nextProfile;
+            advertisedDimensions = registry;
+            generationDiagnostics = new GenerationDiagnostics(nextProfile);
+            terrainCompletedAtStart = terrainResume.size();
             biomes.clear();
             previouslyCompleted = resume.size();
             observedSamples = 0;
@@ -166,6 +233,10 @@ public final class WorldProbeController {
             dimension = d;
             store = nextStore;
             writer = new AsyncEvidenceWriter(store, f, d);
+            if (!writer.offerDimension(nextProfile)
+                    || !writer.offerAdvertisedDimensions(registry)) {
+                throw new IOException("维度档案或维度清单无法进入写盘队列，拒绝采集");
+            }
             gate.arm(f, d);
             status = "正在采集客户端已加载的群系数据";
         } catch (IOException | RuntimeException failure) {
@@ -187,6 +258,22 @@ public final class WorldProbeController {
         status = reason;
     }
 
+    /**
+     * 客户端正常退出时，最多等待 2.5 秒完成已接受的后台 I/O，
+     * 随后自动生成中文汇总文件。异常强制结束进程不保证此回调运行。
+     */
+    public void onClientStopping() {
+        if (active()) {
+            stop("客户端正在退出，终止采样");
+        }
+        if (writer != null && !writer.closeAndAwait(2500)) {
+            logger.warn("P2 evidence queue did not finish within 2500ms at shutdown");
+        }
+        if (dimensionProfile != null) {
+            exportReport();
+        }
+    }
+
     public void tick(Minecraft client) {
         if (!active()) return;
         try {
@@ -202,7 +289,11 @@ public final class WorldProbeController {
                 logger.error("P1 disk writer failed: {}", error);
                 return;
             }
-            if (++ticks % 12 == 1) findChunks(client);
+            if (++ticks % 12 == 1) {
+                // 地形每 12 Tick 最多取证两个已加载区块，避免鞘翅跑图时卡帧。
+                observeNearbyTerrain(client);
+                findChunks(client);
+            }
             int budget = settings.samplesPerTick();
             while (budget > 0) {
                 if (cursor == null && !beginChunk(client.level)) break;
@@ -223,7 +314,7 @@ public final class WorldProbeController {
                     budget--;
                 }
                 if (cursor.hasNext()) break;
-                // Keep the finished chunk in memory if the bounded disk queue is full.
+                // 磁盘写入队列满时保留已完成的采样数据，等待后续 Tick 重试。
                 if (!writer.offer(chunk, samples)) {
                     status = "写入队列繁忙，暂时等待";
                     break;
@@ -240,6 +331,68 @@ public final class WorldProbeController {
             logger.error("P1 sampler stopped safely", failure);
             stop("扫描异常，安全停止：" + failure.getClass().getSimpleName());
         }
+    }
+
+    /**
+     * P2 额外读取 WORLD_SURFACE：仅从已加载区块取 16 个稀疏点。
+     * 严格上限两个区块/12 tick；队列满时本次跳过，将来再重试。
+     * 并不生成区块、不请求服务器更多地图数据。
+     */
+    private void observeNearbyTerrain(Minecraft client) {
+        if (generationDiagnostics == null || dimensionProfile == null || writer.pending() >= 12) {
+            return;
+        }
+        int centerX = client.player.blockPosition().getX() >> 4;
+        int centerZ = client.player.blockPosition().getZ() >> 4;
+        int accepted = 0;
+        int radius = settings.radiusChunks();
+        for (int ring = 0; ring <= radius && accepted < 2; ring++) {
+            for (int dx = -ring; dx <= ring && accepted < 2; dx++) {
+                for (int dz = -ring; dz <= ring && accepted < 2; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != ring) continue;
+                    TerrainChunkKey key = new TerrainChunkKey(centerX + dx, centerZ + dz);
+                    if (terrainSeen.contains(key)) continue;
+                    TerrainChunkSample terrain = TerrainObserver.observe(
+                            client.level, dimensionProfile, key);
+                    if (terrain == null) continue;
+                    if (!writer.offerTerrain(terrain)) return;
+                    terrainSeen.add(key);
+                    generationDiagnostics.observe(terrain);
+                    accepted++;
+                }
+            }
+        }
+    }
+
+    /**
+     * 仅读取已接收的维度注册键；连接对象缺失时记录 CURRENT_ONLY，
+     * 不可把此类 ID 清单误当成已访问维度或服务端维度生成器配置。
+     */
+    private AdvertisedDimensions inspectAvailableDimensions(
+            Minecraft client, String localWorld, String currentDimension
+    ) {
+        try {
+            var connection = client.getConnection();
+            if (connection != null) {
+                List<String> ids = connection.levels().stream()
+                        .map(levelKey -> levelKey.identifier().toString()).toList();
+                if (!ids.isEmpty()) {
+                    List<String> combined = new ArrayList<>(ids);
+                    if (!combined.contains(currentDimension)) {
+                        combined.add(currentDimension);
+                    }
+                    return new AdvertisedDimensions(localWorld, gameVersion,
+                            currentDimension, AdvertisedDimensions.Source.ADVERTISED,
+                            combined, Instant.now());
+                }
+            }
+        } catch (RuntimeException unavailable) {
+            logger.warn("Unable to inspect client-advertised dimensions; using current dimension only",
+                    unavailable);
+        }
+        return new AdvertisedDimensions(localWorld, gameVersion, currentDimension,
+                AdvertisedDimensions.Source.CURRENT_ONLY,
+                List.of(currentDimension), Instant.now());
     }
 
     private void findChunks(Minecraft client) {

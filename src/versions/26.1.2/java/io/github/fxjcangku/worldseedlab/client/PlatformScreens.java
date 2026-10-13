@@ -1,6 +1,7 @@
 package io.github.fxjcangku.worldseedlab.client;
 
 import io.github.fxjcangku.worldseedlab.client.ui.GlassDashboard;
+import io.github.fxjcangku.worldseedlab.client.probe.WorldProbeController;
 import net.minecraft.client.Minecraft;
 
 /** Minecraft 26.1.2 screen API adapter. */
