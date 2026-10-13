@@ -1,6 +1,8 @@
 package io.github.fxjcangku.worldseedlab.core.probe;
 
 import io.github.fxjcangku.worldseedlab.core.evidence.EvidenceRecord;
+import io.github.fxjcangku.worldseedlab.core.generation.DimensionProfile;
+import io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkSample;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -10,7 +12,10 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-/** Single-writer, bounded I/O queue: no disk writes on the game tick. */
+/**
+ * 仅一个后台磁盘写入线程、有界队列；游戏 Tick 线程只做非阻塞提交。
+ * 数据异常时保留故障状态，通知 Controller 主动停机。
+ */
 public final class AsyncEvidenceWriter implements AutoCloseable {
     private final CompletedChunkStore store;
     private final String fingerprint;
@@ -20,6 +25,7 @@ public final class AsyncEvidenceWriter implements AutoCloseable {
     private final AtomicLong writtenChunks = new AtomicLong();
     private final AtomicLong writtenSamples = new AtomicLong();
     private final AtomicLong writtenManualMarks = new AtomicLong();
+    private final AtomicLong writtenTerrainChunks = new AtomicLong();
 
     public AsyncEvidenceWriter(CompletedChunkStore store, String fingerprint, String dimension) {
         this.store = store;
@@ -74,6 +80,60 @@ public final class AsyncEvidenceWriter implements AutoCloseable {
         } catch (RejectedExecutionException full) {
             return false;
         }
+    }
+
+    /**
+     * 写入维度元数据。与 P1/P2 证据使用同一个单线程队列，
+     * 从而保证维度说明不会被写到其它世界的目录。
+     */
+    public boolean offerDimension(DimensionProfile profile) {
+        if (io.isShutdown() || failure.get() != null) return false;
+        if (!fingerprint.equals(profile.worldFingerprint())
+                || !dimension.equals(profile.dimension())) {
+            return false;
+        }
+        try {
+            io.execute(() -> {
+                try {
+                    store.appendDimensionProfile(profile);
+                } catch (IOException | RuntimeException failureCause) {
+                    failure.compareAndSet(null,
+                            "维度信息写入失败：" + failureCause.getMessage());
+                }
+            });
+            return true;
+        } catch (RejectedExecutionException full) {
+            return false;
+        }
+    }
+
+    /**
+     * 地形记录不完成 P1 群系区块索引；维持独立去重，兼容早期 P1 数据。
+     */
+    public boolean offerTerrain(TerrainChunkSample terrain) {
+        if (io.isShutdown() || failure.get() != null) return false;
+        if (!fingerprint.equals(terrain.worldFingerprint())
+                || !dimension.equals(terrain.dimension())) {
+            return false;
+        }
+        try {
+            io.execute(() -> {
+                try {
+                    store.appendTerrain(terrain);
+                    writtenTerrainChunks.incrementAndGet();
+                } catch (IOException | RuntimeException failureCause) {
+                    failure.compareAndSet(null,
+                            "地形信息写入失败：" + failureCause.getMessage());
+                }
+            });
+            return true;
+        } catch (RejectedExecutionException full) {
+            return false;
+        }
+    }
+
+    public long writtenTerrainChunks() {
+        return writtenTerrainChunks.get();
     }
 
     public long writtenManualMarks() {
