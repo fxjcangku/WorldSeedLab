@@ -152,3 +152,15 @@ tasks.register('worldEpochSmokeTest', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('worldEpochSmokeTest')
 }
+
+// P2.5：模型求解前的已知 Seed 对照、证据类型与留出验证逻辑。
+tasks.register('p25CompatibilitySmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Check structure evidence provenance and independent holdout validation.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P25CompatibilitySmokeTest'
+}
+tasks.named('check') {
+    dependsOn tasks.named('p25CompatibilitySmokeTest')
+}
