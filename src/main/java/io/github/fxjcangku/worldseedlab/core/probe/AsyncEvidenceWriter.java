@@ -156,9 +156,23 @@ public final class AsyncEvidenceWriter implements AutoCloseable {
         return writtenSamples.get();
     }
 
+    /**
+     * 只在客户端正常关闭时调用，最多等待有限时间让已接收的数据落盘。
+     * 普通停止按钮仍采用非阻塞 close()，不会让 UI 等磁盘。
+     */
+    public boolean closeAndAwait(long maximumMillis) {
+        io.shutdown();
+        try {
+            return io.awaitTermination(Math.max(1, maximumMillis), TimeUnit.MILLISECONDS);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
+
     @Override
     public void close() {
-        // Ordered shutdown drains previously accepted chunk batches asynchronously.
+        // 普通停止不阻塞 GUI；队列任务按提交顺序完成。
         io.shutdown();
     }
 }
