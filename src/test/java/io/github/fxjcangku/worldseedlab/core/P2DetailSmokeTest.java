@@ -22,13 +22,13 @@ public final class P2DetailSmokeTest {
 
     public static void main(String[] args) throws Exception {
         String a = "a".repeat(64), b = "b".repeat(64);
-        expect(ProbeSettings.DEFAULT.detailMode() == DetailMode.SURFACE, "default surface");
+        expect(ProbeSettings.DEFAULT.detailMode() == DetailMode.OFF, "default lightweight");
         ProbeSettings config = ProbeSettings.DEFAULT.nextDetailMode();
-        expect(config.detailMode() == DetailMode.STRATA, "opt-in strata");
-        expect(config.nextDetailMode().detailMode() == DetailMode.OFF, "turn off");
-        expect(config.nextDetailMode().nextDetailMode().detailMode() == DetailMode.SURFACE,
+        expect(config.detailMode() == DetailMode.SURFACE, "surface opt-in");
+        expect(config.nextDetailMode().detailMode() == DetailMode.STRATA, "strata opt-in");
+        expect(config.nextDetailMode().nextDetailMode().detailMode() == DetailMode.OFF,
                 "explicit mode cycle");
-        expect(config.withRadius(3).detailMode() == DetailMode.STRATA,
+        expect(config.withRadius(3).detailMode() == DetailMode.SURFACE,
                 "changing radius must preserve detail profile");
 
         var surface = new ArrayList<TerrainDetailSample.SurfaceCell>();
@@ -75,7 +75,7 @@ public final class P2DetailSmokeTest {
         try {
             ProbeConfigFile configFile = new ProbeConfigFile(folder);
             configFile.save(config);
-            expect(configFile.load().detailMode() == DetailMode.STRATA, "detail mode persists");
+            expect(configFile.load().detailMode() == DetailMode.SURFACE, "detail mode persists");
 
             var store = new CompletedChunkStore(folder);
             expect(store.loadDetailCompleted(a, "minecraft:overworld").isEmpty(), "new index empty");
