@@ -1,5 +1,6 @@
 package io.github.fxjcangku.worldseedlab.core;
 
+import io.github.fxjcangku.worldseedlab.core.generation.AdvertisedDimensions;
 import io.github.fxjcangku.worldseedlab.core.generation.DimensionProfile;
 import io.github.fxjcangku.worldseedlab.core.generation.GenerationDiagnostics;
 import io.github.fxjcangku.worldseedlab.core.generation.GenerationJsonLines;
@@ -35,6 +36,21 @@ public final class P2GenerationSmokeTest {
                 worldA, "deeper_dark:deep_realm", "26.2", -64, 320, 63,
                 true, false, null, now);
         expect(profile.totalHeight() == 384, "dimension build height");
+        AdvertisedDimensions registry = new AdvertisedDimensions(
+                worldA, "26.2", "deeper_dark:deep_realm",
+                AdvertisedDimensions.Source.ADVERTISED,
+                List.of("minecraft:overworld", "deeper_dark:deep_realm",
+                        "minecraft:overworld", "deeper_dark:crystal_realm"), now);
+        expect(registry.dimensionIds().size() == 3, "duplicate registry keys must collapse");
+        expect(registry.nonVanillaCount() == 2, "custom namespace counting");
+        expect(registry.dimensionIds().get(0).equals("deeper_dark:crystal_realm"),
+                "registry keys must have deterministic ordering");
+        expect(GenerationJsonLines.advertisedDimensions(registry)
+                .contains("\"source\":\"ADVERTISED\""), "registry JSON source is mandatory");
+        expectFail(() -> new AdvertisedDimensions(worldA, "26.2",
+                "minecraft:overworld", AdvertisedDimensions.Source.CURRENT_ONLY,
+                List.of("minecraft:overworld", "deeper_dark:crystal_realm"), now),
+                "current-only fallback must not invent other dimensions");
         expect(profile.ultraWarm() == null, "unverified dimension attribute is unknown");
         String dimensionLine = GenerationJsonLines.profile(profile);
         expect(dimensionLine.contains("\"ultra_warm\":null"), "unknown value must be JSON null");
@@ -75,7 +91,12 @@ public final class P2GenerationSmokeTest {
         try {
             CompletedChunkStore store = new CompletedChunkStore(folder);
             store.appendDimensionProfile(profile);
+            store.appendAdvertisedDimensions(registry);
             store.appendTerrain(sample);
+            var registryPath = store.dataPath(worldA, profile.dimension())
+                    .getParent().resolve("advertised-dimensions.jsonl");
+            expect(Files.readString(registryPath).contains("deeper_dark:crystal_realm"),
+                    "dimension registry evidence must persist in current scope");
             var indexed = store.loadTerrainCompleted(worldA, profile.dimension());
             expect(indexed.contains(new TerrainChunkKey(-3, 5)), "terrain resume index");
             expect(indexed.size() == 1, "no duplicate index entries");
@@ -104,12 +125,24 @@ public final class P2GenerationSmokeTest {
             AsyncEvidenceWriter backgroundWriter = new AsyncEvidenceWriter(
                     new CompletedChunkStore(asynchronousDir), worldA, profile.dimension());
             expect(backgroundWriter.offerDimension(profile), "enqueue dimension profile");
+            expect(backgroundWriter.offerAdvertisedDimensions(registry),
+                    "enqueue advertised dimension registry");
             expect(backgroundWriter.offerTerrain(sample), "enqueue terrain profile");
             expect(backgroundWriter.closeAndAwait(3000), "writer should drain accepted data");
             expect(backgroundWriter.writtenTerrainChunks() == 1, "terrain async counter");
             expect(new CompletedChunkStore(asynchronousDir)
                     .loadTerrainCompleted(worldA, profile.dimension())
                     .contains(new TerrainChunkKey(-3, 5)), "async journal persisted");
+
+            String enhancedReport = WorldgenReport.render(profile, diagnostics.snapshot(),
+                    Map.of("minecraft:plains", 20L, "deeper_dark:azure_sanctuary", 1L),
+                    21, 21, 0, 0, false, registry);
+            expect(enhancedReport.contains("deeper_dark:crystal_realm"),
+                    "shared report should include advertised dimension identifiers");
+            expect(enhancedReport.contains("仅获知 ID，未证明已访问"),
+                    "unknown exploration state must remain explicit");
+            expect(enhancedReport.contains("研究结论: UNKNOWN"),
+                    "registry observation must never claim seed compatibility");
 
             Path reportFile = new ResearchReportStore(folder).export(profile, report);
             expect(Files.readString(reportFile, StandardCharsets.UTF_8).equals(report),
