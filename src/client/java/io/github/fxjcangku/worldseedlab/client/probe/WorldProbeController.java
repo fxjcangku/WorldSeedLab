@@ -248,6 +248,22 @@ public final class WorldProbeController {
         status = reason;
     }
 
+    /**
+     * 客户端正常退出时，最多等待 2.5 秒完成已接受的后台 I/O，
+     * 随后自动生成中文汇总文件。异常强制结束进程不保证此回调运行。
+     */
+    public void onClientStopping() {
+        if (active()) {
+            stop("客户端正在退出，终止采样");
+        }
+        if (writer != null && !writer.closeAndAwait(2500)) {
+            logger.warn("P2 evidence queue did not finish within 2500ms at shutdown");
+        }
+        if (dimensionProfile != null) {
+            exportReport();
+        }
+    }
+
     public void tick(Minecraft client) {
         if (!active()) return;
         try {
