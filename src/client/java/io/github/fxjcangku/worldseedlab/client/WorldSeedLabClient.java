@@ -68,6 +68,10 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                                 + " | " + probe.status()));
                         return 1;
                     }))
+                    .then(ClientCommands.literal("report").executes(context -> {
+                        context.getSource().sendFeedback(Component.literal(probe.exportReport()));
+                        return 1;
+                    }))
                     .then(ClientCommands.literal("path").executes(context -> {
                         context.getSource().sendFeedback(Component.literal(
                                 "WorldSeedLab 本地证据目录: " + probe.dataRoot().toAbsolutePath()));
