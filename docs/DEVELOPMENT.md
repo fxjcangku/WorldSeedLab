@@ -57,6 +57,17 @@ gradle -PmcVersion=26.2 runClient
 
 参考 [P2 跑图及日志说明](P2_DIAGNOSTICS.md)。
 
+## P2.2 详细地形取证
+
+在 F8 控制台中可以选择 OFF / SURFACE / STRATA 三档，也可输入 `/wsl detail` 切换。采集始终需要用户显式点击开始；不会自动读取尚未加载的区块。
+
+- 地表：每区块 16 点的方块状态、地表群系和流体，并记录三种高度图与海床方块 ID。
+- 地下：选择 STRATA 后以有界每 Tick 预算采集固定位置的跨高度剖面。
+- 本地：`terrain-detail.jsonl` 与 `terrain-detail-completed.csv` 独立于旧日志；单维度容量上限 256 MiB。
+- 分析：`/wsl report` 添加地表、海床与地下材料的匿名化统计；不自动上传原始坐标。
+
+详细操作参阅 [P2.2 精细取证说明](P2_DETAIL.md)。
+
 ## 正式验收仍需实机测试
 
 1. 在 Minecraft 26.1.2 / 26.2 的正常客户端上装载 mod。
