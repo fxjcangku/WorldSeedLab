@@ -8,6 +8,9 @@ import io.github.fxjcangku.worldseedlab.core.evidence.EvidenceRecord;
 import io.github.fxjcangku.worldseedlab.core.generation.AdvertisedDimensions;
 import io.github.fxjcangku.worldseedlab.core.generation.DimensionProfile;
 import io.github.fxjcangku.worldseedlab.core.generation.GenerationDiagnostics;
+import io.github.fxjcangku.worldseedlab.core.generation.RichChunkSample;
+import io.github.fxjcangku.worldseedlab.core.generation.RichObservationStats;
+import io.github.fxjcangku.worldseedlab.core.generation.RichReportAppendix;
 import io.github.fxjcangku.worldseedlab.core.generation.ResearchReportStore;
 import io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkKey;
 import io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkSample;
@@ -56,11 +59,15 @@ public final class WorldProbeController {
     private final Set<ChunkKey> seen = new HashSet<>();
     // P2 使用独立区块索引：P1 旧数据不会阻止地形补采。
     private final Set<TerrainChunkKey> terrainSeen = new HashSet<>();
+    // 独立完成索引：启用精细取证后可回填旧 P1/P2 扫描过的区块。
+    private final Set<TerrainChunkKey> richSeen = new HashSet<>();
     private final Map<String, Long> biomes = new HashMap<>();
     private ProbeSettings settings;
     private DimensionProfile dimensionProfile;
     private AdvertisedDimensions advertisedDimensions;
     private GenerationDiagnostics generationDiagnostics;
+    private RichObservationStats richStats;
+    private long richCompletedAtStart;
     private long terrainCompletedAtStart;
     private ClientLevel scopeLevel;
     private String scopeName;
@@ -113,6 +120,15 @@ public final class WorldProbeController {
         return terrainCompletedAtStart + (writer == null ? 0 : writer.writtenTerrainChunks());
     }
 
+    /** 精细证据完成区块数：恢复的历史索引 + 本会话成功落盘的任务。 */
+    public long richChunksWritten() {
+        return richCompletedAtStart + (writer == null ? 0 : writer.writtenRichChunks());
+    }
+
+    public RichObservationStats.Snapshot richSnapshot() {
+        return richStats == null ? null : richStats.snapshot();
+    }
+
     public String exportReport() {
         if (dimensionProfile == null || generationDiagnostics == null) {
             status = "尚未进入采集会话，没有可导出的维度诊断信息";
@@ -122,7 +138,9 @@ public final class WorldProbeController {
             String report = WorldgenReport.render(
                     dimensionProfile, generationDiagnostics.snapshot(), Map.copyOf(biomes),
                     observedSamples, writtenSamples(), writtenManualMarks(),
-                    pendingWrites(), active(), advertisedDimensions);
+                    pendingWrites(), active(), advertisedDimensions)
+                    + RichReportAppendix.render(settings.richEvidence(),
+                    richChunksWritten(), richSnapshot());
             Path path = new ResearchReportStore(dataRoot()).export(dimensionProfile, report);
             status = "P2 研究日志已导出：" + path.toAbsolutePath();
             return status;
@@ -207,6 +225,8 @@ public final class WorldProbeController {
             CompletedChunkStore nextStore = new CompletedChunkStore(dataRoot());
             Set<ChunkKey> resume = nextStore.loadCompleted(f, d);
             Set<TerrainChunkKey> terrainResume = nextStore.loadTerrainCompleted(f, d);
+            Set<TerrainChunkKey> richResume = settings.richEvidence()
+                    ? nextStore.loadRichCompleted(f, d) : Set.of();
             DimensionProfile nextProfile =
                     TerrainObserver.dimensionProfile(client.level, f, gameVersion);
             AdvertisedDimensions registry = inspectAvailableDimensions(client, f, d);
@@ -216,6 +236,10 @@ public final class WorldProbeController {
             seen.addAll(resume);
             terrainSeen.clear();
             terrainSeen.addAll(terrainResume);
+            richSeen.clear();
+            richSeen.addAll(richResume);
+            richStats = new RichObservationStats(f, d);
+            richCompletedAtStart = richResume.size();
             dimensionProfile = nextProfile;
             advertisedDimensions = registry;
             generationDiagnostics = new GenerationDiagnostics(nextProfile);
@@ -292,6 +316,9 @@ public final class WorldProbeController {
             if (++ticks % 12 == 1) {
                 // 地形每 12 Tick 最多取证两个已加载区块，避免鞘翅跑图时卡帧。
                 observeNearbyTerrain(client);
+                if (settings.richEvidence()) {
+                    observeNearbyRichTerrain(client);
+                }
                 findChunks(client);
             }
             int budget = settings.samplesPerTick();
@@ -338,6 +365,35 @@ public final class WorldProbeController {
      * 严格上限两个区块/12 tick；队列满时本次跳过，将来再重试。
      * 并不生成区块、不请求服务器更多地图数据。
      */
+    /**
+     * 精细取证限定每 12 tick 最多一个已加载区块。磁盘背压时不提交完成索引，
+     * 下轮自动重试。区块数据只在主线程读取，持久化仍在有界后台工作线程。
+     */
+    private void observeNearbyRichTerrain(Minecraft client) {
+        if (richStats == null || dimensionProfile == null || writer.pending() >= 12) return;
+        int cx = client.player.blockPosition().getX() >> 4;
+        int cz = client.player.blockPosition().getZ() >> 4;
+        for (int ring = 0; ring <= settings.radiusChunks(); ring++) {
+            for (int dx = -ring; dx <= ring; dx++) {
+                for (int dz = -ring; dz <= ring; dz++) {
+                    if (Math.max(Math.abs(dx), Math.abs(dz)) != ring) continue;
+                    TerrainChunkKey key = new TerrainChunkKey(cx + dx, cz + dz);
+                    if (richSeen.contains(key)) continue;
+                    RichChunkSample sample = RichTerrainObserver.observe(
+                            client.level, dimensionProfile, key);
+                    if (sample == null) continue;
+                    if (!writer.offerRich(sample)) {
+                        status = "精细取证队列忙，暂停采样等待写盘";
+                        return;
+                    }
+                    richSeen.add(key);
+                    richStats.observe(sample);
+                    return;
+                }
+            }
+        }
+    }
+
     private void observeNearbyTerrain(Minecraft client) {
         if (generationDiagnostics == null || dimensionProfile == null || writer.pending() >= 12) {
             return;
