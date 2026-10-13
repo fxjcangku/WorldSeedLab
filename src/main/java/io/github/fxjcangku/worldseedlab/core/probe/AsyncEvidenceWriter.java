@@ -26,6 +26,7 @@ public final class AsyncEvidenceWriter implements AutoCloseable {
     private final AtomicLong writtenSamples = new AtomicLong();
     private final AtomicLong writtenManualMarks = new AtomicLong();
     private final AtomicLong writtenTerrainChunks = new AtomicLong();
+    private final AtomicLong writtenDetailChunks = new AtomicLong();
 
     public AsyncEvidenceWriter(CompletedChunkStore store, String fingerprint, String dimension) {
         this.store = store;
@@ -153,6 +154,32 @@ public final class AsyncEvidenceWriter implements AutoCloseable {
         } catch (RejectedExecutionException full) {
             return false;
         }
+    }
+
+    /** 有界单线程写入，主线程不执行文件操作；按世界维度严格鉴权。 */
+    public boolean offerDetail(
+            io.github.fxjcangku.worldseedlab.core.generation.TerrainDetailSample detail
+    ) {
+        if (io.isShutdown() || failure.get() != null
+                || !fingerprint.equals(detail.worldFingerprint())
+                || !dimension.equals(detail.dimension())) return false;
+        try {
+            io.execute(() -> {
+                try {
+                    store.appendDetail(detail);
+                    writtenDetailChunks.incrementAndGet();
+                } catch (IOException | RuntimeException problem) {
+                    failure.compareAndSet(null, "扩展地形详情写入失败：" + problem.getMessage());
+                }
+            });
+            return true;
+        } catch (RejectedExecutionException queueFull) {
+            return false;
+        }
+    }
+
+    public long writtenDetailChunks() {
+        return writtenDetailChunks.get();
     }
 
     public long writtenTerrainChunks() {

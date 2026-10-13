@@ -111,3 +111,17 @@ tasks.register('p2SmokeTest', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('p2SmokeTest')
 }
+
+ 
+// 新增的方块/流体/地下剖面格式严格分离 P1、P2 原始取证。
+tasks.register('p2DetailSmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate opt-in block/strata evidence, durable journals and write scope.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P2DetailSmokeTest'
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('p2DetailSmokeTest')
+}

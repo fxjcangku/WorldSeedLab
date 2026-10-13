@@ -31,7 +31,8 @@ public final class ProbeConfigFile {
             return new ProbeSettings(
                     Integer.parseInt(properties.getProperty("radius_chunks", "4")),
                     Integer.parseInt(properties.getProperty("vertical_stride", "8")),
-                    Integer.parseInt(properties.getProperty("samples_per_tick", "128"))
+                    Integer.parseInt(properties.getProperty("samples_per_tick", "128")),
+                    DetailMode.valueOf(properties.getProperty("detail_mode", "SURFACE"))
             );
         } catch (IOException | RuntimeException invalid) {
             return ProbeSettings.DEFAULT;
@@ -44,6 +45,7 @@ public final class ProbeConfigFile {
         properties.setProperty("radius_chunks", Integer.toString(settings.radiusChunks()));
         properties.setProperty("vertical_stride", Integer.toString(settings.verticalStride()));
         properties.setProperty("samples_per_tick", Integer.toString(settings.samplesPerTick()));
+        properties.setProperty("detail_mode", settings.detailMode().name());
         try (OutputStream output = Files.newOutputStream(configFile, StandardOpenOption.CREATE,
                 StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
             properties.store(output, "WorldSeedLab P1 preferences; sampling remains OFF on startup");

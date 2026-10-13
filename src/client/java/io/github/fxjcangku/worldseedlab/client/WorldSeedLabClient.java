@@ -55,6 +55,16 @@ public final class WorldSeedLabClient implements ClientModInitializer {
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> probe.onClientStopping());
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
+            // 全部为用户主动标记，绝不以观察坐标冒充结构生成起始区块。
+            var mark = ClientCommands.literal("mark");
+            for (var structure : WorldProbeController.structureCatalog().entrySet()) {
+                String alias = structure.getKey();
+                mark.then(ClientCommands.literal(alias).executes(context -> {
+                    probe.markStructureByAlias(Minecraft.getInstance(), alias);
+                    context.getSource().sendFeedback(Component.literal(probe.status()));
+                    return 1;
+                }));
+            }
             dispatcher.register(ClientCommands.literal("wsl")
                     .executes(context -> {
                         PlatformScreens.open(Minecraft.getInstance(), probe);
@@ -79,6 +89,21 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                     .then(ClientCommands.literal("path").executes(context -> {
                         context.getSource().sendFeedback(Component.literal(
                                 "WorldSeedLab 本地证据目录: " + probe.dataRoot().toAbsolutePath()));
+                        return 1;
+                    }))
+                    .then(mark)
+                    .then(ClientCommands.literal("marks").executes(context -> {
+                        context.getSource().sendFeedback(Component.literal(
+                                "可手动标记的结构: " + String.join(", ",
+                                        WorldProbeController.structureCatalog().keySet().stream()
+                                                .sorted().toList())));
+                        return 1;
+                    }))
+                    .then(ClientCommands.literal("detail").executes(context -> {
+                        probe.changeSettings(probe.settings().nextDetailMode());
+                        context.getSource().sendFeedback(Component.literal(
+                                "扩展取证档位: " + probe.settings().detailMode().chineseLabel()
+                                + " | " + probe.status()));
                         return 1;
                     }))
                     .then(ClientCommands.literal("about").executes(context -> {

@@ -66,6 +66,11 @@ public final class GlassDashboard extends Screen {
                 () -> "切换采样预算",
                 () -> controller.changeSettings(controller.settings().nextBudget()), false);
 
+        // 不允许在采集时修改证据档位；配置可持久化但采集许可永不持久化。
+        button(cx + tileW + 12, sy + 74, cw - tileW - 24, 21,
+                () -> "地形详情: " + controller.settings().detailMode().chineseLabel(),
+                () -> controller.changeSettings(controller.settings().nextDetailMode()), false);
+
         // 窄画面避免额外按钮与主导航重叠；所有版本仍能使用 /wsl report。
         if (bh >= 450) {
             button(bx + 18, by + bh - 71, side - 33, 28,
@@ -162,9 +167,12 @@ public final class GlassDashboard extends Screen {
             g.text(font, "状态 / " + GlassUi.compact(controller.status(),
                     Math.max(14, (cw - 18) / 6)), cx + 13, by + 184,
                     GlassUi.TEXT, false);
-            g.text(font, "P1 等待 " + controller.queuedChunks() + " · 写盘 "
-                            + controller.pendingWrites() + " · P2 地形区块 "
-                            + controller.terrainChunksWritten(),
+            g.text(font, GlassUi.compact(
+                    "已加载群系待办 " + controller.queuedChunks()
+                    + " · 待写盘 " + controller.pendingWrites()
+                    + " · 地形 " + controller.terrainChunksWritten()
+                    + " · 细节 " + controller.detailChunksWritten(),
+                    Math.max(28, (cw - 18) / 6)),
                     cx + 13, by + 200, GlassUi.MUTED, false);
 
             GlassUi.glass(g, cx, by + 223, cw, 102, false);

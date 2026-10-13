@@ -153,6 +153,46 @@ public final class CompletedChunkStore {
         return result;
     }
 
+    /**
+     * 独立保存方块/流体详情：先写证据再写完成索引。
+     * 升级扫描档位不会将旧地形高度索引误认为已完成高级扫描。
+     */
+    public void appendDetail(
+            io.github.fxjcangku.worldseedlab.core.generation.TerrainDetailSample detail
+    ) throws IOException {
+        Path folder = base(detail.worldFingerprint(), detail.dimension());
+        Files.createDirectories(folder);
+        writeAndForce(folder.resolve("terrain-detail.jsonl"),
+                io.github.fxjcangku.worldseedlab.core.generation.TerrainDetailJsonLines
+                        .serialize(detail) + "\n");
+        writeAndForce(folder.resolve("terrain-detail-completed.csv"),
+                detail.key().asLine() + "\n");
+    }
+
+    /** 加载之前持久化完成的细节区块，严格隔离维度与采样档位。 */
+    public Set<io.github.fxjcangku.worldseedlab.core.generation.TerrainDetailKey>
+    loadDetailCompleted(String fingerprint, String dimension) throws IOException {
+        Path journal = base(fingerprint, dimension).resolve("terrain-detail-completed.csv");
+        Set<io.github.fxjcangku.worldseedlab.core.generation.TerrainDetailKey> result =
+                new HashSet<>();
+        if (!Files.exists(journal)) return result;
+        try (BufferedReader reader = Files.newBufferedReader(journal, StandardCharsets.UTF_8)) {
+            String line;
+            int rows = 0;
+            while ((line = reader.readLine()) != null) {
+                if (++rows > MAX_JOURNAL_ROWS) {
+                    throw new IOException("detail journal exceeds safe row limit");
+                }
+                try {
+                    result.add(io.github.fxjcangku.worldseedlab.core.generation.TerrainDetailKey.parse(line));
+                } catch (RuntimeException corrupt) {
+                    throw new IOException("corrupted detail index, refusing ambiguous resume", corrupt);
+                }
+            }
+        }
+        return result;
+    }
+
     public Path dataPath(String fingerprint, String dimension) {
         return base(fingerprint, dimension).resolve("evidence.jsonl");
     }
