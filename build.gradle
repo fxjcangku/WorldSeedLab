@@ -1,0 +1,86 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    id 'java'
+}
+
+import java.util.Properties
+
+group = project.maven_group
+version = project.mod_version
+
+def supportedVersions = ['26.1.2', '26.2']
+def targetMinecraft = providers.gradleProperty('mcVersion').orElse('26.2').get()
+if (!supportedVersions.contains(targetMinecraft)) {
+    throw new GradleException("Unsupported Minecraft target: ${targetMinecraft}. Expected one of ${supportedVersions}")
+}
+
+def targetFile = file("versions/${targetMinecraft}.properties")
+def targetConfig = new Properties()
+targetFile.withInputStream { targetConfig.load(it) }
+if (targetConfig.getProperty('minecraft_version') != targetMinecraft) {
+    throw new GradleException("Target file mismatch: ${targetFile}")
+}
+def loaderVersion = targetConfig.getProperty('loader_version')
+def fabricApiVersion = targetConfig.getProperty('fabric_api_version')
+
+base {
+    archivesName = "WorldSeedLab-${targetMinecraft}"
+}
+
+loom {
+    splitEnvironmentSourceSets()
+    mods {
+        'worldseedlab' {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${targetMinecraft}"
+    implementation "net.fabricmc:fabric-loader:${loaderVersion}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${fabricApiVersion}"
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 25
+    options.encoding = 'UTF-8'
+}
+
+processResources {
+    inputs.property('mod_version', project.version)
+    inputs.property('minecraft_version', targetMinecraft)
+    filesMatching('fabric.mod.json') {
+        expand 'mod_version': project.version, 'minecraft_version': targetMinecraft
+    }
+}
+
+tasks.register('coreSmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Run framework evidence, privacy and fail-closed checks without a test framework.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.CoreSmokeTest'
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('coreSmokeTest')
+}
+
+// CoreSmokeTest is a standalone JavaExec acceptance test; no JUnit methods exist yet.
+// Gradle 9 would otherwise treat the empty built-in JUnit discovery as an error.
+tasks.named('test', Test) {
+    failOnNoDiscoveredTests = false
+}

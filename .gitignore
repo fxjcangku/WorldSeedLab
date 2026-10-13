@@ -1,0 +1,11 @@
+.gradle/
+build/
+run/
+out/
+.idea/
+.vscode/
+*.iml
+*.log
+.DS_Store
+worldseedlab-local/
+

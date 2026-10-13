@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "worldseedlab",
+  "version": "${mod_version}",
+  "name": "WorldSeedLab",
+  "description": "Independent client-side research framework for Minecraft world generation evidence.",
+  "authors": ["fxjcangku"],
+  "contact": {
+    "homepage": "https://github.com/fxjcangku/WorldSeedLab",
+    "sources": "https://github.com/fxjcangku/WorldSeedLab",
+    "issues": "https://github.com/fxjcangku/WorldSeedLab/issues"
+  },
+  "environment": "client",
+  "entrypoints": {
+    "client": ["io.github.fxjcangku.worldseedlab.client.WorldSeedLabClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "${minecraft_version}",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}
+
