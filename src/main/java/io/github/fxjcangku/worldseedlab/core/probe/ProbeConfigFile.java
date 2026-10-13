@@ -32,7 +32,7 @@ public final class ProbeConfigFile {
                     Integer.parseInt(properties.getProperty("radius_chunks", "4")),
                     Integer.parseInt(properties.getProperty("vertical_stride", "8")),
                     Integer.parseInt(properties.getProperty("samples_per_tick", "128")),
-                    DetailMode.valueOf(properties.getProperty("detail_mode", "SURFACE"))
+                    DetailMode.valueOf(properties.getProperty("detail_mode", "OFF"))
             );
         } catch (IOException | RuntimeException invalid) {
             return ProbeSettings.DEFAULT;
