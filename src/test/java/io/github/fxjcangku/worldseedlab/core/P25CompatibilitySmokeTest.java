@@ -2,6 +2,7 @@ package io.github.fxjcangku.worldseedlab.core;
 
 import io.github.fxjcangku.worldseedlab.core.compatibility.KnownSeedReference;
 import io.github.fxjcangku.worldseedlab.core.compatibility.KnownSeedReference.Split;
+import io.github.fxjcangku.worldseedlab.core.compatibility.KnownSeedReference.ReferenceOrigin;
 import io.github.fxjcangku.worldseedlab.core.compatibility.KnownSeedReference.StartChunk;
 import io.github.fxjcangku.worldseedlab.core.compatibility.StructureObservation;
 import io.github.fxjcangku.worldseedlab.core.compatibility.StructureModelValidator;
@@ -76,34 +77,47 @@ public final class P25CompatibilitySmokeTest {
             controls.add(new KnownSeedReference(world, dimension, "26.2",
                     structure, syntheticSeed, rx, rz,
                     synthetic.predict(syntheticSeed, rx, rz),
-                    i < 3 ? Split.TRAINING : Split.HOLDOUT));
+                    i < 3 ? Split.TRAINING : Split.HOLDOUT,
+                    ReferenceOrigin.SYNTHETIC_FIXTURE));
         }
 
         var unknown = StructureModelValidator.evaluate("26.2", dimension,
                 structure, null, controls);
         expect(unknown.verdict() == StructureModelValidator.Verdict.UNKNOWN,
                 "no reference implementation => unknown");
-        var okay = StructureModelValidator.evaluate("26.2", dimension,
+        var fixtureOnly = StructureModelValidator.evaluate("26.2", dimension,
                 structure, synthetic, controls);
+        expect(fixtureOnly.verdict() == StructureModelValidator.Verdict.UNKNOWN,
+                "synthetic fixture must NEVER claim real game compatibility");
+
+        // 该测试仅模拟“已由真实游戏确认”的来源标签，验证程序的判断分支。
+        // 具体 Mojang 规则是否正确，还必须通过单人已知 Seed 世界实机对照。
+        List<KnownSeedReference> declaredGameReferences = controls.stream().map(v ->
+                new KnownSeedReference(v.worldFingerprint(), v.dimension(), v.gameVersion(),
+                        v.structureId(), v.knownWorldSeed(), v.regionX(), v.regionZ(),
+                        v.expectedStart(), v.split(), ReferenceOrigin.VERIFIED_GAME_REFERENCE))
+                .toList();
+        var okay = StructureModelValidator.evaluate("26.2", dimension,
+                structure, synthetic, declaredGameReferences);
         expect(okay.verdict() == StructureModelValidator.Verdict.MODEL_COMPATIBLE,
-                "synthetic controlled data verifies only the evaluator itself");
+                "game-verified reference path should recognize matching holdouts");
         expect(okay.trainingMatches() == 3 && okay.holdoutMatches() == 2,
                 "training and holdout must be separated");
 
         var wrong = StructureModelValidator.evaluate("26.2", dimension, structure,
-                (seed, rx, rz) -> Optional.of(new StartChunk(0, 0)), controls);
+                (seed, rx, rz) -> Optional.of(new StartChunk(0, 0)), declaredGameReferences);
         expect(wrong.verdict() == StructureModelValidator.Verdict.MODEL_INCOMPATIBLE,
                 "incorrect model must fail known-seed controls");
         var lacking = StructureModelValidator.evaluate("26.2", dimension,
-                structure, synthetic, controls.subList(0, 4));
+                structure, synthetic, declaredGameReferences.subList(0, 4));
         expect(lacking.verdict() == StructureModelValidator.Verdict.INSUFFICIENT_EVIDENCE,
                 "one holdout is insufficient");
-        var duplicates = new ArrayList<>(controls);
-        duplicates.add(controls.get(0));
+        var duplicates = new ArrayList<>(declaredGameReferences);
+        duplicates.add(declaredGameReferences.get(0));
         expectFail(() -> StructureModelValidator.evaluate("26.2", dimension,
                 structure, synthetic, duplicates), "same region may not leak into holdout");
         expectFail(() -> StructureModelValidator.evaluate("26.1.2", dimension,
-                structure, synthetic, controls), "mixed version samples fail closed");
+                structure, synthetic, declaredGameReferences), "mixed version samples fail closed");
 
         System.out.println("WorldSeedLab P2.5 compatibility quality checks passed.");
     }

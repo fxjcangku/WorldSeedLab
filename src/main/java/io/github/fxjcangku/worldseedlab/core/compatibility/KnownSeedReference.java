@@ -19,7 +19,8 @@ public record KnownSeedReference(
         int regionX,
         int regionZ,
         Optional<StartChunk> expectedStart,
-        Split split
+        Split split,
+        ReferenceOrigin referenceOrigin
 ) {
     private static final Pattern FINGERPRINT = Pattern.compile("[a-f0-9]{64}");
     private static final Pattern ID = Pattern.compile("[a-z0-9_.-]+:[a-z0-9_./-]+");
@@ -37,6 +38,7 @@ public record KnownSeedReference(
         }
         Objects.requireNonNull(expectedStart, "expectedStart");
         Objects.requireNonNull(split, "split");
+        Objects.requireNonNull(referenceOrigin, "referenceOrigin");
     }
 
     public record StartChunk(int x, int z) {
@@ -45,5 +47,11 @@ public record KnownSeedReference(
     public enum Split {
         TRAINING,
         HOLDOUT
+    }
+
+    /** 模拟夹具永远不能用作真实游戏生成规律的确认依据。 */
+    public enum ReferenceOrigin {
+        SYNTHETIC_FIXTURE,
+        VERIFIED_GAME_REFERENCE
     }
 }

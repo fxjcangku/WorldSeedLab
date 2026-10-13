@@ -54,6 +54,7 @@ public final class StructureModelValidator {
 
         Set<String> regions = new HashSet<>();
         int training = 0, holdout = 0, mismatch = 0;
+        int syntheticCount = 0;
         for (KnownSeedReference reference : controls) {
             if (!version.equals(reference.gameVersion())
                     || !dimension.equals(reference.dimension())
@@ -64,6 +65,9 @@ public final class StructureModelValidator {
                     + "|" + reference.regionX() + "|" + reference.regionZ();
             if (!regions.add(identity)) {
                 throw new IllegalArgumentException("duplicated region among controls or holdouts");
+            }
+            if (reference.referenceOrigin() == KnownSeedReference.ReferenceOrigin.SYNTHETIC_FIXTURE) {
+                syntheticCount++;
             }
             Optional<StartChunk> prediction = Objects.requireNonNull(
                     candidateModel.predict(reference.knownWorldSeed(),
@@ -81,6 +85,11 @@ public final class StructureModelValidator {
         if (controls.isEmpty()) {
             return new Result(Verdict.INSUFFICIENT_EVIDENCE, version, dimension,
                     structure, 0, 0, 0, "没有独立控制世界结构起点参考");
+        }
+        if (syntheticCount > 0) {
+            return new Result(Verdict.UNKNOWN, version, dimension, structure,
+                    training, holdout, mismatch,
+                    "存在合成预测夹具，无法推断真实 Minecraft 结构规则是否兼容");
         }
         if (mismatch > 0) {
             return new Result(Verdict.MODEL_INCOMPATIBLE, version, dimension,
