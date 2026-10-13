@@ -111,3 +111,17 @@ tasks.register('p2SmokeTest', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('p2SmokeTest')
 }
+
+
+// P2.6 精细地形/岩层取证，独立于 P1/P2 的原始证据索引。
+tasks.register('p2RichSmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate detailed biome/terrain evidence, persistence and safe reports.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P2RichEvidenceSmokeTest'
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('p2RichSmokeTest')
+}
