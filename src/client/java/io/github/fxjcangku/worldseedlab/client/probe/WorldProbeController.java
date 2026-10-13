@@ -5,6 +5,7 @@ import io.github.fxjcangku.worldseedlab.client.scope.WorldScopeResolver;
 import io.github.fxjcangku.worldseedlab.core.evidence.EvidenceKind;
 import io.github.fxjcangku.worldseedlab.core.evidence.EvidenceOrigin;
 import io.github.fxjcangku.worldseedlab.core.evidence.EvidenceRecord;
+import io.github.fxjcangku.worldseedlab.core.generation.AdvertisedDimensions;
 import io.github.fxjcangku.worldseedlab.core.generation.DimensionProfile;
 import io.github.fxjcangku.worldseedlab.core.generation.GenerationDiagnostics;
 import io.github.fxjcangku.worldseedlab.core.generation.ResearchReportStore;
@@ -58,6 +59,7 @@ public final class WorldProbeController {
     private final Map<String, Long> biomes = new HashMap<>();
     private ProbeSettings settings;
     private DimensionProfile dimensionProfile;
+    private AdvertisedDimensions advertisedDimensions;
     private GenerationDiagnostics generationDiagnostics;
     private long terrainCompletedAtStart;
     private ClientLevel scopeLevel;
@@ -98,6 +100,11 @@ public final class WorldProbeController {
         return dimensionProfile;
     }
 
+    /** 仅代表连接时服务器向客户端公布过的维度键，不代表已经探索。 */
+    public AdvertisedDimensions advertisedDimensions() {
+        return advertisedDimensions;
+    }
+
     public GenerationDiagnostics.Snapshot terrainStats() {
         return generationDiagnostics == null ? null : generationDiagnostics.snapshot();
     }
@@ -115,7 +122,7 @@ public final class WorldProbeController {
             String report = WorldgenReport.render(
                     dimensionProfile, generationDiagnostics.snapshot(), Map.copyOf(biomes),
                     observedSamples, writtenSamples(), writtenManualMarks(),
-                    pendingWrites(), active());
+                    pendingWrites(), active(), advertisedDimensions);
             Path path = new ResearchReportStore(dataRoot()).export(dimensionProfile, report);
             status = "P2 研究日志已导出：" + path.toAbsolutePath();
             return status;
@@ -202,6 +209,7 @@ public final class WorldProbeController {
             Set<TerrainChunkKey> terrainResume = nextStore.loadTerrainCompleted(f, d);
             DimensionProfile nextProfile =
                     TerrainObserver.dimensionProfile(client.level, f, gameVersion);
+            AdvertisedDimensions registry = inspectAvailableDimensions(client, f, d);
             pending.clear();
             enqueued.clear();
             seen.clear();
@@ -209,6 +217,7 @@ public final class WorldProbeController {
             terrainSeen.clear();
             terrainSeen.addAll(terrainResume);
             dimensionProfile = nextProfile;
+            advertisedDimensions = registry;
             generationDiagnostics = new GenerationDiagnostics(nextProfile);
             terrainCompletedAtStart = terrainResume.size();
             biomes.clear();
@@ -224,8 +233,9 @@ public final class WorldProbeController {
             dimension = d;
             store = nextStore;
             writer = new AsyncEvidenceWriter(store, f, d);
-            if (!writer.offerDimension(nextProfile)) {
-                throw new IOException("维度档案无法加入写盘队列，拒绝开启采集");
+            if (!writer.offerDimension(nextProfile)
+                    || !writer.offerAdvertisedDimensions(registry)) {
+                throw new IOException("维度档案或维度清单无法进入写盘队列，拒绝采集");
             }
             gate.arm(f, d);
             status = "正在采集客户端已加载的群系数据";
@@ -352,6 +362,37 @@ public final class WorldProbeController {
                 }
             }
         }
+    }
+
+    /**
+     * 仅读取已接收的维度注册键；连接对象缺失时记录 CURRENT_ONLY，
+     * 不可把此类 ID 清单误当成已访问维度或服务端维度生成器配置。
+     */
+    private AdvertisedDimensions inspectAvailableDimensions(
+            Minecraft client, String localWorld, String currentDimension
+    ) {
+        try {
+            var connection = client.getConnection();
+            if (connection != null) {
+                List<String> ids = connection.levels().stream()
+                        .map(levelKey -> levelKey.identifier().toString()).toList();
+                if (!ids.isEmpty()) {
+                    List<String> combined = new ArrayList<>(ids);
+                    if (!combined.contains(currentDimension)) {
+                        combined.add(currentDimension);
+                    }
+                    return new AdvertisedDimensions(localWorld, gameVersion,
+                            currentDimension, AdvertisedDimensions.Source.ADVERTISED,
+                            combined, Instant.now());
+                }
+            }
+        } catch (RuntimeException unavailable) {
+            logger.warn("Unable to inspect client-advertised dimensions; using current dimension only",
+                    unavailable);
+        }
+        return new AdvertisedDimensions(localWorld, gameVersion, currentDimension,
+                AdvertisedDimensions.Source.CURRENT_ONLY,
+                List.of(currentDimension), Instant.now());
     }
 
     private void findChunks(Minecraft client) {
