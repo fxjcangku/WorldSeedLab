@@ -125,6 +125,15 @@ public final class GlassDashboard extends Screen {
                         bx + 21, by + 329, GlassUi.MUTED, false);
             }
 
+            // 维度注册键属于“客户端已获知”，不意味着玩家进入过对应维度。
+            if (controller.advertisedDimensions() != null && bh >= 490) {
+                var discovered = controller.advertisedDimensions();
+                g.text(font, "已知维度键: " + discovered.dimensionIds().size(),
+                        bx + 21, by + 355, GlassUi.MUTED, false);
+                g.text(font, "非原版键: " + discovered.nonVanillaCount(),
+                        bx + 21, by + 374, GlassUi.MUTED, false);
+            }
+
             g.text(font, "世界生成观察台", cx, by + 29, GlassUi.TEXT, true);
             g.text(font, "WORLD PROBE / BIOME INTELLIGENCE", cx, by + 48, GlassUi.MUTED, false);
             var profile = controller.dimensionProfile();

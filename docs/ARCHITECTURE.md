@@ -20,6 +20,7 @@ client/probe/WorldProbeController
               ├─ evidence.jsonl
               ├─ terrain.jsonl
               ├─ dimension-profile.jsonl
+              ├─ advertised-dimensions.jsonl
               ├─ completed-chunks.csv
               └─ research-report.txt (用户显式导出)
 
@@ -31,6 +32,7 @@ client/ui/*   ← 只读取 Controller 当前会话快照，绝不自己取世�
 - `EvidenceRecord`：群系采样或人工建筑观察记录。结构的玩家坐标不是结构起始区块。
 - `ChunkSamplingCursor`：基于世界高度与 quart 网格的跨 Tick 迭代。
 - `ChunkKey`：区块 X/Z + 垂直采样间距，同一区块更高精度可重新采样。
+- `AdvertisedDimensions`：服务器连接公布的维度键快照，与当前已访问维度严格区分。
 - `DimensionProfile`：当前维度 ID、建造高度、海平面和环境特征，不等于服务端完整生成器配置。
 - `TerrainChunkSample`：客户端已加载区块 WORLD_SURFACE 高度图稀疏采样，不等于原始噪声或完整地貌。
 - `GenerationDiagnostics`：证据量、覆盖限制、模型状态的审计输出，不会猜测真实 Seed。

@@ -29,6 +29,8 @@
 | ultra_warm | 未确认的属性输出 `null` | 不猜测 Fabric/Mojmap 不存在的 API |
 | observed_at | 记录时间 | 仅说明客户端何时看到这些信息 |
 
+此外，本版还会保存 `advertised-dimensions.jsonl`：若 26.1.2 / 26.2 客户端连接对象提供已公布的维度键清单，将记录注册 ID、来源标记 `ADVERTISED` 和观察时间；若连接对象不可用，仅记录当前维度并标记 `CURRENT_ONLY`。**仅公布 ≠ 已到访 ≠ 已加载该维度区块**。导出的中文报告按这个区别展示完整清单。
+
 **不能获取**：服务器私有世界种子、NoiseSettings 完整参数、世界生成器插件私有配置、所有尚未探索的维度或地图历史。
 
 ## 三、采到的地形证据是什么？
@@ -50,7 +52,8 @@
         └── dimensions/<维度本地散列>/
             ├── evidence.jsonl                   P1 三维群系与手动建筑观察证据
             ├── completed-chunks.csv             P1 群系区块完成索引
-            ├── dimension-profile.jsonl          P2 维度元数据（按会话追加）
+            ├── dimension-profile.jsonl          P2 当前已访问维度的元数据
+            ├── advertised-dimensions.jsonl      P2 客户端连接公布的维度注册键（未必进入）
             ├── terrain.jsonl                    P2 每区块 16 个地表高度图样本
             ├── terrain-completed.csv            P2 地形独立完成索引
             └── research-report.txt              手动执行 /wsl report 导出的中文汇总
@@ -58,7 +61,7 @@
 
 **你可以发给我什么？**
 
-推荐先发 **`research-report.txt`**。我可以依据里面的维度信息、已观察群系与地形特征，确定下一步哪些原版生成模型值得测试。
+推荐先发 **`research-report.txt`**（其中包含已获知的维度 ID 清单以及实际访问维度的区分）。我可以依据里面的维度信息、已观察群系与地形特征，确定下一步哪些原版生成模型值得测试。
 
 如果之后确实需要复核具体结构位置或地形条件，可先将 `evidence.jsonl` 与 `terrain.jsonl` **去除敏感坐标或确认服务器允许共享后**再提交。**绝对不要上传 `identity.key`**。
 
