@@ -6,12 +6,12 @@ package io.github.fxjcangku.worldseedlab.core.probe;
  */
 public record ProbeSettings(int radiusChunks, int verticalStride, int samplesPerTick,
                             DetailMode detailMode) {
-    /** 默认记录地表材质和流体；深入地下采样必须显式选档。 */
-    public static final ProbeSettings DEFAULT = new ProbeSettings(4, 8, 128, DetailMode.SURFACE);
+    /** 扩展方块采集默认关闭；用户须显式选择地表或地下档位。 */
+    public static final ProbeSettings DEFAULT = new ProbeSettings(4, 8, 128, DetailMode.OFF);
 
     /** 保留旧测试和三参数调用点的兼容性。 */
     public ProbeSettings(int radiusChunks, int verticalStride, int samplesPerTick) {
-        this(radiusChunks, verticalStride, samplesPerTick, DetailMode.SURFACE);
+        this(radiusChunks, verticalStride, samplesPerTick, DetailMode.OFF);
     }
 
     public ProbeSettings {
