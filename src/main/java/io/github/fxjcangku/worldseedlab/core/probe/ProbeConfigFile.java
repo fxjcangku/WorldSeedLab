@@ -8,7 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Properties;
 
-/** Only numeric preferences are persisted. Never store sampling permission. */
+/** 只存采样参数，不持久化“开始采集”的授权状态。精细取证默认关闭。 */
 public final class ProbeConfigFile {
     private final Path configFile;
 
@@ -31,7 +31,8 @@ public final class ProbeConfigFile {
             return new ProbeSettings(
                     Integer.parseInt(properties.getProperty("radius_chunks", "4")),
                     Integer.parseInt(properties.getProperty("vertical_stride", "8")),
-                    Integer.parseInt(properties.getProperty("samples_per_tick", "128"))
+                    Integer.parseInt(properties.getProperty("samples_per_tick", "128")),
+                    Boolean.parseBoolean(properties.getProperty("rich_evidence", "false"))
             );
         } catch (IOException | RuntimeException invalid) {
             return ProbeSettings.DEFAULT;
@@ -44,6 +45,7 @@ public final class ProbeConfigFile {
         properties.setProperty("radius_chunks", Integer.toString(settings.radiusChunks()));
         properties.setProperty("vertical_stride", Integer.toString(settings.verticalStride()));
         properties.setProperty("samples_per_tick", Integer.toString(settings.samplesPerTick()));
+        properties.setProperty("rich_evidence", Boolean.toString(settings.richEvidence()));
         try (OutputStream output = Files.newOutputStream(configFile, StandardOpenOption.CREATE,
                 StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
             properties.store(output, "WorldSeedLab P1 preferences; sampling remains OFF on startup");

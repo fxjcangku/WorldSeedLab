@@ -1,11 +1,19 @@
 package io.github.fxjcangku.worldseedlab.core.probe;
 
 /**
- * Bounded, client-local sampling configuration. Vertical stride is in blocks.
- * Horizontal spacing always follows Minecraft's four-block biome cell grid.
+ * 纯客户端的有界采样设置。
+ *
+ * <p>精细地形取证默认关闭，必须在采集停止后由用户手动启用。
+ * 已有三参数构造函数继续保留，兼容 P0/P1/P2 测试与已有配置。
  */
-public record ProbeSettings(int radiusChunks, int verticalStride, int samplesPerTick) {
-    public static final ProbeSettings DEFAULT = new ProbeSettings(4, 8, 128);
+public record ProbeSettings(
+        int radiusChunks, int verticalStride, int samplesPerTick, boolean richEvidence
+) {
+    public static final ProbeSettings DEFAULT = new ProbeSettings(4, 8, 128, false);
+
+    public ProbeSettings(int radiusChunks, int verticalStride, int samplesPerTick) {
+        this(radiusChunks, verticalStride, samplesPerTick, false);
+    }
 
     public ProbeSettings {
         if (radiusChunks < 1 || radiusChunks > 6) {
@@ -19,17 +27,21 @@ public record ProbeSettings(int radiusChunks, int verticalStride, int samplesPer
         }
     }
 
-    public ProbeSettings withRadius(int value) {
-        return new ProbeSettings(value, verticalStride, samplesPerTick);
+    public ProbeSettings withRadius(int radius) {
+        return new ProbeSettings(radius, verticalStride, samplesPerTick, richEvidence);
     }
 
     public ProbeSettings nextVerticalStride() {
         return new ProbeSettings(radiusChunks, verticalStride == 4 ? 8 : verticalStride == 8 ? 16 : 4,
-                samplesPerTick);
+                samplesPerTick, richEvidence);
     }
 
     public ProbeSettings nextBudget() {
         return new ProbeSettings(radiusChunks, verticalStride,
-                samplesPerTick == 256 ? 32 : samplesPerTick + 32);
+                samplesPerTick == 256 ? 32 : samplesPerTick + 32, richEvidence);
+    }
+
+    public ProbeSettings withRichEvidence(boolean enabled) {
+        return new ProbeSettings(radiusChunks, verticalStride, samplesPerTick, enabled);
     }
 }
