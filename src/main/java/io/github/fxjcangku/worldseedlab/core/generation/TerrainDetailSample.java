@@ -62,7 +62,9 @@ public record TerrainDetailSample(
     }
 
     public record SurfaceCell(int localX, int localZ, int observedY, String blockId,
-                              String blockState, String fluidId, String biomeId) {
+                              String blockState, String fluidId, String biomeId,
+                              int worldSurfaceHeight, int oceanFloorHeight,
+                              int motionBlockingHeight, String oceanFloorBlockId) {
         public SurfaceCell {
             if (localX < 0 || localX >= 16 || localZ < 0 || localZ >= 16
                     || localX % 4 != 2 || localZ % 4 != 2) {
@@ -71,6 +73,12 @@ public record TerrainDetailSample(
             requireId(blockId);
             requireId(fluidId);
             requireId(biomeId);
+            requireId(oceanFloorBlockId);
+            for (int h : new int[] {worldSurfaceHeight, oceanFloorHeight, motionBlockingHeight}) {
+                if (h < -4097 || h > 8193) {
+                    throw new IllegalArgumentException("invalid heightmap height");
+                }
+            }
             if (blockState == null || blockState.length() > 512) {
                 throw new IllegalArgumentException("invalid blockstate diagnostic");
             }

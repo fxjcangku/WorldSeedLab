@@ -7,7 +7,7 @@ public final class TerrainDetailJsonLines {
 
     public static String serialize(TerrainDetailSample sample) {
         StringBuilder out = new StringBuilder(8500)
-                .append("{\"schema\":3,\"type\":\"terrain_detail\",")
+                .append("{\"schema\":4,\"type\":\"terrain_detail\",")
                 .append("\"world_fingerprint\":").append(q(sample.worldFingerprint())).append(',')
                 .append("\"dimension\":").append(q(sample.dimension())).append(',')
                 .append("\"client_version\":").append(q(sample.clientVersion())).append(',')
@@ -27,7 +27,12 @@ public final class TerrainDetailJsonLines {
                     .append(",\"block\":").append(q(cell.blockId()))
                     .append(",\"block_state\":").append(q(cell.blockState()))
                     .append(",\"fluid\":").append(q(cell.fluidId()))
-                    .append(",\"biome\":").append(q(cell.biomeId())).append('}');
+                    .append(",\"biome\":").append(q(cell.biomeId()))
+                    .append(",\"world_surface_y\":").append(cell.worldSurfaceHeight())
+                    .append(",\"ocean_floor_y\":").append(cell.oceanFloorHeight())
+                    .append(",\"motion_blocking_y\":").append(cell.motionBlockingHeight())
+                    .append(",\"ocean_floor_block\":").append(q(cell.oceanFloorBlockId()))
+                    .append('}');
         }
         out.append("],\"vertical\":[");
         for (int i = 0; i < sample.vertical().size(); i++) {

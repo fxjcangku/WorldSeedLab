@@ -37,7 +37,8 @@ public final class P2DetailSmokeTest {
                 surface.add(new TerrainDetailSample.SurfaceCell(
                         x, z, 64, "minecraft:grass_block",
                         "Block{minecraft:grass_block}[snowy=false]", "minecraft:empty",
-                        z == 2 ? "minecraft:plains" : "deeper_dark:azure_sanctuary"));
+                        z == 2 ? "minecraft:plains" : "deeper_dark:azure_sanctuary",
+                        65, 52, 62, "minecraft:stone"));
             }
         }
         var strata = new ArrayList<TerrainDetailSample.VerticalCell>();
@@ -55,6 +56,11 @@ public final class P2DetailSmokeTest {
         String json = TerrainDetailJsonLines.serialize(strataSample);
         expect(json.contains("\"type\":\"terrain_detail\""), "typed evidence");
         expect(json.contains("\"mode\":\"STRATA\""), "explicit depth profile");
+        expect(json.contains("\"schema\":4"), "heightmap enriched schema");
+        expect(json.contains("\"ocean_floor_y\":52"), "ocean floor map");
+        expect(json.contains("\"motion_blocking_y\":62"), "motion blocking map");
+        expect(json.contains("\"ocean_floor_block\":\"minecraft:stone\""),
+                "seabed block registry ID");
         expect(json.contains("\"generation_origin_verified\":false"), "must not claim generation");
         expect(json.contains("deeper_dark:azure_sanctuary"), "actual biome ID");
         expect(json.contains("\"vertical_stride_blocks\":16"), "depth stride saved");
