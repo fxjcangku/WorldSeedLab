@@ -72,6 +72,23 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                                 + " | " + probe.status()));
                         return 1;
                     }))
+                    .then(ClientCommands.literal("detail")
+                            .then(ClientCommands.literal("on").executes(context -> {
+                                probe.changeSettings(probe.settings().withRichEvidence(true));
+                                context.getSource().sendFeedback(Component.literal(
+                                        "WorldSeedLab | 精细取证: "
+                                        + (probe.settings().richEvidence() ? "已启用" : "未改变")
+                                        + " | " + probe.status()));
+                                return 1;
+                            }))
+                            .then(ClientCommands.literal("off").executes(context -> {
+                                probe.changeSettings(probe.settings().withRichEvidence(false));
+                                context.getSource().sendFeedback(Component.literal(
+                                        "WorldSeedLab | 精细取证: "
+                                        + (!probe.settings().richEvidence() ? "已关闭" : "未改变")
+                                        + " | " + probe.status()));
+                                return 1;
+                            })))
                     .then(ClientCommands.literal("report").executes(context -> {
                         context.getSource().sendFeedback(Component.literal(probe.exportReport()));
                         return 1;

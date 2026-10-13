@@ -71,6 +71,14 @@ public final class GlassDashboard extends Screen {
             button(bx + 18, by + bh - 71, side - 33, 28,
                     () -> "导出研究日志", controller::exportReport, false);
         }
+        // 大画面才显示额外按钮；GUI 缩放较小时仍可用 /wsl detail on|off。
+        if (bh >= 485) {
+            button(bx + 18, by + bh - 105, side - 33, 26,
+                    () -> controller.settings().richEvidence() ? "精细取证：开" : "精细取证：关",
+                    () -> controller.changeSettings(controller.settings().withRichEvidence(
+                            !controller.settings().richEvidence())), false);
+        }
+
         button(bx + bw - 92, by + 18, 70, 22, () -> "关闭", this::onClose, false);
     }
 
@@ -132,6 +140,11 @@ public final class GlassDashboard extends Screen {
                         bx + 21, by + 355, GlassUi.MUTED, false);
                 g.text(font, "非原版键: " + discovered.nonVanillaCount(),
                         bx + 21, by + 374, GlassUi.MUTED, false);
+            }
+
+            if (bh >= 500) {
+                g.text(font, "精细记录: " + controller.richChunksWritten() + " 区块",
+                        bx + 21, by + bh - 121, GlassUi.MUTED, false);
             }
 
             g.text(font, "世界生成观察台", cx, by + 29, GlassUi.TEXT, true);
@@ -200,7 +213,7 @@ public final class GlassDashboard extends Screen {
                     }
                 }
             }
-            g.text(font, "只读群系 + 手动结构观察 | Seed 求解器未实现",
+            g.text(font, "P2 只读观测 · 精细取证可选 | Seed 求解器未实现",
                     bx + 20, by + bh - 17, GlassUi.MUTED, false);
         }
 
