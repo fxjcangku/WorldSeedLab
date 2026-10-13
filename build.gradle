@@ -84,3 +84,17 @@ tasks.named('check') {
 tasks.named('test', Test) {
     failOnNoDiscoveredTests = false
 }
+ 
+// 26.2 relocated some client GUI methods. Compile only the adapter for the target version.
+sourceSets.client.java.srcDir "src/versions/${targetMinecraft}/java"
+
+tasks.register('p1SmokeTest', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P1ObservationSmokeTest'
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('p1SmokeTest')
+}
