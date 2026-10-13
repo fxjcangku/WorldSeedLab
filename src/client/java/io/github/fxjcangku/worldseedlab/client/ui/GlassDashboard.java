@@ -76,6 +76,14 @@ public final class GlassDashboard extends Screen {
             button(bx + 18, by + bh - 71, side - 33, 28,
                     () -> "导出研究日志", controller::exportReport, false);
         }
+        // 三高度图/海床/近地层：与纵向剖面设置独立，默认关闭。
+        if (bh >= 485) {
+            button(bx + 18, by + bh - 105, side - 33, 26,
+                    () -> controller.settings().richEvidence() ? "多高度图：开" : "多高度图：关",
+                    () -> controller.changeSettings(controller.settings().withRichEvidence(
+                            !controller.settings().richEvidence())), false);
+        }
+
         button(bx + bw - 92, by + 18, 70, 22, () -> "关闭", this::onClose, false);
     }
 
@@ -137,6 +145,11 @@ public final class GlassDashboard extends Screen {
                         bx + 21, by + 355, GlassUi.MUTED, false);
                 g.text(font, "非原版键: " + discovered.nonVanillaCount(),
                         bx + 21, by + 374, GlassUi.MUTED, false);
+            }
+
+            if (bh >= 500) {
+                g.text(font, "多高度图证据: " + controller.richChunksWritten() + " 区块",
+                        bx + 21, by + bh - 121, GlassUi.MUTED, false);
             }
 
             g.text(font, "世界生成观察台", cx, by + 29, GlassUi.TEXT, true);

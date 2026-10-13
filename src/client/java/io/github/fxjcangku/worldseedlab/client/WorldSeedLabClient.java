@@ -99,13 +99,30 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                                                 .sorted().toList())));
                         return 1;
                     }))
-                    .then(ClientCommands.literal("detail").executes(context -> {
-                        probe.changeSettings(probe.settings().nextDetailMode());
-                        context.getSource().sendFeedback(Component.literal(
-                                "扩展取证档位: " + probe.settings().detailMode().chineseLabel()
-                                + " | " + probe.status()));
-                        return 1;
-                    }))
+                    .then(ClientCommands.literal("detail")
+                            .executes(context -> {
+                                probe.changeSettings(probe.settings().nextDetailMode());
+                                context.getSource().sendFeedback(Component.literal(
+                                        "纵向剖面档位: " + probe.settings().detailMode().chineseLabel()
+                                        + " | " + probe.status()));
+                                return 1;
+                            })
+                            .then(ClientCommands.literal("on").executes(context -> {
+                                probe.changeSettings(probe.settings().withRichEvidence(true));
+                                context.getSource().sendFeedback(Component.literal(
+                                        "多高度图采样: "
+                                        + (probe.settings().richEvidence() ? "已启用" : "未改变")
+                                        + " | " + probe.status()));
+                                return 1;
+                            }))
+                            .then(ClientCommands.literal("off").executes(context -> {
+                                probe.changeSettings(probe.settings().withRichEvidence(false));
+                                context.getSource().sendFeedback(Component.literal(
+                                        "多高度图采样: "
+                                        + (!probe.settings().richEvidence() ? "已关闭" : "未改变")
+                                        + " | " + probe.status()));
+                                return 1;
+                            })))
                     .then(ClientCommands.literal("about").executes(context -> {
                         context.getSource().sendFeedback(Component.literal(
                                 "独立世界生成研究 | F8 打开液态玻璃面板 | 仅本地已加载区块 | 无 Seed 破解功能"));
