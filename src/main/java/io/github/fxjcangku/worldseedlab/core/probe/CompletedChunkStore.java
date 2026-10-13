@@ -153,6 +153,68 @@ public final class CompletedChunkStore {
         return result;
     }
 
+    /**
+     * 独立读取精细区块完成索引。旧 P1 群系/P2 高度图记录不会阻止补充采样。
+     * 损坏日志绝不静默略过，避免把缺失证据报告成采样完成。
+     */
+    public Set<io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkKey>
+    loadRichCompleted(String fingerprint, String dimension) throws IOException {
+        Path journal = base(fingerprint, dimension).resolve("rich-completed.csv");
+        Set<io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkKey> keys =
+                new HashSet<>();
+        if (!Files.exists(journal)) return keys;
+        try (BufferedReader reader = Files.newBufferedReader(journal, StandardCharsets.UTF_8)) {
+            String line;
+            int rows = 0;
+            while ((line = reader.readLine()) != null) {
+                if (++rows > MAX_JOURNAL_ROWS) {
+                    throw new IOException("rich completion index exceeds safe limit");
+                }
+                try {
+                    keys.add(io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkKey
+                            .parse(line));
+                } catch (RuntimeException bad) {
+                    throw new IOException("corrupt rich completion index", bad);
+                }
+            }
+        }
+        return keys;
+    }
+
+    /**
+     * 精细日志设 128 MiB 的单维度软上限，避免长时间跑图无限占用磁盘。
+     * 先同步刷入完整 JSONL，再记录完成索引；异常可能重复，绝不凭空记完成。
+     */
+    public void appendRich(io.github.fxjcangku.worldseedlab.core.generation.RichChunkSample sample)
+            throws IOException {
+        Path folder = base(sample.worldFingerprint(), sample.dimension());
+        Files.createDirectories(folder);
+        String line = io.github.fxjcangku.worldseedlab.core.generation.RichChunkJsonLines
+                .serialize(sample) + "\n";
+        writeRichLimited(folder.resolve("rich-chunks.jsonl"), line);
+        writeAndForce(folder.resolve("rich-completed.csv"),
+                sample.chunkX() + "," + sample.chunkZ() + "\n");
+    }
+
+    private static void writeRichLimited(Path path, String content) throws IOException {
+        byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length > 65536) {
+            throw new IOException("rich observation row too large");
+        }
+        try (FileChannel channel = FileChannel.open(path, StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE, StandardOpenOption.APPEND);
+             FileLock lock = channel.lock()) {
+            if (channel.size() + bytes.length > 128L * 1024 * 1024) {
+                throw new IOException("精细日志达到单维度 128 MiB 限额，已停止取证");
+            }
+            ByteBuffer buffer = ByteBuffer.wrap(bytes);
+            while (buffer.hasRemaining()) {
+                channel.write(buffer);
+            }
+            channel.force(false);
+        }
+    }
+
     public Path dataPath(String fingerprint, String dimension) {
         return base(fingerprint, dimension).resolve("evidence.jsonl");
     }

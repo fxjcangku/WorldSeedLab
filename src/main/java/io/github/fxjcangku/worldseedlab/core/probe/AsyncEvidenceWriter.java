@@ -26,6 +26,7 @@ public final class AsyncEvidenceWriter implements AutoCloseable {
     private final AtomicLong writtenSamples = new AtomicLong();
     private final AtomicLong writtenManualMarks = new AtomicLong();
     private final AtomicLong writtenTerrainChunks = new AtomicLong();
+    private final AtomicLong writtenRichChunks = new AtomicLong();
 
     public AsyncEvidenceWriter(CompletedChunkStore store, String fingerprint, String dimension) {
         this.store = store;
@@ -153,6 +154,36 @@ public final class AsyncEvidenceWriter implements AutoCloseable {
         } catch (RejectedExecutionException full) {
             return false;
         }
+    }
+
+    /**
+     * 精细观测进入同一个有界后台队列；磁盘慢时主线程拒绝新任务并稍后重试。
+     */
+    public boolean offerRich(
+            io.github.fxjcangku.worldseedlab.core.generation.RichChunkSample sample
+    ) {
+        if (io.isShutdown() || failure.get() != null
+                || !fingerprint.equals(sample.worldFingerprint())
+                || !dimension.equals(sample.dimension())) {
+            return false;
+        }
+        try {
+            io.execute(() -> {
+                try {
+                    store.appendRich(sample);
+                    writtenRichChunks.incrementAndGet();
+                } catch (IOException | RuntimeException error) {
+                    failure.compareAndSet(null, "精细取证写盘失败：" + error.getMessage());
+                }
+            });
+            return true;
+        } catch (RejectedExecutionException queueFull) {
+            return false;
+        }
+    }
+
+    public long writtenRichChunks() {
+        return writtenRichChunks.get();
     }
 
     public long writtenTerrainChunks() {
