@@ -12,6 +12,7 @@ on:
       - 'src/test/java/io/github/fxjcangku/worldseedlab/core/P31Full64ShardSmokeTest.java'
       - 'src/test/resources/p31/**'
       - 'scripts/verify_p31_high16_shards.py'
+      - 'scripts/test_verify_p31_high16_shards.py'
   workflow_dispatch:
 
 permissions:
@@ -73,6 +74,9 @@ jobs:
           pattern: P31-RealHigh16-*
           merge-multiple: true
           path: p31-reports
+
+      - name: Verify aggregator rejects incomplete and forged coverage reports
+        run: python3 scripts/test_verify_p31_high16_shards.py
 
       - name: Reject missing, duplicated, partial or nonmatching high16 results
         run: |
