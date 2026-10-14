@@ -42,7 +42,8 @@ public final class P30VanillaBiomeNoiseTest {
         MultiNoiseBiomeSource source = MultiNoiseBiomeSource.createFromPreset(parameters);
 
         Full64BiomeCandidateSearch.Scope scope = new Full64BiomeCandidateSearch.Scope(
-                "2".repeat(64), "26.2", "minecraft:overworld", "minecraft:vanilla_overworld");
+                "2".repeat(64), System.getProperty("mcVersion", "26.2"),
+                "minecraft:overworld", "minecraft:vanilla_overworld");
         Full64BiomeCandidateSearch.BiomeModel model = new Full64BiomeCandidateSearch.BiomeModel() {
             public Full64BiomeCandidateSearch.Scope scope() { return scope; }
             public Full64BiomeCandidateSearch.ModelTrust trust() {
