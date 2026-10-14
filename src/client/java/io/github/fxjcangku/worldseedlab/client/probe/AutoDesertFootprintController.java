@@ -179,7 +179,9 @@ public final class AutoDesertFootprintController {
                 + " | 高度非法 " + invalidAnchorElevation
                 + " | 同座去重 " + duplicates
                 + " | 等待FULL线索 " + deferred.size()
-                + progress + " | 材料高度=实际地表"
+                + progress + " | 地层=" + (probe.automaticStrataEnabled()
+                        ? "自动STRATA" : probe.effectiveDetailMode().chineseLabel())
+                + " | 材料高度=实际地表"
                 + " | 生成器/Salt/自然来源=UNKNOWN";
     }
 
@@ -199,19 +201,26 @@ public final class AutoDesertFootprintController {
                 || WorldScopeResolver.discriminator(client) == null) {
             return lastStatus = "未进入可识别的世界，拒绝启动自动取证";
         }
+        // 一次/wsl auto on同时明确授权地下分层：不写入probe.properties。
+        probe.setAutomaticTerrainStrata(true);
         boolean startedProbe = !probe.active();
         if (startedProbe) probe.start(client);
-        if (!probe.active()) return lastStatus = "地形采集未能启动：" + probe.status();
+        if (!probe.active()) {
+            probe.setAutomaticTerrainStrata(false);
+            return lastStatus = "地形采集未能启动：" + probe.status();
+        }
         boolean startedSignatures = !probe.structureScanEnabled();
         if (startedSignatures) probe.setStructureScanning(true);
         if (!probe.structureScanEnabled()) {
-            if (startedProbe) probe.stop("P3.6 自动取证启动失败，停止联动取证");
+            if (startedProbe) probe.stop("P3.8自动取证启动失败，停止联动取证");
+            probe.setAutomaticTerrainStrata(false);
             return lastStatus = "P2.6 材料指纹索引未通过自检：" + probe.status();
         }
         var access = probe.mapAccess(client);
         if (access.isEmpty()) {
             if (startedSignatures && !startedProbe) probe.setStructureScanning(false);
-            if (startedProbe) probe.stop("P3.6 世界身份拒绝");
+            if (startedProbe) probe.stop("P3.8世界身份拒绝");
+            probe.setAutomaticTerrainStrata(false);
             return lastStatus = "HMAC 世界与维度隔离不可验证，禁止自动取证";
         }
         var scope = access.get();
@@ -239,7 +248,7 @@ public final class AutoDesertFootprintController {
                     return thread;
                 }, new ThreadPoolExecutor.AbortPolicy());
         running = true;
-        lastStatus = "P3.6 已明确授权：自动取证已加载建筑，同时保留真实群系和地形；不会求解或上传 Seed";
+        lastStatus = "P3.8已授权：群系、地表、地下STRATA与自动建筑材料/轮廓分别落盘；生成器和Seed未知";
         LOGGER.info("P3.6 started: surface-heightmap search, bounded client-loaded evidence; version={}", version);
         return status();
     }
@@ -258,6 +267,7 @@ public final class AutoDesertFootprintController {
             scannedChunks.clear();
             observedHints.clear();
             queuedFootprints.clear();
+            probe.setAutomaticTerrainStrata(false);
             if (ownsProbe && probe.active()) {
                 probe.stop("P3.6 自动取证停止：已关闭本次联动的地形/群系扫描");
             } else if (ownsSignatures && probe.structureScanEnabled()) {

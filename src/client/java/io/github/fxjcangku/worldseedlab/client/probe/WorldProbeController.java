@@ -71,6 +71,8 @@ public final class WorldProbeController {
     private final Set<TerrainDetailKey> detailSeen = new HashSet<>();
     private TerrainDetailCursor detailCursor;
     private DetailObservationStats detailStats;
+    /** P3.8地层一键授权仅在内存开启，不改变玩家保存的采样档位。 */
+    private boolean automaticTerrainStrata;
     private long detailCompletedAtStart;
     private final Map<String, Long> markedStructureCounts = new HashMap<>();
     private final Map<String, Long> biomes = new HashMap<>();
@@ -116,6 +118,24 @@ public final class WorldProbeController {
     public boolean active() { return gate.isActive(); }
     public String status() { return status; }
     public ProbeSettings settings() { return settings; }
+    public DetailMode effectiveDetailMode() {
+        return automaticTerrainStrata ? DetailMode.STRATA : settings.detailMode();
+    }
+    public boolean automaticStrataEnabled() { return automaticTerrainStrata; }
+
+    /** 一键取证临时切换STRATA；未完成的旧模式游标必须丢弃，不保存假分层。 */
+    public void setAutomaticTerrainStrata(boolean enabled) {
+        if (automaticTerrainStrata == enabled) return;
+        automaticTerrainStrata = enabled;
+        detailCursor = null;
+        if (active()) {
+            DetailMode selected = effectiveDetailMode();
+            detailCompletedAtStart = detailSeen.stream()
+                    .filter(key -> key.mode() == selected).count();
+            status = enabled ? "P3.8已临时开启地下STRATA与地表/海床联合取证"
+                    : "联合取证结束，已恢复用户原有详细采样档位";
+        }
+    }
     public int biomeTypes() { return biomes.size(); }
     public long observedSamples() { return observedSamples; }
     public long writtenSamples() { return writer == null ? 0 : writer.writtenSamples(); }
@@ -251,7 +271,7 @@ public final class WorldProbeController {
                     pendingWrites(), active(), advertisedDimensions);
             StringBuilder extended = new StringBuilder(report)
                     .append("\n【扩展地形证据】\n")
-                    .append("当前档位: ").append(settings.detailMode().chineseLabel()).append('\n')
+                    .append("当前档位: ").append(effectiveDetailMode().chineseLabel()).append('\n')
                     .append("本次及历史已完成详情区块: ").append(detailChunksWritten()).append('\n')
                     .append("本次标记建筑类型数: ").append(markedStructureCounts.size()).append('\n');
             markedStructureCounts.entrySet().stream()
@@ -485,8 +505,8 @@ public final class WorldProbeController {
             structureScanInterrupted = 0;
             structureQueueBackpressure = 0;
             markedStructureCounts.clear();
-            detailCompletedAtStart = (int) detailsResume.stream()
-                    .filter(k -> k.mode() == settings.detailMode()).count();
+            detailCompletedAtStart = detailsResume.stream()
+                    .filter(k -> k.mode() == effectiveDetailMode()).count();
             dimensionProfile = nextProfile;
             advertisedDimensions = registry;
             generationDiagnostics = new GenerationDiagnostics(nextProfile);
@@ -519,6 +539,7 @@ public final class WorldProbeController {
 
     public void stop(String reason) {
         gate.disarm();
+        automaticTerrainStrata = false;
         structureScanEnabled = false;
         if (structureCursor != null) structureScanInterrupted++;
         structureCursor = null;
@@ -654,7 +675,7 @@ public final class WorldProbeController {
      * 不会静默遗失或伪报为已写盘。
      */
     private void advanceDetail(Minecraft client, int budget) {
-        if (settings.detailMode() == DetailMode.OFF || writer.pending() >= 12) return;
+        if (effectiveDetailMode() == DetailMode.OFF || writer.pending() >= 12) return;
         if (detailCursor == null) {
             if (ticks % 8 != 1) return;
             int centerX = client.player.blockPosition().getX() >> 4;
@@ -666,7 +687,7 @@ public final class WorldProbeController {
                     for (int dz = -ring; dz <= ring; dz++) {
                         if (Math.max(Math.abs(dx), Math.abs(dz)) != ring) continue;
                         TerrainDetailKey key = new TerrainDetailKey(
-                                centerX + dx, centerZ + dz, settings.detailMode());
+                                centerX + dx, centerZ + dz, effectiveDetailMode());
                         if (detailSeen.contains(key)) continue;
                         if (client.level.getChunkSource().getChunk(key.chunkX(),
                                 key.chunkZ(), ChunkStatus.FULL, false) == null) continue;

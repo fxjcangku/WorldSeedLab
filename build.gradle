@@ -189,6 +189,32 @@ tasks.named('check') {
     dependsOn tasks.named('p26StructureSmokeTest')
 }
 
+// P3.8 多结构材料特征正反例：海底神殿/冷暖海底遗迹/沉船/其他保守候选。
+// 仅验证已接收材料的弱候选分类，不代表实际结构生成坐标或完整64位Seed。
+tasks.register('p38MultiStructureSmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate multiple aquatic/other structure material candidates and false-positive safeguards.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P38MultiStructureSmokeTest'
+}
+tasks.named('check') {
+    dependsOn tasks.named('p38MultiStructureSmokeTest')
+}
+
+// P3.8 地形前向模型条件约束：三处真正分隔区块，2 FIT + 1 HOLDOUT。
+// 仅研究受控生成器假设，不允许提升为未知服务器完整Seed结论。
+tasks.register('p38TerrainCandidateSmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate explicit terrain seed hypothesis FIT/HOLDOUT and fail-closed scope guards.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P38TerrainCandidateSmokeTest'
+}
+tasks.named('check') {
+    dependsOn tasks.named('p38TerrainCandidateSmokeTest')
+}
+
 
 // P2.7：纯 Java 有界候选求解器 + 对实际目标 Minecraft 本体的结构随机放置对照。
 tasks.register('p27SolverSmokeTest', JavaExec) {

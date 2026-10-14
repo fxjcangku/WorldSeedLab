@@ -4,6 +4,12 @@
 
 `/wsl auto on` 只会在玩家明确授权后启动一次 P1/P2 群系与地形采集、P2.6 低成本材料候选，以及 `client/probe/AutoDesertFootprintController`。它从已经接受的 FULL 区块逐 Tick 有界读取蓝陶瓦锚点，调用 `core/geometry/AutoDesertFootprintPlan` 制定29×29粗ROI，然后复用 `ClientVisibleDesertPyramidRaster` 的四侧21/21严格轮廓校验。只有完整不歧义的 CLIENT_OBSERVED_Blocks 经有界单线程异步写入HMAC世界/维度目录。生成器和人工来源仍UNKNOWN，绝不自动调用Z3、服务端NBT、强制区块加载或网络上传。离线独立研究另用群系/地形生成器模型检验完整64位，不因自动材料匹配就当作已证明Seed。
 
+## P3.8 原生 Fabric 联合采集与条件地形模型
+
+`WorldSeedLabClient` 将用户一次性 `/wsl auto on` 授权交给 `AutoDesertFootprintController`。它临时启用 `WorldProbeController` 的STRATA模式（仅内存状态，不覆盖个人配置），分别输出 P1三维群系、P2 WORLD_SURFACE、P2.2实际方块/海床/多高度图/地下STRATA、P2.6海洋及其它建筑材料候选和P3.6完整沙漠神殿轮廓。新 `structure-scanned-v2.csv` 专属P3.8材料判别模型，旧v1历史数据不改写。所有结构候选标记 naturalOrigin=UNKNOWN，不进入未经独立校准的low48求解。
+
+`P38TerrainCandidateAudit` 为离线/受控显式生成器前向模型门控：仅对同一世界/维度/游戏版本、至少3个横向间隔≥1024方块的真实高度图16列进行有限候选Seed 2FIT+1HOLDOUT比较。即便条件相符也只输出 `CONDITIONAL_MATCH_UNVERIFIED`，不认证真实生成器或完整64位Seed。用户没有明确前向生成器时不执行此算法；客户端Tick不能自动启动暴力破解。
+
 ## P3.7 离线世界生成研究（与客户端采集完全隔离）
 
 `scripts/research_p37_custom_worldgen.py` 只在用户本机显式运行，只读现有HMAC世界/维度目录中的 `evidence.jsonl`、`terrain.jsonl`、`terrain-detail.jsonl` 或一个本机ZIP。以白名单文件名逐行读取、检查CLIENT_OBSERVATION/schema/版本/作用域，单独统计群系注册ID与16列WORLD_SURFACE/地下STRATA，使用32×32宏区域判断能否为**未来**生成器模型划分独立FIT/HOLDOUT。客户端不启动外部Z3、不读取后台Seed/NBT、不自动把材料锚点提升到结构真起点。P3.7只输出匿名聚合，缺少真实生成器前向模型和独立验证则保持完整64位 `UNKNOWN`。
