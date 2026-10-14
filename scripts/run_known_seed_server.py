@@ -298,16 +298,24 @@ def rcon(command: str, password: str):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--minecraft", choices=["26.1.2","26.2"], required=True)
-    mc = parser.parse_args().minecraft
+    # P3.2 非零高16/负数Seed控制世界：只能在本机全新工作目录执行。
+    parser.add_argument("--seed", type=int, default=KNOWN_SEED)
+    args = parser.parse_args()
+    mc = args.minecraft
+    seed = args.seed
+    if seed < -(1 << 63) or seed >= (1 << 63):
+        raise ValueError("controlled 64bit seed must fit Java signed long")
     rundir = ROOT / "run"
     rundir.mkdir(exist_ok=True)
     world_name = "worldseedlab_known_seed_" + mc.replace(".", "_")
+    if seed != KNOWN_SEED:
+        world_name += "_negative_high16"
     world = rundir / world_name
     if world.exists():
         raise RuntimeError("existing world cannot be reused for provenance test")
     password = secrets.token_hex(22)
     settings = {
-        "level-name":world_name, "level-seed":str(KNOWN_SEED),
+        "level-name":world_name, "level-seed":str(seed),
         "generate-structures":"true", "level-type":"minecraft:normal",
         "gamemode":"creative", "difficulty":"peaceful",
         "server-ip":"127.0.0.1", "server-port":"25565",
@@ -320,7 +328,8 @@ def main():
     (rundir / "eula.txt").write_text("eula=true\n", encoding="utf-8")
     (rundir / "server.properties").write_text(
         "".join(k + "=" + v + "\n" for k,v in settings.items()), encoding="utf-8")
-    output = ROOT / "build" / "p29-realworld" / mc
+    output = (ROOT / "build" / ("p29-realworld" if seed == KNOWN_SEED
+                               else "p32-negative-realworld") / mc)
     output.mkdir(parents=True, exist_ok=True)
     process = subprocess.Popen([
         "gradle", "--no-daemon", "--console=plain", "-PmcVersion=" + mc,
@@ -344,7 +353,7 @@ def main():
     try:
         if not ready.wait(180):
             raise RuntimeError("server never reached Done: " + " | ".join(logs[-25:]))
-        print("[P29-REAL] Actual Minecraft server started; controlled seed = 2731",
+        print("[P29-REAL] Actual Minecraft server started; controlled seed =", seed,
               flush=True)
         located = []
         for x,z in QUERY_POINTS:
@@ -415,7 +424,7 @@ def main():
                 (output / "controlled_debug_region.mca").write_bytes(
                     sample_region.read_bytes())
         fixture = {
-            "game_version":mc, "known_seed":KNOWN_SEED,
+            "game_version":mc, "known_seed":seed,
             "structure_id":STRUCTURE,
             "source":"locally_generated_real_Minecraft_world",
             "located_positions":located,
