@@ -84,6 +84,8 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                                 "WorldSeedLab | " + (probe.active() ? "采集中" : "已停止")
                                 + " | 本次群系: " + probe.biomeTypes()
                                 + " | 观测样本: " + probe.observedSamples()
+                                + " | 自动结构: " + (probe.structureScanEnabled() ? "开" : "关")
+                                + " | 疑似聚合组: " + probe.structureCandidateGroups()
                                 + " | " + probe.status()));
                         return 1;
                     }))
@@ -122,6 +124,25 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                                 + " | " + probe.status()));
                         return 1;
                     }))
+                    // 结构识别必须独立手动授权，不因普通跑图采集自动启动。
+                    .then(ClientCommands.literal("structures")
+                            .executes(context -> {
+                                context.getSource().sendFeedback(Component.literal(
+                                        "结构材料扫描: " + (probe.structureScanEnabled() ? "开启" : "关闭")
+                                        + " | 近邻候选组: " + probe.structureCandidateGroups()
+                                        + " | 已落盘候选: " + probe.structureCandidateRecordsWritten()));
+                                return 1;
+                            })
+                            .then(ClientCommands.literal("on").executes(context -> {
+                                context.getSource().sendFeedback(Component.literal(
+                                        probe.setStructureScanning(true)));
+                                return 1;
+                            }))
+                            .then(ClientCommands.literal("off").executes(context -> {
+                                context.getSource().sendFeedback(Component.literal(
+                                        probe.setStructureScanning(false)));
+                                return 1;
+                            })))
                     .then(ClientCommands.literal("about").executes(context -> {
                         context.getSource().sendFeedback(Component.literal(
                                 "独立世界生成研究 | F8 打开液态玻璃面板 | 仅本地已加载区块 | 无 Seed 破解功能"));
