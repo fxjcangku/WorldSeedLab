@@ -17,7 +17,7 @@ public record StructureScanEvidence(
         List<StructureCandidate> candidates,
         Instant scannedAt
 ) {
-    public static final int MODEL_VERSION = 2;
+    public static final int MODEL_VERSION = 3;
     private static final Pattern HASH = Pattern.compile("[a-f0-9]{64}");
     private static final Pattern ID = Pattern.compile("[a-z0-9_.-]+:[a-z0-9_./-]+");
 
