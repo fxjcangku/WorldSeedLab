@@ -1,0 +1,40 @@
+{
+  "schema": 1,
+  "experiment": "P3.1_REAL_VANILLA_FULL64_ALL_HIGH16",
+  "githubActionsRun": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/38508647473",
+  "validatedHeadSha": "3c6c8fa4d56d8e9e037f0e1031ea372122fea80d",
+  "evidenceScope": "public controlled Minecraft FULL-chunk biome fixture, NOT remote client",
+  "limitations": "One known low48 candidate. Vanilla biome model assumes unchanged worldgen and five original observations. Neither proves custom-server seed nor reproduces non-vanilla ore generation.",
+  "versions": {
+    "26.1.2": {
+      "status": "FULL_HIGH16_DOMAIN_CHECKED",
+      "scope": "controlled_seed_2731_vanilla_overworld_only",
+      "evaluatedHigh16": 65536,
+      "shards": 16,
+      "candidateCount": 1,
+      "modelCandidatesHex16": [
+        "0000000000000aab"
+      ],
+      "uniqueInSpecifiedModel": true,
+      "aggregateWorkerMillis": 132044,
+      "evidenceSha256": "73b8e9915d422b9632c4d411d0dcd6f0f2150e920d1a1d18630b07fb5e4e9602",
+      "fitSamples": 3,
+      "holdoutSamples": 2
+    },
+    "26.2": {
+      "status": "FULL_HIGH16_DOMAIN_CHECKED",
+      "scope": "controlled_seed_2731_vanilla_overworld_only",
+      "evaluatedHigh16": 65536,
+      "shards": 16,
+      "candidateCount": 1,
+      "modelCandidatesHex16": [
+        "0000000000000aab"
+      ],
+      "uniqueInSpecifiedModel": true,
+      "aggregateWorkerMillis": 192808,
+      "evidenceSha256": "73b8e9915d422b9632c4d411d0dcd6f0f2150e920d1a1d18630b07fb5e4e9602",
+      "fitSamples": 3,
+      "holdoutSamples": 2
+    }
+  }
+}
