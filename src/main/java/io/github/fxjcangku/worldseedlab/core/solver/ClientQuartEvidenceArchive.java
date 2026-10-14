@@ -131,6 +131,17 @@ public final class ClientQuartEvidenceArchive {
         return decode(Files.readString(path, StandardCharsets.UTF_8));
     }
 
+    /** 防止换世界/维度时悄悄使用另一文件；作用域必须来自独立可信会话。 */
+    public static Archive decodeForScope(
+            String text, Full64BiomeCandidateSearch.Scope expected
+    ) {
+        Archive archive = decode(text);
+        if (!archive.scope().equals(Objects.requireNonNull(expected))) {
+            throw new IllegalArgumentException("导出的客户端证据与实际会话/版本/维度作用域不一致");
+        }
+        return archive;
+    }
+
     public static Archive decode(String text) {
         Objects.requireNonNull(text);
         if (text.length() > MAX_FILE_BYTES || text.indexOf('\r') >= 0) {
