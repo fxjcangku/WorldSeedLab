@@ -78,7 +78,11 @@ public final class CompletedChunkStore {
 
         writeAndForce(folder.resolve("evidence.jsonl"), data.toString());
         // 在完成进度之前原子生成地图索引；任何失败都不得宣称区块采集成功。
-        MapTileArchive.writeBiomes(MapTileArchive.root(folder), key, records);
+        // 仅真正的客户端观测写入“真实地图”；受控合成测试不可以画成世界真相。
+        if (records.stream().allMatch(item ->
+                item.origin() == io.github.fxjcangku.worldseedlab.core.evidence.EvidenceOrigin.CLIENT_OBSERVATION)) {
+            MapTileArchive.writeBiomes(MapTileArchive.root(folder), key, records);
+        }
         writeAndForce(folder.resolve("completed-chunks.csv"), key.asJournalLine() + "\n");
     }
 
