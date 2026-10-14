@@ -83,36 +83,50 @@ public final class SymbolicRandomSpread {
             }
             fits++;
             RandomSpreadSpec spec = input.models().get(constraint.structureSetId());
-            ChunkBounds b = constraint.possibleStartChunks();
-            long rx0 = Math.floorDiv(b.minX(), spec.spacing());
-            long rx1 = Math.floorDiv(b.maxX(), spec.spacing());
-            long rz0 = Math.floorDiv(b.minZ(), spec.spacing());
-            long rz1 = Math.floorDiv(b.maxZ(), spec.spacing());
-            List<String> permitted = new ArrayList<>();
-            for (long rx = rx0; rx <= rx1; rx++) {
-                for (long rz = rz0; rz <= rz1; rz++) {
-                    if (++fitRegions > options.maximumFitRegions()) {
-                        throw new IllegalArgumentException("too many region hypotheses for SMT");
+            // 同一 Region 只建模一次 RNG；每种朝向只加入实际可能的偏移窗口。
+            // 不使用外包矩形扩大候选集合，多个朝向按逻辑 OR 连接。
+            Map<Region, List<int[]>> offsetWindows = new java.util.LinkedHashMap<>();
+            for (ChunkBounds b : constraint.alternativeStartChunks()) {
+                long rx0 = Math.floorDiv(b.minX(), spec.spacing());
+                long rx1 = Math.floorDiv(b.maxX(), spec.spacing());
+                long rz0 = Math.floorDiv(b.minZ(), spec.spacing());
+                long rz1 = Math.floorDiv(b.maxZ(), spec.spacing());
+                for (long rx = rx0; rx <= rx1; rx++) {
+                    for (long rz = rz0; rz <= rz1; rz++) {
+                        long baseX = rx * spec.spacing();
+                        long baseZ = rz * spec.spacing();
+                        int lowX = (int) Math.max(0, (long) b.minX() - baseX);
+                        int highX = (int) Math.min(spec.offsetBound() - 1L, (long) b.maxX() - baseX);
+                        int lowZ = (int) Math.max(0, (long) b.minZ() - baseZ);
+                        int highZ = (int) Math.min(spec.offsetBound() - 1L, (long) b.maxZ() - baseZ);
+                        if (lowX > highX || lowZ > highZ) continue;
+                        offsetWindows.computeIfAbsent(new Region((int) rx, (int) rz),
+                                unused -> new ArrayList<>())
+                                .add(new int[] {lowX, highX, lowZ, highZ});
                     }
-                    long baseX = rx * spec.spacing();
-                    long baseZ = rz * spec.spacing();
-                    int lowX = (int) Math.max(0, (long) b.minX() - baseX);
-                    int highX = (int) Math.min(spec.offsetBound() - 1L, (long) b.maxX() - baseX);
-                    int lowZ = (int) Math.max(0, (long) b.minZ() - baseZ);
-                    int highZ = (int) Math.min(spec.offsetBound() - 1L, (long) b.maxZ() - baseZ);
-                    if (lowX > highX || lowZ > highZ) continue;
-                    String prefix = "fit_" + fits + "_region_" + fitRegions;
-                    long regionMixer = rx * X_MULT + rz * Z_MULT + spec.salt();
-                    String start = script.word(prefix + "_seed", "(bvxor (bvadd seed48 "
-                            + bv(regionMixer) + ") " + bv(MULTIPLIER) + ")");
-                    Offset x = script.offset(prefix + "_x", start,
-                            spec.offsetBound(), spec.distribution());
-                    Offset z = script.offset(prefix + "_z", x.afterState(),
-                            spec.offsetBound(), spec.distribution());
-                    String matchX = inclusive(x.value(), lowX, highX);
-                    String matchZ = inclusive(z.value(), lowZ, highZ);
-                    permitted.add("(and " + matchX + " " + matchZ + ")");
                 }
+            }
+            List<String> permitted = new ArrayList<>();
+            for (var entry : offsetWindows.entrySet()) {
+                if (++fitRegions > options.maximumFitRegions()) {
+                    throw new IllegalArgumentException("too many region hypotheses for SMT");
+                }
+                Region region = entry.getKey();
+                String prefix = "fit_" + fits + "_region_" + fitRegions;
+                long regionMixer = (long) region.x() * X_MULT
+                        + (long) region.z() * Z_MULT + spec.salt();
+                String start = script.word(prefix + "_seed", "(bvxor (bvadd seed48 "
+                        + bv(regionMixer) + ") " + bv(MULTIPLIER) + ")");
+                Offset x = script.offset(prefix + "_x", start,
+                        spec.offsetBound(), spec.distribution());
+                Offset z = script.offset(prefix + "_z", x.afterState(),
+                        spec.offsetBound(), spec.distribution());
+                List<String> allowedForRegion = new ArrayList<>();
+                for (int[] w : entry.getValue()) {
+                    allowedForRegion.add("(and " + inclusive(x.value(), w[0], w[1])
+                            + " " + inclusive(z.value(), w[2], w[3]) + ")");
+                }
+                permitted.add(disjunction(allowedForRegion));
             }
             script.raw("(assert " + disjunction(permitted) + ")");
         }
@@ -152,20 +166,24 @@ public final class SymbolicRandomSpread {
             }
             if (e.split() == StartPlacementConstraint.Split.FIT) fit++;
             else holdout++;
-            ChunkBounds b = e.possibleStartChunks();
-            long rx0 = Math.floorDiv(b.minX(), spec.spacing());
-            long rx1 = Math.floorDiv(b.maxX(), spec.spacing());
-            long rz0 = Math.floorDiv(b.minZ(), spec.spacing());
-            long rz1 = Math.floorDiv(b.maxZ(), spec.spacing());
-            if ((rx1 - rx0 + 1) * (rz1 - rz0 + 1) > 64) {
-                throw new IllegalArgumentException("structure start region exceeds safe limit");
-            }
-            for (long rx = rx0; rx <= rx1; rx++) {
-                for (long rz = rz0; rz <= rz1; rz++) {
-                    String identifier = e.structureSetId() + ":" + rx + ":" + rz;
-                    if (!seenRegions.add(identifier)) {
-                        throw new IllegalArgumentException("overlapping FIT/HOLDOUT structure region");
+            Set<String> localRegions = new HashSet<>();
+            for (ChunkBounds b : e.alternativeStartChunks()) {
+                long rx0 = Math.floorDiv(b.minX(), spec.spacing());
+                long rx1 = Math.floorDiv(b.maxX(), spec.spacing());
+                long rz0 = Math.floorDiv(b.minZ(), spec.spacing());
+                long rz1 = Math.floorDiv(b.maxZ(), spec.spacing());
+                for (long rx = rx0; rx <= rx1; rx++) {
+                    for (long rz = rz0; rz <= rz1; rz++) {
+                        localRegions.add(e.structureSetId() + ":" + rx + ":" + rz);
+                        if (localRegions.size() > 64) {
+                            throw new IllegalArgumentException("structure start region exceeds safe limit");
+                        }
                     }
+                }
+            }
+            for (String identifier : localRegions) {
+                if (!seenRegions.add(identifier)) {
+                    throw new IllegalArgumentException("overlapping FIT/HOLDOUT structure region");
                 }
             }
         }
@@ -193,6 +211,8 @@ public final class SymbolicRandomSpread {
     private static String bv(long word) {
         return "#x%012x".formatted(word & MASK);
     }
+
+    private record Region(int x, int z) {}
 
     private record Offset(String value, String afterState) {}
 
