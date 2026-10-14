@@ -135,7 +135,7 @@ P2.7 已确认的 Minecraft Legacy RandomSpread 数学模型现可转换成**可
 
 [查看 P3.0 的准确能力与后续高16位验证条件](docs/P30_FULL64_EVIDENCE_RESEARCH.md)
 
-## P3.7 / 自定义地形生成器与完整64位可辨识性（离线研究首阶段，待验收）
+## P3.7 / 自定义地形生成器与完整64位可辨识性（P3.7.0 离线审计已验收）
 
 **不再只分析沙漠神殿。** P3.7 新增本机只读 `scripts/research_p37_custom_worldgen.py`，可对 P1 真实 quart 群系、P2 真实 WORLD_SURFACE 高度和显式开启的 STRATA 地层进行分源审计：统计独立宏区域、检测非原版群系注册ID、识别同一块重复高度的可疑变化，区分“未修改原版群系模型不适用”“生成器未知”“完整64位无法辨识”。输出匿名中文摘要或JSON，不泄露私人坐标、世界HMAC或地址。
 
@@ -143,11 +143,11 @@ P2.7 已确认的 Minecraft Legacy RandomSpread 数学模型现可转换成**可
 python scripts/research_p37_custom_worldgen.py --input "D:\取证\observations.zip" --json-out "D:\取证\p37-anonymous-summary.json"
 ```
 
-当前只是P3.7.0离线证据资格/模型兼容性门控，**没有实现未知自定义生成器的前向逆函数，也没有从你的未知服务器恢复64位Seed**。详见 [P3.7研究方法](docs/P37_CUSTOM_WORLDGEN_IDENTIFIABILITY.md)。
+当前 P3.7.0 的 [12项离线正反例](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38556712832) 已全部成功（含用户原始ZIP防覆盖、跨世界HMAC拒绝、1024方块空间独立门槛）。这**没有实现未知自定义生成器的前向逆函数，也没有从你的未知服务器恢复64位Seed**。详见 [P3.7研究方法](docs/P37_CUSTOM_WORLDGEN_IDENTIFIABILITY.md)。
 
 ## P3.6 / 自定义地形与建筑自动联合取证（双版本受控实机已通过）
 
-**P3.6.2 长期跑图加强正在验收：** 已扫描区块不再到4096就终止自动模式，改为4096条上限的滚动近期缓存，旧区块再次经过可能被重扫（批次≠唯一覆盖）。仍保留单Tick256次额外方块读取、64份轮廓与256材料线索等安全上限；同时为P3.7增加只读离线自定义地形分析，不在客户端声称破解未知Salt或64位Seed。待新CI验收后更新完成状态。
+**P3.6.2 长期跑图加强已通过双版受控验收：** 已扫描区块不再达到4096就停止整个自动模式，改为4096容量的滚动近期缓存，旧区块再次经过可能被重扫（完成批次≠全图唯一覆盖）。依然严格保留256次额外BlockState/Tick、64份完整轮廓和256条蓝陶瓦线索等安全限制。[双版Java25 clean build](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38556249266) 与 [真实Fabric GUI自动四座神殿+FULL+Z3](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38556249269) 已成功。这不是无限空间或磁盘的保证。
 
 **WorldSeedLab 的最终目标是研究自定义地形服务器的生成器和世界 Seed。** 沙漠神殿、海底神殿只能在其结构放置算法经过验证的前提下作为 low48 的条件约束；实际地形高度、群系、地层和未知的噪声映射必须单独取证。不能把识别建筑说成恢复了自定义地形的64位后台Seed。
 

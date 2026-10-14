@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "project": "WorldSeedLab",
+  "phase": "P3.6.2+P3.7.0",
+  "date": "2026-10-14",
+  "repository": "fxjcangku/WorldSeedLab",
+  "p362": {
+    "implementation_commit": "82dcb16c87fd507e3dc14927cb23c003697cb35f",
+    "dual_build": {
+      "run_id": 38556249266,
+      "conclusion": "success"
+    },
+    "real_fabric_gui": {
+      "run_id": 38556249269,
+      "conclusion": "success"
+    },
+    "rolling_chunk_cache_capacity": 4096,
+    "explicit_simulated_scan_passes": 100000,
+    "actual_observed_game_versions": [
+      "26.1.2",
+      "26.2"
+    ],
+    "per_tick_extra_blockstates_max": 256,
+    "real_opt_in_client_commands_per_version": 1,
+    "structure_archives_per_version": 4,
+    "posthoc_full_structure_starts_per_version": 4,
+    "known_world_seed_low48": "2731",
+    "controlled_true_model_only": true,
+    "fit_structures": 2,
+    "holdout_structures": 1,
+    "versions": {
+      "26.1.2": {
+        "job_id": 115826015382,
+        "biome_observation_rows": 110592,
+        "terrain_chunk_rows": 148,
+        "p26_completed_material_chunks": 105
+      },
+      "26.2": {
+        "job_id": 115826015135,
+        "biome_observation_rows": 109056,
+        "terrain_chunk_rows": 148,
+        "p26_completed_material_chunks": 107
+      }
+    }
+  },
+  "p37": {
+    "final_audit_code_commit": "aec044eeeb9ca0854140c19b0e7688f1a761549e",
+    "offline_ci": {
+      "run_id": 38556712832,
+      "conclusion": "success",
+      "positive_negative_tests": 12
+    },
+    "origins": [
+      "CLIENT_OBSERVATION biome schema1",
+      "CLIENT terrain schema2",
+      "CLIENT STRATA schema4"
+    ],
+    "conservative_min_spatial_separation_blocks": 1024,
+    "structure_future_fit_holdout_only": "2FIT+1HOLDOUT NOT EXECUTED",
+    "biome_future_fit_holdout_only": "3FIT+2HOLDOUT NOT EXECUTED",
+    "actual_unknown_generator_seed_recovered": false,
+    "unknown_salt_tested": false,
+    "protects_existing_raw_files": true,
+    "private_uploaded_archive": {
+      "full_p37_cli_run_verified": false,
+      "existing_schema_and_namespace_independently_inspected_locally": true,
+      "private_coordinates_or_world_hmac_uploaded_to_public_repo": false
+    }
+  },
+  "caveats": [
+    "Real controlled Minecraft seed=2731 and navigated structures are not equivalent to unknown remote server blind structure discovery",
+    "Long-running FIFO prevents scan-history memory growth but does not remove the independent 64-site, 256-anchor or disk writer limits",
+    "All custom generator identities, natural structure origins, unknown Salt and full64 remain UNKNOWN without verified worldgen models",
+    "All public evidence is from controlled world or synthetic tests; no private user server location/address/coordinate/HMAC archived"
+  ]
+}
