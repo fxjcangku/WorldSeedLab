@@ -1,0 +1,58 @@
+name: P3.6 Actual Automatic Client Structures and Terrain
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/p36-automatic-client.yml'
+      - 'scripts/run_p36_real_automatic_client.py'
+      - 'src/client/java/io/github/fxjcangku/worldseedlab/client/probe/AutoDesertFootprintController.java'
+      - 'src/client/java/io/github/fxjcangku/worldseedlab/client/WorldSeedLabClient.java'
+      - 'src/main/java/io/github/fxjcangku/worldseedlab/core/geometry/AutoDesertFootprintPlan.java'
+      - 'src/test/java/io/github/fxjcangku/worldseedlab/core/P36RealFabricAutoEvidenceTest.java'
+      - 'build.gradle'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  auto-client:
+    name: Real auto Fabric GUI and custom-terrain ${{ matrix.minecraft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    strategy:
+      fail-fast: false
+      matrix:
+        minecraft: ['26.1.2', '26.2']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Gradle 9.6.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.1'
+      - name: Install real virtual X11 keyboard and local Z3
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+            xvfb xauth xdotool scrot x11-utils openbox libgl1-mesa-dri mesa-utils z3
+      - name: Real Fabric GUI on known custom-desert server, only once auto on
+        run: |
+          timeout --signal=INT --kill-after=30s 1100s \
+            python3 -u scripts/run_p36_real_automatic_client.py --minecraft=${{ matrix.minecraft }}
+      - name: Verify four real automatic client archives with independent FULL Anvil and Z3
+        run: |
+          gradle --no-daemon --console=plain \
+            -PmcVersion=${{ matrix.minecraft }} p36RealFabricAutoEvidenceTest
+      - name: Upload only public controlled-world P3.6 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: P36-RealAutomaticFabric-${{ matrix.minecraft }}
+          path: build/p36-real-client-footprint/${{ matrix.minecraft }}/
+          if-no-files-found: warn
+          retention-days: 7
