@@ -1,5 +1,6 @@
 package io.github.fxjcangku.worldseedlab.client.probe;
 
+import io.github.fxjcangku.worldseedlab.core.generation.ClientHeightmapSafety;
 import io.github.fxjcangku.worldseedlab.core.generation.DimensionProfile;
 import io.github.fxjcangku.worldseedlab.core.generation.TerrainDetailKey;
 import io.github.fxjcangku.worldseedlab.core.generation.TerrainDetailSample;
@@ -83,11 +84,16 @@ public final class TerrainDetailCursor {
                 BlockPos pos = new BlockPos((key.chunkX() << 4) + x, y,
                         (key.chunkZ() << 4) + z);
                 BlockState state = chunk.getBlockState(pos);
-                int bedY = Math.max(profile.minBuildY(), Math.min(
-                        profile.maxBuildYExclusive() - 1, oceanFloor - 1));
-                BlockPos bedPos = new BlockPos((key.chunkX() << 4) + x, bedY,
-                        (key.chunkZ() << 4) + z);
-                String bedBlock = blockId(chunk.getBlockState(bedPos));
+                // 实服26.2可能未传OCEAN_FLOOR，高度返回minBuildY-1。
+                // 保留原始哨兵高度，并明确标记海床方块未知，绝不钳制到基岩层冒充真值。
+                String bedBlock = ClientHeightmapSafety.UNAVAILABLE_OCEAN_FLOOR_ID;
+                if (ClientHeightmapSafety.usableOceanFloor(
+                        profile.minBuildY(), worldSurface, oceanFloor)) {
+                    int bedY = oceanFloor - 1;
+                    BlockPos bedPos = new BlockPos((key.chunkX() << 4) + x, bedY,
+                            (key.chunkZ() << 4) + z);
+                    bedBlock = blockId(chunk.getBlockState(bedPos));
+                }
                 surface.add(new TerrainDetailSample.SurfaceCell(
                         x, z, y, blockId(state), truncateState(state.toString()),
                         fluidId(state), biomeId(level, pos),
