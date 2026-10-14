@@ -156,6 +156,9 @@ def run(version: str):
     (server_dir / "eula.txt").write_text("eula=true\n", encoding="utf-8")
     env = os.environ.copy()
     env["DISPLAY"] = ":97"
+    env["XDG_SESSION_TYPE"] = "x11"
+    env.pop("WAYLAND_DISPLAY", None)
+    env.pop("WAYLAND_SOCKET", None)
     env["LIBGL_ALWAYS_SOFTWARE"] = "1"
     display = subprocess.Popen(
         ["Xvfb",":97","-screen","0","1280x720x24","-nolisten","tcp"],
@@ -188,8 +191,10 @@ def run(version: str):
             out / "client.log",env=env)
         wait_until(lambda:client.saw("WorldSeedLab P1 ready for Minecraft "+version),
                    180, "actual Fabric client mod did not initialize", server, client)
+        # 软件GL在共享GitHub Runner上可能长时间编译shader/加载资源；
+        # 必须等待游戏映射实际窗口，不能用仅有Mod初始化日志替代成功。
         wait_until(lambda:visible_minecraft_window(env) is not None,
-                   40, "Minecraft window not created", server, client)
+                   140, "Minecraft window not created", server, client)
         print("[P33] Actual Fabric runClient initialized + X11 game window exists",
               flush=True)
 
@@ -259,6 +264,33 @@ def run(version: str):
             print("[P33] X11 visible-window inventory:\n"+listing.stdout[-3500:],flush=True)
         except (OSError,subprocess.TimeoutExpired):
             pass
+        # 最终定位显示隔离与渲染卡点；只打印JAVA子进程实际DISPLAY，
+        # 不读取私人服务器记录、不打印GitHub secrets或其它进程环境。
+        for candidate in Path("/proc").glob("[0-9]*/cmdline"):
+            try:
+                cmd = candidate.read_bytes().replace(b"\x00",b" ").decode("utf-8","replace")
+                if ("net.fabricmc.devlaunchinjector" not in cmd
+                        and "net.fabricmc.loader.impl.launch" not in cmd
+                        and "net.minecraft.client.main.Main" not in cmd):
+                    continue
+                pid = int(candidate.parent.name)
+                raw_env = (candidate.parent/"environ").read_bytes()
+                display_vars = [item.decode("utf-8","replace")
+                        for item in raw_env.split(b"\x00")
+                        if item.startswith((b"DISPLAY=",b"WAYLAND_DISPLAY=",
+                                            b"XDG_SESSION_TYPE="))]
+                print("[P33] Client JVM display namespace: pid=" + str(pid)
+                      + " " + repr(display_vars),flush=True)
+                result = subprocess.run(["jcmd",str(pid),"Thread.print"],
+                        capture_output=True,text=True,timeout=12)
+                dump = result.stdout.splitlines()
+                index = next((i for i,line in enumerate(dump)
+                          if '"Render thread"' in line),-1)
+                if index >= 0:
+                    print("[P33] Render thread limited stack:\n"
+                          + "\n".join(dump[index:index+13]),flush=True)
+            except (OSError,PermissionError,ValueError,subprocess.TimeoutExpired):
+                pass
         screenshot(out/"controlled-client-failure.png",env)
         raise
     finally:
