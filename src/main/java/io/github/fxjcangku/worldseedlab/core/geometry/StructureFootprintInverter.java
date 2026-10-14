@@ -44,12 +44,12 @@ public final class StructureFootprintInverter {
     /** 完整轮廓必须由独立人工/测绘证据确认；普通材料识别不得升级。 */
     public record ObservedFootprint(
             String worldFingerprint, String gameVersion, String dimension,
-            String structureSetId, BlockBounds blocks, FootprintQuality quality
+            String structureSetId, String structureId, BlockBounds blocks, FootprintQuality quality
     ) {
         public ObservedFootprint {
             if (worldFingerprint == null || !WORLD.matcher(worldFingerprint).matches()
                     || !supported(gameVersion) || !validId(dimension)
-                    || !validId(structureSetId)) {
+                    || !validId(structureSetId) || !validId(structureId)) {
                 throw new IllegalArgumentException("轮廓的世界、版本或结构集合身份非法");
             }
             Objects.requireNonNull(blocks);
@@ -63,14 +63,14 @@ public final class StructureFootprintInverter {
      */
     public record Calibration(
             String referenceId, String gameVersion, String dimension, String structureSetId,
-            String variant, int relativeMinX, int relativeMinZ,
+            String structureId, String variant, int relativeMinX, int relativeMinZ,
             int relativeMaxX, int relativeMaxZ, int edgeToleranceBlocks
     ) {
         public Calibration {
             if (referenceId == null || !REFERENCE.matcher(referenceId).matches()
                     || variant == null || !REFERENCE.matcher(variant).matches()
                     || !supported(gameVersion) || !validId(dimension)
-                    || !validId(structureSetId)) {
+                    || !validId(structureSetId) || !validId(structureId)) {
                 throw new IllegalArgumentException("校准来源、版本或结构集合非法");
             }
             if (relativeMinX > relativeMaxX || relativeMinZ > relativeMaxZ
@@ -84,13 +84,13 @@ public final class StructureFootprintInverter {
         /** 用真实已知起点区块反算边界偏移，使用 long 避免负极限坐标溢出。 */
         public static Calibration fromControlled(
                 String referenceId, String version, String dimension, String setId,
-                String variant, BlockBounds controlledBoundary,
+                String structureId, String variant, BlockBounds controlledBoundary,
                 int trueStartChunkX, int trueStartChunkZ, int tolerance
         ) {
             Objects.requireNonNull(controlledBoundary);
             long anchorX = (long) trueStartChunkX * 16;
             long anchorZ = (long) trueStartChunkZ * 16;
-            return new Calibration(referenceId, version, dimension, setId, variant,
+            return new Calibration(referenceId, version, dimension, setId, structureId, variant,
                     exactOffset((long) controlledBoundary.minX() - anchorX),
                     exactOffset((long) controlledBoundary.minZ() - anchorZ),
                     exactOffset((long) controlledBoundary.maxX() - anchorX),
@@ -141,7 +141,8 @@ public final class StructureFootprintInverter {
         for (Calibration template : controlledCalibrations) {
             if (!observed.gameVersion().equals(template.gameVersion())
                     || !observed.dimension().equals(template.dimension())
-                    || !observed.structureSetId().equals(template.structureSetId())) {
+                    || !observed.structureSetId().equals(template.structureSetId())
+                    || !observed.structureId().equals(template.structureId())) {
                 throw new IllegalArgumentException("跨版本、维度或结构集合的校准禁止混用");
             }
             if (!variantIds.add(template.variant())) {
