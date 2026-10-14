@@ -219,3 +219,13 @@ tasks.register('p27ResearchCli', JavaExec) {
     mainClass = 'io.github.fxjcangku.worldseedlab.core.solver.SolverResearchCli'
     args providers.gradleProperty('solverInput').orElse('NO_SOLVER_INPUT').get()
 }
+
+tasks.register('p27InputSmokeTest', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P27ResearchInputSmokeTest'
+}
+tasks.named('check') {
+    dependsOn tasks.named('p27InputSmokeTest')
+}
