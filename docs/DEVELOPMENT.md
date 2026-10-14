@@ -1,6 +1,6 @@
 # WorldSeedLab · 开发、构建与验收
 
-> 真实研发状态：P0～P2.7 代码及双版本 CI 验证；尚未 runClient 实机验收。P2.7 只有离线低48位有界候选搜索，并非完整世界 Seed 破解器。
+> 2026-10-14 状态：P3.6 已由 PR #25 合并 main；最终源码 `fd481292` 双版本真实 Fabric GUI 自动取证与后验 FULL/Z3 均成功，合并提交 `24e4fb34` 双版本构建成功。未知自定义服务器完整64位 Seed 尚未验证。
 
 ## 项目环境
 
@@ -19,6 +19,8 @@ gradle -PmcVersion=26.1.2 clean build
 gradle -PmcVersion=26.2 clean build
 ```
 
+完整 `clean build` 会执行依赖本机 `z3` 命令的真实 SMT 回归；若当前只需生成可装载 Fabric JAR、尚未准备 Z3，可使用 `gradle --no-daemon -PmcVersion=26.2 clean assemble`（**跳过独立回归，不可据此声称测试通过**）。正常 `.jar` 位于 `build/libs/`，排除 `-sources.jar` 和开发专用 `-dev.jar`。
+
 运行单人测试客户端：
 
 ```bash
@@ -32,6 +34,13 @@ gradle -PmcVersion=26.2 runClient
 - `p2SmokeTest`：维度档案、地形高度图、独立索引、中文报告、异步退出落盘。
 
 **CI 产物仅供受控实验，当前不自动发布 GitHub Release。**
+
+## P3.6 一键联合取证（真正 GUI 双版本验收通过）
+
+- 玩家进入目标服务器后主动输入 `/wsl auto on`，不再逐座手动 first/second/export；断线、切世界、维度变化默认停止。`/wsl auto status` 查看完成轮廓与**真正已落盘**数量，`/wsl auto off` 停止，`/wsl path` 定位原始私有证据目录。
+- 自动取证同时开启 P1 群系、P2 基础地形高度和 P2.6 材料扫描；目前完整结构轮廓只验证沙漠神殿21×21，蓝陶瓦缺失、Y 高度差、鞘翅高速移动、被改建或人工仿造都可能误检/漏检，天然来源与生成器未知。
+- P2.2 **地下稀疏分层首次默认为 OFF**；要分析自定义地下地层，先用 F8/`/wsl detail` 选 `STRATA`，再开启 `/wsl auto on`。详情档位不能在采集中途更改。
+- 最终真实双版本取证 [Actions #38534515870](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38534515870)，合并后双版本构建 [#38535882551](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38535882551)。仅受控已知 Seed=2731，自定义生成器/未知 Salt/高16及完整64位尚待独立证据。详情见 [P3.6报告](P36_AUTOMATIC_CUSTOM_WORLD_EVIDENCE.md)。
 
 ## P1 真实群系采集
 
@@ -111,7 +120,7 @@ gradle -PmcVersion=26.2 -PsolverInput=/path/to/solver-input.properties -PsmtMaxM
 
 [完整实现约束、注意事项及 Seed 挖矿限制](P28_SYMBOLIC_SOLVER_AND_ORE_POLICY.md)。
 
-## 正式验收仍需实机测试
+## 未知目标服务器仍需实际验证
 
 1. 在 Minecraft 26.1.2 / 26.2 的正常客户端上装载 mod。
 2. F8 / `/wsl gui` 正常打开且中文没有溢出，关闭面板后后台采样正常工作。
@@ -123,4 +132,4 @@ gradle -PmcVersion=26.2 -PsolverInput=/path/to/solver-input.properties -PsmtMaxM
 
 开源和改动约束：[根目录《开发习惯.md》](../%E5%BC%80%E5%8F%91%E4%B9%A0%E6%83%AF.md)。
 
-**未实现：** 结构自动检测、原版结构放置模型适配与验证、完整或部分 Seed 求解、自定义生成器参数还原；没有任何可保证破解的承诺。
+**研究边界：** 已有受控已知 Seed 的自动沙漠神殿完整可见轮廓、条件 low48 求解与真实 GUI 回归，但没有通用结构自然来源认证、未知 Salt 自适应求解、未知自定义生成器还原或任意目标服务器完整64位 Seed 破解保证。
