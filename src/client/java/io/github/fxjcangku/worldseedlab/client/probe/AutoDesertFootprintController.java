@@ -2,6 +2,7 @@ package io.github.fxjcangku.worldseedlab.client.probe;
 
 import io.github.fxjcangku.worldseedlab.client.scope.WorldScopeResolver;
 import io.github.fxjcangku.worldseedlab.core.geometry.AutoDesertFootprintPlan;
+import io.github.fxjcangku.worldseedlab.core.probe.BoundedChunkHistory;
 import io.github.fxjcangku.worldseedlab.core.geometry.ClientVisibleDesertPyramidRaster;
 import io.github.fxjcangku.worldseedlab.core.geometry.StructureFootprintInverter;
 import java.io.IOException;
@@ -46,7 +47,8 @@ public final class AutoDesertFootprintController {
     private static final Logger LOGGER = LoggerFactory.getLogger("WorldSeedLab");
     private static final int BLOCKS_PER_TICK = 256;
     private static final int RADIUS_CHUNKS = 2;
-    private static final int MAX_SCANNED_CHUNKS = 4096;
+    // 4096是去重历史的内存上限，不是自动取证会话的区块终点。
+    private static final int RECENT_SCANNED_CACHE = 4096;
     private static final int MAX_OBSERVED_SITES = 64;
     private static final int MAX_DISTINCT_BLUE_HINTS = 256;
     private static final int MAX_DEFERRED_HINTS = 24;
@@ -57,7 +59,8 @@ public final class AutoDesertFootprintController {
     private final String version;
     private final AtomicInteger filesPersisted = new AtomicInteger();
     private final AtomicReference<String> diskError = new AtomicReference<>();
-    private final Set<Long> scannedChunks = new HashSet<>();
+    private final BoundedChunkHistory scannedChunks =
+            new BoundedChunkHistory(RECENT_SCANNED_CACHE);
     private final Set<String> observedHints = new HashSet<>();
     private final Set<Long> queuedFootprints = new HashSet<>();
     private final ArrayDeque<Deferred> deferred = new ArrayDeque<>();
@@ -71,6 +74,7 @@ public final class AutoDesertFootprintController {
     private Capture capture;
     private ThreadPoolExecutor executor;
     private long ticks, attempts, verified, incomplete, completedChunks, interrupted, duplicates;
+    private long droppedDeferred, invalidAnchorElevation;
     private String lastStatus = "P3.6 自动结构与地形联合取证未启用（默认关闭）";
 
     private record Deferred(AutoDesertFootprintPlan.BlueTerracottaAnchor anchor,
@@ -146,14 +150,21 @@ public final class AutoDesertFootprintController {
                 : search != null
                     ? " | 材料探测 " + search.next + "/" + search.total()
                     : "";
+        int pendingFiles = executor == null ? 0
+                : executor.getQueue().size() + executor.getActiveCount();
         return lastStatus + " | 自动取证 " + (running ? "开启" : "关闭")
                 + " | 材料线索 " + attempts + " | 完整可见轮廓 " + verified
                 + " | 已落盘 " + filesPersisted.get()
-                + " | 已扫描区块 " + completedChunks
-                + " | 卸载中断 " + interrupted
+                + " | 文件待写 " + pendingFiles
+                + " | 扫描完成批次 " + completedChunks
+                + " | 近期缓存 " + scannedChunks.retained() + "/" + RECENT_SCANNED_CACHE
+                + " | 历史淘汰 " + scannedChunks.evictions()
+                + " | 区块卸载中断 " + interrupted
                 + " | 轮廓不合格/歧义 " + incomplete
+                + " | 等待FULL超时/丢弃 " + droppedDeferred
+                + " | 高度非法 " + invalidAnchorElevation
                 + " | 同座去重 " + duplicates
-                + " | 待补全区块 " + deferred.size()
+                + " | 等待FULL线索 " + deferred.size()
                 + progress + " | 材料高度=实际地表"
                 + " | 生成器/Salt/自然来源=UNKNOWN";
     }
@@ -198,6 +209,7 @@ public final class AutoDesertFootprintController {
         dimension = scope.dimension();
         folder = scope.folder();
         ticks = attempts = verified = incomplete = completedChunks = interrupted = duplicates = 0;
+        droppedDeferred = invalidAnchorElevation = 0;
         filesPersisted.set(0);
         diskError.set(null);
         scannedChunks.clear();
@@ -220,9 +232,11 @@ public final class AutoDesertFootprintController {
 
     public String stop(String reason) {
         if (running) {
-            LOGGER.info("P3.6 stopped: {} | fullChunks={} unloads={} blueHints={} acceptedSites={} savedSites={} rejected={} duplicates={}",
-                    reason, completedChunks, interrupted, attempts, verified,
-                    filesPersisted.get(), incomplete, duplicates);
+            LOGGER.info("P3.6 stopped: {} | completeScanPasses={} recentCache={} evicted={} unloads={} blueHints={} acceptedSites={} savedSites={} pendingFiles={} rejected={} deferredLost={} duplicates={}",
+                    reason, completedChunks, scannedChunks.retained(), scannedChunks.evictions(),
+                    interrupted, attempts, verified, filesPersisted.get(),
+                    executor == null ? 0 : executor.getActiveCount() + executor.getQueue().size(),
+                    incomplete, droppedDeferred, duplicates);
             running = false;
             search = null;
             capture = null;
@@ -279,9 +293,10 @@ public final class AutoDesertFootprintController {
         }
         ticks++;
         if (ticks % 1200 == 0) {
-            LOGGER.info("P3.6 progress: fullChunks={} unloads={} blueHints={} acceptedSites={} savedSites={} rejected={}",
-                    completedChunks, interrupted, attempts, verified,
-                    filesPersisted.get(), incomplete);
+            LOGGER.info("P3.6 progress: completeScanPasses={} recentCache={} evicted={} unloads={} blueHints={} acceptedSites={} savedSites={} rejected={} deferredLost={}",
+                    completedChunks, scannedChunks.retained(), scannedChunks.evictions(),
+                    interrupted, attempts, verified, filesPersisted.get(),
+                    incomplete, droppedDeferred);
         }
         if (ticks % 100 == 0) {
             var access = probe.mapAccess(client);
@@ -297,8 +312,8 @@ public final class AutoDesertFootprintController {
                 if (ticks % 20 == 1) retryDeferred(client.level);
                 if (capture == null) advanceBlueSearch(client);
             }
-            if (verified >= MAX_OBSERVED_SITES || scannedChunks.size() >= MAX_SCANNED_CHUNKS) {
-                stop("P3.6 本次会话已达到预设证据/扫描预算，自动停止；证据仍属于模型假设");
+            if (verified >= MAX_OBSERVED_SITES) {
+                stop("P3.6 本轮已接受64份完整轮廓，达到单会话证据安全上限；请等待写盘排空后人工确认是否继续");
             }
         } catch (RuntimeException failure) {
             LOGGER.error("P3.6 automatic scan failed; partial evidence refused", failure);
@@ -371,7 +386,7 @@ public final class AutoDesertFootprintController {
             if (!tryCapture(blue, client.level)) {
                 if (deferred.size() == MAX_DEFERRED_HINTS) {
                     deferred.removeFirst();
-                    incomplete++;
+                    droppedDeferred++;
                 }
                 deferred.addLast(new Deferred(blue, ticks));
                 lastStatus = "发现蓝陶瓦材料线索，但完整ROI尚未全部加载；只等待普通客户端正常接收区块";
@@ -379,7 +394,7 @@ public final class AutoDesertFootprintController {
             break; // 已观察到一处线索，本次 tick 不再做另一处方块扫描。
         }
         if (cursor.next >= cursor.total()) {
-            if (scannedChunks.add(pack(cursor.x, cursor.z))) completedChunks++;
+            if (scannedChunks.remember(pack(cursor.x, cursor.z))) completedChunks++;
             search = null;
         }
     }
@@ -389,7 +404,7 @@ public final class AutoDesertFootprintController {
         for (int i = 0; i < count && capture == null; i++) {
             Deferred item = deferred.removeFirst();
             if (ticks - item.firstTick() > DEFERRED_TICKS) {
-                incomplete++;
+                droppedDeferred++;
                 continue;
             }
             if (!tryCapture(item.anchor(), level)) {
@@ -405,7 +420,7 @@ public final class AutoDesertFootprintController {
             survey = AutoDesertFootprintPlan.fromObservedBlue(
                     blue, level.getMinY(), level.getMaxY());
         } catch (IllegalArgumentException badElevation) {
-            incomplete++;
+            invalidAnchorElevation++;
             return true; // 没有合法Y窗口，无意义重试。
         }
         var bounds = survey.roughBounds();

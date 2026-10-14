@@ -33,3 +33,5 @@ P3.4 自定义生成器研究先读 [docs/P34_CUSTOM_WORLDGEN_COMPATIBILITY.md](
 P3.4.1 修改 Salt 研究必须先读 [docs/P34_REAL_MODIFIED_SALT_CONTROL.md](docs/P34_REAL_MODIFIED_SALT_CONTROL.md)。将真实受控 Minecraft 数据包 enabled、FULL Anvil 及保存的 StructureStart 作为三项独立验收条件；仅校验 JSON 文件存在不能声称实际自定义结构规则生效。普通客户端不能访问这些服务端真值。
 
 P3.6 自动世界生成证据研发必须先阅读 [docs/P36_AUTOMATIC_CUSTOM_WORLD_EVIDENCE.md](docs/P36_AUTOMATIC_CUSTOM_WORLD_EVIDENCE.md)。一键手动授权只检查已加载 FULL 区块，发现材料候选不得冒充自然生成 StructureStart；仅完整21×21外沿可以成为条件几何候选，且生成器和Salt未知时不得直接运行 low48/完整64位求解。群系/地形与结构证据必须保持独立来源，默认关闭、失败关闭、单次有界、局部异步保存、仅本机原始坐标，双版独立编译及真实 Fabric GUI 自动取证验收，不能用P3.5手动双角成功替代自动功能成功。
+
+P3.7 新增离线证据兼容性分析，必须先阅读 [docs/P37_CUSTOM_WORLDGEN_IDENTIFIABILITY.md](docs/P37_CUSTOM_WORLDGEN_IDENTIFIABILITY.md)。只能在用户显式操作下只读已保存的真实客户端 P1/P2/STRATA；不得混合同一压缩包中的不同世界/维度，不能上传或记录原始服务器地址、坐标、HMAC私钥。非原版群系ID仅说明原样原版注册表模型不能直接解释，不等于已识别自定义生成器。没有可验证模型和独立FIT/HOLDOUT时，Salt、自然结构起点、完整64位Seed保持UNKNOWN。P3.7 的纯Python正反例与 Fabric 双版本真实GUI验收分开执行。

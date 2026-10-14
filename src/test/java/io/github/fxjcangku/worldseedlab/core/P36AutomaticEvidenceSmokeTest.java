@@ -5,6 +5,7 @@ import io.github.fxjcangku.worldseedlab.core.geometry.ClientVisibleDesertPyramid
 import io.github.fxjcangku.worldseedlab.core.geometry.StructureFootprintInverter;
 import java.nio.file.Files;
 import java.util.List;
+import io.github.fxjcangku.worldseedlab.core.probe.BoundedChunkHistory;
 
 /**
  * P3.6 纯Java自动粗ROI和既有P3.5真实可见轮廓接口的正反例。
@@ -16,6 +17,30 @@ public final class P36AutomaticEvidenceSmokeTest {
     private P36AutomaticEvidenceSmokeTest() {}
 
     public static void main(String[] args) throws Exception {
+        // 真正长期跑图必须能继续扫描4096个以上的不同区块，且缓存不会膨胀。
+        expectFailure(() -> new BoundedChunkHistory(0), "禁止无容量扫描历史");
+        BoundedChunkHistory recent = new BoundedChunkHistory(4096);
+        for (long chunk = 0; chunk < 4096; chunk++) {
+            check(recent.remember(chunk), "首次完成的区块必须记账");
+        }
+        check(recent.retained() == 4096 && recent.evictions() == 0,
+                "首次4096个扫描区块不得提前淘汰或停机");
+        check(!recent.remember(4095L), "近期同一区块不得重复完成");
+        check(recent.remember(4096L) && recent.retained() == 4096
+                        && recent.evictions() == 1
+                        && !recent.contains(0L) && recent.contains(4096L),
+                "超过上限时应滚动淘汰最旧区块，不能停止整轮P3.6");
+        for (long chunk = 4097; chunk < 100_000; chunk++) {
+            check(recent.remember(chunk), "长时间跑图新发现区块应继续记录");
+        }
+        check(recent.retained() == 4096 && recent.evictions() == 100_000L-4096L
+                        && !recent.contains(1L) && recent.contains(99_999L),
+                "十万区块滚动缓存必须严格有界，历史淘汰准确");
+        recent.clear();
+        check(recent.retained() == 0 && recent.evictions() == 0
+                        && recent.remember(-1L) && recent.remember(0L),
+                "新世界必须清空历史；负数和零区块键不能发生碰撞");
+
         for (String version : List.of("26.1.2", "26.2")) {
             // 先前以玩家Y决定材料探测带，在鞘翅高空会错过地表蓝陶瓦。
             var surfaceBand = AutoDesertFootprintPlan.aroundObservedSurface(79, -64, 320);
