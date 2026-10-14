@@ -95,9 +95,9 @@ P2.7 已确认的 Minecraft Legacy RandomSpread 数学模型现可转换成**可
 
 已开始实现**完整水平轮廓 + 已知 Seed 受控结构真值校准 → 多朝向离散起点假设 → 原创 Z3 约束与 Java FIT/HOLDOUT 复核**。不把不同朝向之间的空白区块填成合法起点；保留负坐标、世界/维度/版本隔离和有界求解。
 
-**当前仅有合成轮廓的自动化验证，尚未从实际单人世界确认生成后的 StructureStart 起点，也没有破解任何未知服务器的完整世界 Seed。** 普通客户端只能离线研究已接收的数据，不会直接收到全部服务端结构配置。不能保证所有自定义地图都可唯一恢复 Seed。
+**P2.9 已通过两版真实 Minecraft 离线世界生成实验：** Seed `2731` 的原版沙漠神殿共获取每版 4 条保存的真实 StructureStart（包含建筑部件边界框），经真实 Z3 以 2 FIT + 1 独立 HOLDOUT 找回低48候选，错误 Seed 被否决。与仅用合成建筑坐标测试不同，这次结构起点来自 Minecraft 真正生成的区块存档。**但仍未完成 GUI 单人客户端观察、玩家可见建筑轮廓提取、任何未知服务器完整 Seed 恢复。** 普通客户端不能直接读取服务器的 StructureStart NBT，自定义 Salt/算法与矿脉规则仍需独立研究。
 
-[查看 P2.9 几何逆推研发说明](docs/P29_GEOMETRY_INVERSION.md)
+[P2.9 几何逆推说明](docs/P29_GEOMETRY_INVERSION.md) · [真实 Minecraft 受控世界验收报告](docs/P29_REAL_WORLD_KNOWN_SEED.md)
 
 ## 02 / 研究边界
 
