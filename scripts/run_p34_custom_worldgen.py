@@ -20,6 +20,42 @@ from run_known_seed_server import (
     scan_structure_starts, scan_observed_biome_quart_samples,
 )
 
+VANILLA_DESERT_SALT = 14357617
+MODIFIED_DESERT_SALT = 14357844
+DATAPACK_NAME = "worldseedlab_p34_modified_salt"
+
+
+def install_modified_salt_pack(world: Path, version: str) -> None:
+    """只在全新隔离实验世界写入数据包；普通Fabric客户端无服务端写入功能。
+
+    与目标Minecraft的数据包版本精确匹配。随后须由游戏自己确认启用，
+    最终还要用真实已生成StructureStart的偏移核对，不能仅信任此文件。
+    """
+    formats = {"26.1.2": [101, 1], "26.2": [107, 1]}
+    pack_version = formats[version]
+    target = world / "datapacks" / DATAPACK_NAME
+    location = target / "data" / "minecraft" / "worldgen" / "structure_set"
+    location.mkdir(parents=True, exist_ok=False)
+    (target / "pack.mcmeta").write_text(json.dumps({
+        "pack": {
+            "description": "WorldSeedLab P3.4 controlled modified-salt structure set",
+            "min_format": pack_version,
+            "max_format": pack_version,
+        }
+    }, indent=2) + "\n", encoding="utf-8")
+    payload = {
+        "structures": [{"structure": "minecraft:desert_pyramid", "weight": 1}],
+        "placement": {
+            "type": "minecraft:random_spread",
+            "spacing": 32,
+            "separation": 8,
+            "salt": MODIFIED_DESERT_SALT,
+        },
+    }
+    (location / "desert_pyramids.json").write_text(
+        json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
 GENERATOR = {
     "biome": "minecraft:desert",
     "features": False,
@@ -66,15 +102,21 @@ def scan_custom_terrain(world: Path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--minecraft", choices=["26.1.2", "26.2"], required=True)
+    parser.add_argument("--modified-salt", action="store_true",
+                        help="仅受控实验：在全新世界真实替换神殿结构集Salt")
     args = parser.parse_args()
     version = args.minecraft
     root = ROOT / "run"
     root.mkdir(exist_ok=True)
-    name = "worldseedlab_p34_custom_flat_" + version.replace(".", "_")
+    name = ("worldseedlab_p34_changed_salt_" if args.modified_salt
+            else "worldseedlab_p34_custom_flat_") + version.replace(".", "_")
     if (root / name).exists():
         raise RuntimeError("旧世界目录已存在：拒绝复用带历史区块的存档")
-    output = ROOT / "build/p34-controlled" / version
+    output = ROOT / ("build/p34-modified-salt" if args.modified_salt
+                     else "build/p34-controlled") / version
     output.mkdir(parents=True, exist_ok=True)
+    if args.modified_salt:
+        install_modified_salt_pack(root / name, version)
     secret = secrets.token_hex(20)
     props = {
         "level-name": name,
@@ -118,6 +160,13 @@ def main():
         if not ready.wait(200):
             raise RuntimeError("真实Minecraft自定义服务端没有启动: "
                                + " | ".join(recent[-35:]))
+        pack_verified = False
+        if args.modified_salt:
+            enabled = rcon("datapack list enabled", secret)
+            print("[P34-SALT] Enabled packs:", enabled[:450], flush=True)
+            if DATAPACK_NAME not in enabled:
+                raise AssertionError("修改Salt的数据包未被真正的Minecraft服务端启用")
+            pack_verified = True
         found = []
         for x, z in QUERY_POINTS:
             answer = rcon("execute in minecraft:overworld positioned "
@@ -172,6 +221,11 @@ def main():
             "game_version": version, "world_seed": KNOWN_SEED,
             "generation_mode": "actual_minecraft_flat_generator_with_desert_pyramids",
             "generator_settings": GENERATOR,
+            "structure_salt": (MODIFIED_DESERT_SALT if args.modified_salt
+                               else VANILLA_DESERT_SALT),
+            "modified_salt_datapack_enabled": pack_verified,
+            "salt_test_kind": ("REAL_ENABLED_DATAPACK_MODIFIED_SALT"
+                               if args.modified_salt else "VANILLA_STRUCTURE_SET_SALT"),
             "terrain_provenance": "actual_FULL_Anvil_block_states",
             "structure_provenance": "actual_saved_ServerSide_StructureStart_NBT",
             "quart_provenance": "actual_saved_ServerSide_FULL_Anvil_biomes",
