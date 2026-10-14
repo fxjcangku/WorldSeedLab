@@ -1,5 +1,6 @@
 package io.github.fxjcangku.worldseedlab.core;
 
+import io.github.fxjcangku.worldseedlab.core.generation.ClientHeightmapSafety;
 import io.github.fxjcangku.worldseedlab.core.recognition.StructureCandidate;
 import io.github.fxjcangku.worldseedlab.core.recognition.StructureSignatureDetector;
 import java.util.HashMap;
@@ -13,6 +14,7 @@ public final class P38MultiStructureSmokeTest {
     private P38MultiStructureSmokeTest() {}
 
     public static void main(String[] args) {
+        heightmapSafetyCases();
         positive("minecraft:monument", map(
                 "minecraft:prismarine",35, "minecraft:prismarine_bricks",15,
                 "minecraft:dark_prismarine",9, "minecraft:sea_lantern",5), 700, false);
@@ -57,6 +59,29 @@ public final class P38MultiStructureSmokeTest {
         negative(map("minecraft:diamond_ore", 100, "minecraft:deepslate_diamond_ore", 180),
                 "矿石不能作为任何结构候选");
         System.out.println("P3.8 multi-structure material candidates and negatives PASS");
+    }
+
+    /** 真实客户端OCEAN_FLOOR缺失时必须拒绝造假海床，同时保持有界真实水面补偿。 */
+    private static void heightmapSafetyCases() {
+        if (ClientHeightmapSafety.usableOceanFloor(-64, 86, -65)
+                || ClientHeightmapSafety.usableOceanFloor(-64, 86, 90)
+                || ClientHeightmapSafety.usableOceanFloor(-64, -65, -65)) {
+            throw new AssertionError("缺失、越界或倒置的客户端海床高度不得当成真值");
+        }
+        if (!ClientHeightmapSafety.usableOceanFloor(-64, 86, 70)
+                || !ClientHeightmapSafety.usableOceanFloor(-64, 63, -63)) {
+            throw new AssertionError("有效海床高度必须保留");
+        }
+        if (!"worldseedlab:heightmap_unavailable".equals(
+                ClientHeightmapSafety.UNAVAILABLE_OCEAN_FLOOR_ID)) {
+            throw new AssertionError("未观测海床不能标记为基岩");
+        }
+        var depths = ClientHeightmapSafety.fallbackWaterDepths();
+        if (!depths.contains(-64) || !depths.contains(-48) || !depths.contains(-20)
+                || depths.size() > 16) {
+            throw new AssertionError("无海床高度时的水面补偿带不完整或超出预算");
+        }
+        System.out.println("P3.9 client heightmap sentinel and bounded aquatic fallback PASS");
     }
 
     private static void positive(String target, Map<String,Integer> materials,
