@@ -328,3 +328,16 @@ tasks.register('p30VanillaBiomeNoiseTest', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('p30VanillaBiomeNoiseTest')
 }
+
+
+// P3.0 独立真实世界群系观察回放：只在已生成受控世界 CSV 后执行。
+// 不随默认 check 自动运行服务器，避免混淆“控制世界”与普通客户端探测。
+tasks.register('p30RealWorldBiomeTest', JavaExec) {
+    group = 'research'
+    description = 'Compare actual serialized Vanilla quart biomes with target Mojmap noise model.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P30VanillaBiomeNoiseTest'
+    systemProperty 'mcVersion', targetMinecraft
+    args providers.gradleProperty('knownBiomeCsv').orElse('NO_CONTROL_BIOME_INPUT').get()
+}
