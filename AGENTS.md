@@ -13,3 +13,5 @@ WorldSeedLab 仅是普通 Fabric 客户端的世界生成研究工具：默认�
 地图代码必须先读 [P2.5 已探索地图](docs/P25_OBSERVED_MAP.md)；不允许新增与 MapTileArchive 重复的地图索引格式，所有渲染操作读取不可变视窗快照，不在 GUI 线程遍历原始 evidence.jsonl。
 
 P2.6 材料结构候选需要先看 [docs/P26_STRUCTURE_RECOGNITION.md](docs/P26_STRUCTURE_RECOGNITION.md)。矿石、假矿不得成为结构证据；客户端观察点和候选材料永远不能冒充原版真实 structure start。
+
+P2.7 研发请先阅读 [docs/P27_RANDOM_SPREAD_SOLVER.md](docs/P27_RANDOM_SPREAD_SOLVER.md)，禁止把结构候选模型的“potential chunk”解释为结构真实生成。修改 RNG、Salt、随机 spread、Region 计算或约束求解时，必须运行目标 Minecraft 26.1.2 与 26.2 本体对照，不复制 SeedCrackerX 或其依赖中的求解算法。

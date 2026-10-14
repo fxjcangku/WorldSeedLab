@@ -1,6 +1,6 @@
 # WorldSeedLab · 开发、构建与验收
 
-> 真实研发状态：P0、P1、P2 代码及双版本 CI 验证；暂未完成 `runClient` 实机观察测试，也未实现 Seed 求解器。
+> 真实研发状态：P0～P2.7 代码及双版本 CI 验证；尚未 runClient 实机验收。P2.7 只有离线低48位有界候选搜索，并非完整世界 Seed 破解器。
 
 ## 项目环境
 
@@ -84,6 +84,20 @@ gradle -PmcVersion=26.2 runClient
 结构候选文件 `structure-candidates-v1.jsonl` 含精确区块坐标，`structure-scanned-v1.csv` 是此版稀疏扫描的完成记录。无命中不代表该区块没有自然结构。材料指纹既不是起始区块，也不是 Seed 求解结果。
 
 [查看详细限制、操作和日志](P26_STRUCTURE_RECOGNITION.md)。
+
+## P2.7 原创 RandomSpread 数学模型及离线有界求解
+
+本阶段新增 `p27SolverSmokeTest`、`p27MinecraftParityTest`、`p27InputSmokeTest` 三项强制回归。每个 Minecraft 目标版本的 `p27MinecraftParityTest` 会直接对照游戏本体的候选区块计算，不沿用其它模组的破解源码。
+
+本机准备明确来源的起始区块研究属性文件后：
+
+```bash
+gradle -PmcVersion=26.2 -PsolverInput=/path/to/solver-input.properties p27ResearchCli
+```
+
+只枚举文件中明确的低 48 位半开区间，可取消、分批续跑，列出匹配训练和独立留出约束的**低48候选**。它不读取 P2.6 的自动材料候选，也不会在游戏 tick/GUI 线程运行。**没有真正结构起点与可靠原版/自定义放置参数时，不可能可靠求出目标服务器真实 Seed。**
+
+[P2.7 使用方法、输入样例和已知限制](P27_RANDOM_SPREAD_SOLVER.md)。
 
 ## 正式验收仍需实机测试
 
