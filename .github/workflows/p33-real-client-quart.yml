@@ -39,7 +39,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
-            xvfb xauth xdotool scrot libgl1-mesa-dri mesa-utils
+            xvfb xauth xdotool scrot x11-utils openbox libgl1-mesa-dri mesa-utils
       - name: Start actual Minecraft server and Fabric GUI client and type 5 user commands
         run: |
           timeout --signal=INT --kill-after=30s 670s \
