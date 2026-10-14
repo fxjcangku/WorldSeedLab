@@ -163,26 +163,32 @@ public final class CandidateSeedSearch {
                 throw new IllegalArgumentException("no model for structure set: "
                         + constraint.structureSetId());
             }
-            ChunkBounds b = constraint.possibleStartChunks();
-            int fromRx = Math.floorDiv(b.minX(), model.spacing());
-            int toRx = Math.floorDiv(b.maxX(), model.spacing());
-            int fromRz = Math.floorDiv(b.minZ(), model.spacing());
-            int toRz = Math.floorDiv(b.maxZ(), model.spacing());
-            long count = ((long) toRx - fromRx + 1) * ((long) toRz - fromRz + 1);
-            if (count > 64) {
-                throw new IllegalArgumentException("unbounded structure start region");
-            }
-            // 防止同一区域同时作为训练与留出：同一结构集合的重复观察并不独立。
-            for (long rx = fromRx; rx <= toRx; rx++) {
-                for (long rz = fromRz; rz <= toRz; rz++) {
-                    String tag = model.structureSetId() + ":" + rx + ":" + rz;
-                    if (!independentRegions.add(tag)) {
-                        throw new IllegalArgumentException(
-                                "overlapping structure region between evidence samples");
+            Set<String> localRegions = new HashSet<>();
+            long possibleArea = 0;
+            for (ChunkBounds b : constraint.alternativeStartChunks()) {
+                possibleArea += ((long) b.maxX() - b.minX() + 1)
+                        * ((long) b.maxZ() - b.minZ() + 1);
+                long fromRx = Math.floorDiv(b.minX(), model.spacing());
+                long toRx = Math.floorDiv(b.maxX(), model.spacing());
+                long fromRz = Math.floorDiv(b.minZ(), model.spacing());
+                long toRz = Math.floorDiv(b.maxZ(), model.spacing());
+                for (long rx = fromRx; rx <= toRx; rx++) {
+                    for (long rz = fromRz; rz <= toRz; rz++) {
+                        localRegions.add(model.structureSetId() + ":" + rx + ":" + rz);
+                        if (localRegions.size() > 64) {
+                            throw new IllegalArgumentException("unbounded structure start region");
+                        }
                     }
                 }
             }
-            MatchTask task = new MatchTask(constraint, model, count);
+            // 每条证据自己的朝向假设可以重叠，但不同证据不得共享 Region。
+            for (String tag : localRegions) {
+                if (!independentRegions.add(tag)) {
+                    throw new IllegalArgumentException(
+                            "overlapping structure region between evidence samples");
+                }
+            }
+            MatchTask task = new MatchTask(constraint, model, possibleArea);
             if (constraint.split() == StartPlacementConstraint.Split.FIT) {
                 fits.add(task);
             } else {
