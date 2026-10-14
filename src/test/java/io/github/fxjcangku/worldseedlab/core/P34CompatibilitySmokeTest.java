@@ -2,7 +2,6 @@ package io.github.fxjcangku.worldseedlab.core;
 
 import io.github.fxjcangku.worldseedlab.core.compatibility.P34WorldgenCompatibilityAudit;
 import io.github.fxjcangku.worldseedlab.core.compatibility.P34WorldgenCompatibilityAudit.*;
-import io.github.fxjcangku.worldseedlab.core.solver.ClientQuartEvidenceArchive;
 import io.github.fxjcangku.worldseedlab.core.solver.Full64BiomeCandidateSearch;
 import io.github.fxjcangku.worldseedlab.core.solver.RandomSpreadMath;
 import io.github.fxjcangku.worldseedlab.core.solver.RandomSpreadSpec;
@@ -91,46 +90,58 @@ public final class P34CompatibilitySmokeTest {
                 ChunkHistory.CONFIRMED_SINGLE_EPOCH),
                 "客户端轮廓不能充当StructureStart真值");
 
-        // 读取先前由真实Minecraft服务端FULL区块存档独立提取的5条群系。
+        // 真实Minecraft服务端FULL Anvil样本必须保留CONTROL_WORLD_OBSERVED来源。
         List<String> lines = Files.readAllLines(Path.of("src", "test", "resources", "p31",
                 "vanilla_" + version + "_seed2731_quart.csv"));
         require(lines.size() == 6
                 && "quart_x,quart_y,quart_z,biome_id".equals(lines.getFirst()),
                 "真实Minecraft FULL quart公开对照文件缺失");
-        var session = new ClientQuartEvidenceArchive.Session(HASH, version, DIM);
-        for (String line : lines.subList(1, 6)) {
-            String[] row = line.split(",", -1);
-            session.addQuart(Integer.parseInt(row[0]), Integer.parseInt(row[1]),
-                    Integer.parseInt(row[2]), row[3]);
+        var modelScope = new Full64BiomeCandidateSearch.Scope(HASH, version, DIM,
+                VanillaOverworldBiomeModel.GENERATOR_PROFILE);
+        List<Full64BiomeCandidateSearch.BiomeSample> fullChunks = new ArrayList<>();
+        for (int i = 1; i <= 5; i++) {
+            String[] row = lines.get(i).split(",", -1);
+            fullChunks.add(new Full64BiomeCandidateSearch.BiomeSample(
+                    modelScope, Integer.parseInt(row[0]), Integer.parseInt(row[1]),
+                    Integer.parseInt(row[2]), row[3],
+                    i <= 3 ? Full64BiomeCandidateSearch.Split.FIT
+                            : Full64BiomeCandidateSearch.Split.HOLDOUT,
+                    Full64BiomeCandidateSearch.Origin.CONTROL_WORLD_OBSERVED));
         }
-        var archive = session.snapshot();
-        var model = VanillaOverworldBiomeModel.create(
-                new Full64BiomeCandidateSearch.Scope(HASH, version, DIM,
-                        VanillaOverworldBiomeModel.GENERATOR_PROFILE));
-        var compatible = P34WorldgenCompatibilityAudit.biomes(scope, archive,
-                model, SEED, BiomeKnowledge.EXPLICIT_VANILLA_HYPOTHESIS,
+        var model = VanillaOverworldBiomeModel.create(modelScope);
+        var compatible = P34WorldgenCompatibilityAudit.controlledWorldBiomes(scope, fullChunks,
+                model, SEED, BiomeKnowledge.CONTROL_VANILLA_VERIFIED,
                 ChunkHistory.CONFIRMED_SINGLE_EPOCH);
         require(compatible.verdict() == Verdict.MODEL_CONSISTENT
                 && compatible.fitMatches() == 3 && compatible.holdoutMatches() == 2,
                 "真实Minecraft FULL观测必须与真Seed原版气候模型相符");
-        var conflict = P34WorldgenCompatibilityAudit.biomes(scope, archive,
+        var conflict = P34WorldgenCompatibilityAudit.controlledWorldBiomes(scope, fullChunks,
                 model, SEED + (1L << 48), BiomeKnowledge.EXPLICIT_VANILLA_HYPOTHESIS,
                 ChunkHistory.CONFIRMED_SINGLE_EPOCH);
         require(conflict.verdict() == Verdict.MODEL_CONFLICT,
                 "错误高16位必须与真实群系矛盾");
-        var unknown = P34WorldgenCompatibilityAudit.biomes(scope, archive,
+        var unknown = P34WorldgenCompatibilityAudit.controlledWorldBiomes(scope, fullChunks,
                 null, SEED, BiomeKnowledge.UNKNOWN_OR_CUSTOM,
                 ChunkHistory.CONFIRMED_SINGLE_EPOCH);
         require(unknown.verdict() == Verdict.GENERATOR_UNKNOWN,
                 "未知/自定义生成器不能隐式计算原版群系");
-        require(P34WorldgenCompatibilityAudit.biomes(scope, archive,
+        require(P34WorldgenCompatibilityAudit.controlledWorldBiomes(scope, fullChunks,
                 null, SEED, BiomeKnowledge.EXPLICIT_VANILLA_HYPOTHESIS,
                 ChunkHistory.UNKNOWN).verdict() == Verdict.GENERATOR_UNKNOWN,
                 "同一服务端中的旧区块风险必须保守处理");
-        reject(() -> P34WorldgenCompatibilityAudit.biomes(wrongScope, archive,
-                model, SEED, BiomeKnowledge.EXPLICIT_VANILLA_HYPOTHESIS,
+        reject(() -> P34WorldgenCompatibilityAudit.controlledWorldBiomes(wrongScope,
+                fullChunks, model, SEED, BiomeKnowledge.CONTROL_VANILLA_VERIFIED,
+                ChunkHistory.CONFIRMED_SINGLE_EPOCH), "跨世界FULL群系必须拒绝");
+        List<Full64BiomeCandidateSearch.BiomeSample> spoofed = new ArrayList<>(fullChunks);
+        var first = spoofed.getFirst();
+        spoofed.set(0, new Full64BiomeCandidateSearch.BiomeSample(
+                modelScope, first.quartX(), first.quartY(), first.quartZ(),
+                first.observedBiome(), first.split(),
+                Full64BiomeCandidateSearch.Origin.CLIENT_OBSERVED));
+        reject(() -> P34WorldgenCompatibilityAudit.controlledWorldBiomes(scope,
+                spoofed, model, SEED, BiomeKnowledge.CONTROL_VANILLA_VERIFIED,
                 ChunkHistory.CONFIRMED_SINGLE_EPOCH),
-                "跨世界客户端群系CSV必须拒绝");
+                "服务端FULL区块和普通客户端证据来源不能互换");
         require(P34WorldgenCompatibilityAudit.combine(ok, compatible).overall()
                 == Verdict.MODEL_CONSISTENT, "两个证据轴均符合时才有一致结论");
         var report = P34WorldgenCompatibilityAudit.combine(ok, compatible).chineseSummary();
