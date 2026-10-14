@@ -90,9 +90,13 @@ public final class LocalSmtSeedSolver {
             Path answer = folder.resolve("z3-output.txt");
             for (int calls = 0; calls < maximumModels; calls++) {
                 long remainingMs = (deadline - System.nanoTime()) / 1_000_000L;
-                if (remainingMs < 1 || Thread.currentThread().isInterrupted()) {
+                if (Thread.currentThread().isInterrupted()) {
                     return done(Status.CANCELLED, calls, badHoldout, badExact,
-                            accepted, "已中断或总时间预算耗尽", options);
+                            accepted, "求解线程收到取消信号", input);
+                }
+                if (remainingMs < 1) {
+                    return done(Status.TIMEOUT_OR_UNKNOWN, calls, badHoldout, badExact,
+                            accepted, "本轮总计算时间预算已耗尽", input);
                 }
                 SymbolicRandomSpread.Options limited = new SymbolicRandomSpread.Options(
                         options.maxRejectionDraws(), Math.min(options.timeoutMillis(), remainingMs),
@@ -108,7 +112,7 @@ public final class LocalSmtSeedSolver {
                             .start();
                 } catch (IOException unavailable) {
                     return done(Status.BACKEND_UNAVAILABLE, calls, badHoldout, badExact,
-                            accepted, "没有找到 Z3 本地命令；请安装后显式运行", options);
+                            accepted, "没有找到 Z3 本地命令；请安装后显式运行", input);
                 }
 
                 try {
@@ -117,18 +121,18 @@ public final class LocalSmtSeedSolver {
                         process.destroyForcibly();
                         process.waitFor(1, TimeUnit.SECONDS);
                         return done(Status.TIMEOUT_OR_UNKNOWN, calls + 1,
-                                badHoldout, badExact, accepted, "Z3 达到本轮总时间上限", options);
+                                badHoldout, badExact, accepted, "Z3 达到本轮总时间上限", input);
                     }
                 } catch (InterruptedException interrupted) {
                     process.destroyForcibly();
                     Thread.currentThread().interrupt();
                     return done(Status.CANCELLED, calls + 1, badHoldout, badExact,
-                            accepted, "当前离线求解线程已被中断", options);
+                            accepted, "当前离线求解线程已被中断", input);
                 }
 
                 if (Files.size(answer) > MAX_OUTPUT_BYTES) {
                     return done(Status.BACKEND_FAILURE, calls + 1, badHoldout, badExact,
-                            accepted, "Z3 诊断输出过大，已停止", options);
+                            accepted, "Z3 诊断输出过大，已停止", input);
                 }
                 String output = Files.readString(answer, StandardCharsets.UTF_8).trim();
                 String firstLine = output.lines().findFirst().orElse("").trim()
@@ -137,26 +141,26 @@ public final class LocalSmtSeedSolver {
                     return done(Status.BOUNDED_MODEL_EXHAUSTED, calls + 1, badHoldout,
                             badExact, accepted,
                             "仅在当前给定参数、结构起始假设和有限拒绝路径下无更多候选；"
-                            + "不能证明服务器真实 Seed 不存在", options);
+                            + "不能证明服务器真实 Seed 不存在", input);
                 }
                 if ("unknown".equals(firstLine)) {
                     return done(Status.TIMEOUT_OR_UNKNOWN, calls + 1, badHoldout,
-                            badExact, accepted, "SMT 引擎报告 unknown", options);
+                            badExact, accepted, "SMT 引擎报告 unknown", input);
                 }
                 if (!"sat".equals(firstLine) || process.exitValue() != 0) {
                     return done(Status.BACKEND_FAILURE, calls + 1, badHoldout, badExact,
-                            accepted, "Z3 执行失败或没有返回标准 SAT 模型", options);
+                            accepted, "Z3 执行失败或没有返回标准 SAT 模型", input);
                 }
                 long candidate;
                 try {
                     candidate = parseModel(output);
                 } catch (IllegalArgumentException invalid) {
                     return done(Status.BACKEND_FAILURE, calls + 1, badHoldout, badExact,
-                            accepted, "SMT 模型不含合法低48位种子", options);
+                            accepted, "SMT 模型不含合法低48位种子", input);
                 }
                 if (excluded.contains(candidate)) {
                     return done(Status.BACKEND_FAILURE, calls + 1, badHoldout, badExact,
-                            accepted, "SMT 后端重复了被明确排除的模型", options);
+                            accepted, "SMT 后端重复了被明确排除的模型", input);
                 }
                 excluded.add(candidate);
 
@@ -195,7 +199,7 @@ public final class LocalSmtSeedSolver {
                 accepted.add(new VerifiedLow48(candidate, fitCount, holdoutCount));
             }
             return done(Status.RESULT_CAP, maximumModels, badHoldout, badExact,
-                    accepted, "达到 SMT 模型候选数量上限，可调整资源参数继续研究", options);
+                    accepted, "达到 SMT 模型候选数量上限，可调整资源参数继续研究", input);
         } finally {
             try (var files = Files.walk(folder)) {
                 for (Path file : files.sorted(java.util.Comparator.reverseOrder()).toList()) {
@@ -224,10 +228,14 @@ public final class LocalSmtSeedSolver {
     private static Outcome done(
             Status status, int calls, long badHoldout, long badExact,
             List<VerifiedLow48> accepted, String message,
-            SymbolicRandomSpread.Options options
+            SolverResearchInput input
     ) {
+        boolean canReject = input.models().values().stream().anyMatch(spec -> {
+            int bound = spec.offsetBound();
+            return (bound & (bound - 1)) != 0;
+        });
         return new Outcome(status, calls, badHoldout, badExact,
                 accepted, message + "；结果不是服务器64位完整Seed",
-                options.maxRejectionDraws() < Integer.MAX_VALUE);
+                canReject);
     }
 }
