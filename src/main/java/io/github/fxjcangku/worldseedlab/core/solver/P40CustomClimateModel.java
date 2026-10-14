@@ -50,7 +50,7 @@ public final class P40CustomClimateModel implements Full64BiomeCandidateSearch.B
             if (generatorProfile == null || !ID.matcher(generatorProfile).matches()
                     || !generatorProfile.startsWith("worldseedlab:")
                     || !SAMPLER.equals(noiseRouter)
-                    || entries == null || entries.isEmpty() || entries.size() > 4096) {
+                    || entries == null || entries.isEmpty() || entries.size() > 65536) {
                 throw new IllegalArgumentException("缺少独立参数模型或使用了未支持的噪声路由器");
             }
             entries = List.copyOf(entries);
