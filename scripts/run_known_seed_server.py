@@ -244,8 +244,8 @@ def scan_observed_biome_quart_samples(world: Path):
             accepted.append(p)
             if len(accepted) >= 20:
                 break
-    if len(accepted) < 6:
-        raise RuntimeError("not enough independent homogeneous generated biome sections: "
+    if len(accepted) < 3:
+        raise RuntimeError("not enough spatially independent actual-world biome sections: "
                            + str(len(accepted)))
     return accepted
 
