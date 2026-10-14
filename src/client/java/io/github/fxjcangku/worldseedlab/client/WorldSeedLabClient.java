@@ -74,6 +74,10 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                         PlatformScreens.open(Minecraft.getInstance(), probe);
                         return 1;
                     }))
+                    .then(ClientCommands.literal("map").executes(context -> {
+                        PlatformScreens.openMap(Minecraft.getInstance(), probe);
+                        return 1;
+                    }))
                     .then(ClientCommands.literal("status").executes(context -> {
                         context.getSource().sendFeedback(Component.literal(
                                 "WorldSeedLab | " + (probe.active() ? "采集中" : "已停止")
