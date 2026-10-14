@@ -62,9 +62,14 @@
     "unknown_salt_tested": false,
     "protects_existing_raw_files": true,
     "private_uploaded_archive": {
-      "full_p37_cli_run_verified": false,
+      "full_p37_cli_run_verified": true,
       "existing_schema_and_namespace_independently_inspected_locally": true,
-      "private_coordinates_or_world_hmac_uploaded_to_public_repo": false
+      "private_coordinates_or_world_hmac_uploaded_to_public_repo": false,
+      "local_replay_source": "user_provided_client_observations_zip_read_only",
+      "cli_source_from_successful_ci_run_id": 38557758349,
+      "result": "GENERATOR_UNKNOWN_AND_FULL64_NOT_DERIVED",
+      "underground_strata_present": false,
+      "private_aggregated_report_retained_only_in_user_session": true
     }
   },
   "caveats": [

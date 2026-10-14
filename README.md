@@ -143,7 +143,7 @@ P2.7 已确认的 Minecraft Legacy RandomSpread 数学模型现可转换成**可
 python scripts/research_p37_custom_worldgen.py --input "D:\取证\observations.zip" --json-out "D:\取证\p37-anonymous-summary.json"
 ```
 
-当前 P3.7.0 的 [12项离线正反例](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38556712832) 已全部成功（含用户原始ZIP防覆盖、跨世界HMAC拒绝、1024方块空间独立门槛）。这**没有实现未知自定义生成器的前向逆函数，也没有从你的未知服务器恢复64位Seed**。详见 [P3.7研究方法](docs/P37_CUSTOM_WORLDGEN_IDENTIFIABILITY.md)。
+当前 P3.7.0 的 [12项离线正反例](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38557758349) 已全部成功（含用户原始ZIP防覆盖、跨世界HMAC拒绝、1024方块空间独立门槛）。此外已下载**同一CI校验的分析脚本**在本机完整只读回放用户自愿提供的真实 26.2 观测ZIP；客户端证据格式、流式处理和匿名输出均通过，原始坐标、HMAC与私人文件没有提交到公开仓库。该档案缺失 STRATA 细节，**没有实现未知自定义生成器的前向逆函数，也没有从未知服务器恢复64位Seed**。详见 [P3.7研究方法](docs/P37_CUSTOM_WORLDGEN_IDENTIFIABILITY.md)。
 
 ## P3.6 / 自定义地形与建筑自动联合取证（双版本受控实机已通过）
 

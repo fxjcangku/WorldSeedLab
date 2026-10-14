@@ -241,7 +241,7 @@
 - [x] 最终 PR E2E 日志核实：26.1.2=107,520条群系/144地形区块/104个P2.6已扫区块；26.2=105,984条群系/148地形区块/106个P2.6已扫区块；生成器/Salt/自然来源均保留UNKNOWN。地下分层档位 `STRATA` 须用户先行显式设置，自动取证不会改变初装 OFF。
 - [x] P3.6.1 针对首次真实服务器日志中的高空玩家Y错层漏检与扫描中断误计数，修复为实际地表高度图驱动的有界32格搜索、独立卸载计数、完整轮廓会话去重与匿名诊断；[PR #28](https://github.com/fxjcangku/WorldSeedLab/pull/28) 已合并。最终源码 `b9f678c4` 双版 [clean build #38549576956](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576956) 与 [真实 Fabric GUI 4/4 + FULL + Z3 #38549576931](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576931) 成功。受控模型成功不代表未知服务器已检出结构。
 - [x] P3.6.2 长期跑图：4096固定区块停机改为4096容量FIFO滚动去重缓存、历史淘汰与窗口统计、区块卸载/待FULL超时/高度非法/轮廓拒绝分项。纯Java十万区块正反例通过，[双版clean build #38556249266](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38556249266) 与 [真Fabric GUI 4/4 + FULL/Z3 #38556249269](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38556249269) 均success；其他单会话上限仍保留。
-- [x] P3.7.0 已验收**离线审计软件及合成独立回归**：标准库Python对P1/P2/STRATA源证据只读流式检验、≥1024方块隔离地区、非原版群系模型冲突门控、混合历史疑似变化标记、匿名报告输出及原始文件防覆盖；[12项正反例 #38556712832](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38556712832) 全绿。现有私人ZIP的原始字段格式已在本机独立核查，但最新P3.7 CLI对该ZIP的完整实际回放仍待确认；不能称完成目标服Seed研究。
+- [x] P3.7.0 已验收**离线审计软件及合成独立回归**：标准库Python对P1/P2/STRATA源证据只读流式检验、≥1024方块隔离地区、非原版群系模型冲突门控、混合历史疑似变化标记、匿名报告输出及原始文件防覆盖；[12项正反例 #38556712832](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38556712832) 全绿。已使用同CI产物的真实 P3.7 CLI 在本机完整只读回放先前提供的26.2取证ZIP，并检查匿名报告不含原始坐标、世界HMAC或地址；报告保留在用户会话内，不上传私人文件。该资料没有STRATA详情，且不能称完成目标服Seed研究。
 - [ ] P3.7.1/3.7.2：针对受控真实自定义生成器实现可验证的前向预测模型；未知Salt多模型、混合历史与高16全域排除须有独立FULL/客户端FIT/HOLDOUT，绝不直接声称恢复目标服完整64位。
 - [ ] 更广泛的自定义地形模型辨识、未知 Salt/历史混合区块真实对照、非零高16负数64位全域搜索；不把结构 low48 冒充完整世界Seed。
 
