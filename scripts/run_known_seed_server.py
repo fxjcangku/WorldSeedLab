@@ -129,9 +129,11 @@ def region_chunks(path: Path):
         yield NbtReader(raw).document()
 
 
-def scan_structure_starts(world: Path):
+def scan_structure_starts(world: Path, located):
     result = {}
     read_chunks = 0
+    targets = {(x//16, z//16) for x,z in located}
+    showed_target = set()
     # Minecraft Java 26.1+ 官方世界存档布局：全部维度位于 dimensions/<namespace>/<name>。
     # 原版主世界不再位于 world/region；使用旧路径会伪报“没有结构”。
     overworld_regions = world / "dimensions" / "minecraft" / "overworld" / "region"
@@ -140,6 +142,14 @@ def scan_structure_starts(world: Path):
     for region in sorted(overworld_regions.glob("r.*.*.mca")):
         for chunk in region_chunks(region):
             read_chunks += 1
+            cxz = (chunk.get("xPos"),chunk.get("zPos"))
+            if cxz in targets and cxz not in showed_target:
+                showed_target.add(cxz)
+                print("[P29-NBT] expected start-chunk", cxz,
+                      "root keys", sorted(chunk.keys())[:35], flush=True)
+                print("[P29-NBT] raw structure map (truncated):",
+                      repr(chunk.get("structures", chunk.get("Structures", {})))[:1800],
+                      flush=True)
             structures = chunk.get("structures", chunk.get("Structures", {}))
             if not isinstance(structures, dict):
                 continue
@@ -321,7 +331,17 @@ def main():
         print("[P29-REAL] world directory:", str(world.relative_to(ROOT)),
               "region files:", [(p.name, p.stat().st_size) for p in region_files[:12]],
               flush=True)
-        starts, chunks = scan_structure_starts(world)
+        starts, chunks = scan_structure_starts(world, located)
+        if len(starts) < 3:
+            # 只上传本机公开种子测试世界的一份小型生成区域，用于解析器调试；
+            # 不包含任何私人服务器信息，也不上传整张世界。
+            sample_cx,sample_cz = located[1][0]//16, located[1][1]//16
+            sample_region = (world / "dimensions" / "minecraft" / "overworld"
+                             / "region" / ("r." + str(sample_cx//32) + "."
+                                           + str(sample_cz//32) + ".mca"))
+            if sample_region.is_file() and 8192 <= sample_region.stat().st_size < 2_000_000:
+                (output / "controlled_debug_region.mca").write_bytes(
+                    sample_region.read_bytes())
         fixture = {
             "game_version":mc, "known_seed":KNOWN_SEED,
             "structure_id":STRUCTURE,
