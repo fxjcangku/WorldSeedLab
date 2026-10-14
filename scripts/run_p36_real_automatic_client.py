@@ -141,6 +141,18 @@ def run(version: str):
         print("[P36] ACTUAL Fabric GUI client joined 127.0.0.1; "
               "controlled custom desert, original client commands",flush=True)
 
+        # Minecraft 26.2 首次进入全新GUI环境偶发“Friends List / Turn ON /
+        # Turn OFF”社交引导弹窗。实机失败截图显示此弹窗拦截了聊天热键；
+        # 这里仅点击测试客户端可见的关闭按钮，不修改真实用户任何设置。
+        # 没有弹窗时玩家为spectator，点击此位置不会修改受控世界。
+        if version == "26.2":
+            time.sleep(3)
+            screenshot(out/"preflight-social-overlay.png",actual_env)
+            xcmd("windowfocus","--sync",window,env=actual_env)
+            xcmd("mousemove","--window",window,"665","442",env=actual_env)
+            xcmd("click","1",env=actual_env)
+            time.sleep(0.8)
+
         # locate仅导航到受控已知世界的建筑附近，不把NBT结构起点传给客户端。
         located = []
         for from_x,from_z in QUERY_POINTS:
@@ -162,6 +174,13 @@ def run(version: str):
         # 先且仅一次由真实游戏聊天框手动授权：此后无需两个角或逐个export。
         # 自动取证同时带起原有 P1/P2 群系、地貌观测；不会取得服务端Salt。
         chat(window, "/wsl auto on", actual_env)
+        # 不靠“游戏已联机”推断命令真正生效；必须看到模组的启动日志。
+        # 若被社交/首次教程弹窗拦截，立即留真实截图并失败，绝不伪造取证。
+        if not client.saw("P3.6 started:"):
+            screenshot(out/"auto-opt-in-not-confirmed.png",actual_env)
+            wait_until(lambda: client.saw("P3.6 started:"),15,
+                       "真实Fabric GUI未执行一次/wsl auto on，请检查首次弹窗",
+                       client,server)
         time.sleep(3)
         for ordinal,(x,z) in enumerate(located):
             # RCON只负责带玩家到附近，真正的蓝陶瓦位置/29x29轮廓完全由
