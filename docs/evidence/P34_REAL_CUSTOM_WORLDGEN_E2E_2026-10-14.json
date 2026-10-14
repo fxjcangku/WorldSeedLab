@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "phase": "P3.4",
+  "date": "2026-10-14",
+  "repo": "fxjcangku/WorldSeedLab",
+  "tested_commit": "faa429da3fb60a19fc99fabff6d0ee0b05e7c606",
+  "controlled_environment": {
+    "seed_signed": "2731",
+    "terrain": "minecraft:flat",
+    "biome": "minecraft:desert",
+    "custom_layers": [
+      "minecraft:bedrock",
+      "minecraft:sandstone",
+      "minecraft:sand"
+    ],
+    "structure_set": "minecraft:desert_pyramids",
+    "target_world_is_private_server": false
+  },
+  "tests": [
+    {
+      "kind": "ACTUAL_MINECRAFT_SERVER_FULL_ANVIL",
+      "run_id": 38518930209,
+      "url": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/38518930209",
+      "conclusion": "success",
+      "versions": {
+        "26.1.2": {
+          "job_id": 115703922126,
+          "conclusion": "success",
+          "full_chunks_with_custom_layers": 406,
+          "actual_anvil_structure_starts": 8,
+          "actual_anvil_quart_samples": 5,
+          "random_spread_condition": "compatible",
+          "vanilla_multinoise_assumption": "conflict"
+        },
+        "26.2": {
+          "job_id": 115703921796,
+          "conclusion": "success",
+          "full_chunks_with_custom_layers": 406,
+          "actual_anvil_structure_starts": 8,
+          "actual_anvil_quart_samples": 5,
+          "random_spread_condition": "compatible",
+          "vanilla_multinoise_assumption": "conflict"
+        }
+      },
+      "provenance": "server-side actual Anvil FULL and saved StructureStart NBT, only controlled local server; NOT CLIENT_OBSERVED"
+    },
+    {
+      "kind": "ACTUAL_FABRIC_GUI_CHAT_CLIENT_OBSERVED",
+      "run_id": 38518930253,
+      "url": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/38518930253",
+      "conclusion": "success",
+      "versions": {
+        "26.1.2": {
+          "job_id": 115703922166,
+          "conclusion": "success",
+          "manual_sample_commands": 5,
+          "manual_export_commands": 1,
+          "client_samples": 5,
+          "independent_full_anvil_matches": 5,
+          "fit": 3,
+          "holdout": 2
+        },
+        "26.2": {
+          "job_id": 115703921910,
+          "conclusion": "success",
+          "manual_sample_commands": 5,
+          "manual_export_commands": 1,
+          "client_samples": 5,
+          "independent_full_anvil_matches": 5,
+          "fit": 3,
+          "holdout": 2
+        }
+      },
+      "provenance": "actual Fabric runClient, actual multiplayer protocol and chat commands; control-world Anvil data only used in separate posthoc verifier",
+      "artifact_zip_sha256": {
+        "26.1.2": "ab42455bc010e947c423bae8991f8699277ca95ff19b542327545007e15ddf7a",
+        "26.2": "3d2d8274a2a1b5b9564a1cb3394b17077dce817acd90f9850ccc4547c29441e7"
+      }
+    },
+    {
+      "kind": "DUAL_VERSION_BUILD",
+      "run_id": 38518930186,
+      "url": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/38518930186",
+      "conclusion": "success"
+    }
+  ],
+  "not_proven": [
+    "unknown server seed recovery",
+    "custom backend generator identification from client alone",
+    "player-observed complete building footprint to true StructureStart",
+    "actual custom salt server datapack mutation",
+    "mixed-generation legacy chunk physical acceptance",
+    "nonzero-high16 65536 search on negative 64-bit world seed"
+  ],
+  "privacy": "No private multiplayer coordinates or credentials in this public controlled-world report."
+}

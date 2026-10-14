@@ -1,7 +1,7 @@
 # WorldSeedLab P3.4 · 自定义地形兼容性与证据防误报
 
 > 2026-10-14 · Minecraft 26.1.2 / 26.2 · Java 25 · Fabric / Mojmap  
-> 当前状态：研发分支 [PR #21](https://github.com/fxjcangku/WorldSeedLab/pull/21)；真实双版本 CI 的最终通过情况必须另外核对。  
+> 当前状态：研发分支 [PR #21](https://github.com/fxjcangku/WorldSeedLab/pull/21)；受控自定义专用服务端、实际 Fabric GUI 联机采样均已获得两版本完整成功日志；剩余未完成项见文末。  
 > **受控生成结果不能冒充用户目标服务器，也不意味着所有服务器都可恢复完整64位Seed。**
 
 ## 研究问题和必要前提
@@ -57,7 +57,14 @@ CI `.github/workflows/p34-custom-worldgen.yml` 在两版各自执行：
 4. 从保存的 FULL 生物群系读取5个独立quart点；检验它们属于实际生成的自定义沙漠单群系，与原版 MultiNoise 在这些位置按 Seed=2731 的预测冲突。
 5. 把结构与群系结果分别报告；**结构位置可能保留原版规则，但完整64位原版群系反演不再成立**。这既不是普通客户端可见轮廓、也不是目标私人服务器证据。
 
-**验收状态：** 本文先记录设计与可执行脚本，真实 CI 结果须以最新 Actions 运行结束后的实际job日志为准；不能把排队、编译中或失败描述成成功。
+**实际验收结果（代码基线 `faa429da3fb60a19fc99fabff6d0ee0b05e7c606`）：**
+
+- [自定义地形真实专用服务端 Actions #38518930209](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38518930209)：**26.1.2 与 26.2 两个 job 均 success**，各确认406个FULL区块带自定义砂岩/沙层，保存8条原版沙漠神殿StructureStart，5个真实FULL quart。原版RandomSpread起点正例、错误Salt反例、原版MultiNoise对自定义沙漠单群系的冲突均已实际验证。
+- [真实 Fabric GUI 连接自定义地形 Actions #38518930253](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38518930253)：**两个 job 均 success**，真实 Minecraft 图形客户端建立多人协议连接，在游戏聊天框完成5次`/wsl quart sample`、1次`/wsl quart export`；真实导出5条CLIENT_OBSERVED，并与服务器独立保存的FULL区块 **5/5 匹配**，3 FIT + 2 HOLDOUT。原版群系假设出现冲突时判定`MODEL_CONFLICT`，不把未知生成器升级为已知。
+- [同一代码基线双版本 build #38518930186](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38518930186)：两个版本成功执行编译及核心回归。原版 P3.3/P3.2/P3.1 历史或并行运行的结果按对应 SHA 单独核对，不把此前成功替代为此次新提交成功。
+- 存档测试使用服务端RCON/forceload只在隔离的已知Seed受控世界，真实客户端仅执行玩家可用的采样命令；两种证据来源经两个独立流程验证，不互相伪造。
+
+[可审计测试结果JSON](evidence/P34_REAL_CUSTOM_WORLDGEN_E2E_2026-10-14.json)。
 
 ## 仍未完成
 
