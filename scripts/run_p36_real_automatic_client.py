@@ -32,7 +32,7 @@ SCAN_SECONDS = 37
 PORT = "25565"
 
 
-def run(version: str):
+def run(version: str, p38_materials: bool = False):
     out = ROOT / "build" / "p36-real-client-footprint" / version
     out.mkdir(parents=True, exist_ok=True)
     world_name = "wsl_p36_automatic_footprint_" + version.replace(".", "_")
@@ -228,6 +228,91 @@ def run(version: str):
             print(f"[P36] REAL AUTO GUI {ordinal+1}/{TARGET_COUNT}: "
                   f"zero per-structure manual commands, genuine CLIENT_OBSERVED "
                   f"auto file {result.name}",flush=True)
+        # P3.8 独立开关：可用管理员RCON在**受控新世界**摆放几种
+        # 人工材料夹具，只验证普通客户端能自行辨认材料线索和自动写盘。
+        # 这些夹具绝不能被标记为自然StructureStart或进入Seed求解。
+        p38_found = []
+        if p38_materials:
+            archives = list(rundir.rglob("client-auto-desert-*.properties"))
+            if len(archives) != TARGET_COUNT:
+                raise RuntimeError("P3.8前置真实神殿4份客户端证据不完整")
+            scope_dir = archives[0].parent.parent
+            candidate_path = scope_dir / "structure-candidates-v2.jsonl"
+            samples = [
+                ("minecraft:monument", "minecraft:prismarine",
+                 "minecraft:dark_prismarine", "minecraft:sea_lantern"),
+                ("minecraft:ocean_ruin_warm", "minecraft:sandstone",
+                 "minecraft:sandstone_stairs", "minecraft:sandstone_slab"),
+                ("minecraft:ocean_ruin_cold", "minecraft:stone_bricks",
+                 "minecraft:mossy_stone_bricks", "minecraft:gravel"),
+                ("minecraft:shipwreck", "minecraft:oak_planks",
+                 "minecraft:oak_stairs", "minecraft:oak_trapdoor"),
+            ]
+
+            def material_witnesses():
+                classes = set()
+                if not candidate_path.is_file():
+                    return classes
+                with candidate_path.open("r", encoding="utf-8") as stream:
+                    for raw in stream:
+                        try:
+                            entry = json.loads(raw)
+                        except json.JSONDecodeError:
+                            continue   # writer may be midway through appending the last line
+                        if (entry.get("schema") != 2
+                                or entry.get("natural_origin_verified") is not False
+                                or entry.get("structure_start_known") is not False):
+                            raise RuntimeError("P3.8客户端材料证据非法提升了天然起点等级")
+                        for observed in entry.get("candidate_structures", []):
+                            classes.add(observed.get("structure"))
+                return classes
+
+            for i, (kind, base_block, trim_block, accent_block) in enumerate(samples):
+                x0, z0 = 7168 + i * 1024, 4096
+                result = rcon(
+                    f"forceload add {x0-16} {z0-16} {x0+31} {z0+31}",secret)
+                if any(term in result.lower() for term in ("cannot", "failed", "too many")):
+                    raise RuntimeError("P3.8受控材料夹具FULL区块生成失败")
+
+                def fill(x1,y1,z1,x2,y2,z2,material):
+                    reply = rcon(f"fill {x1} {y1} {z1} {x2} {y2} {z2} {material}",secret)
+                    if any(bad in reply.lower() for bad in ("cannot", "failed", "too many")):
+                        raise RuntimeError("P3.8受控建材布景失败: " + reply[:160])
+
+                # 16×16石料底座和真正 Minecraft 水体，使用客户端水面/海床
+                # 高度图自动扫描。服务端只布景和传送，绝不传递任何候选分类。
+                fill(x0,69,z0,x0+15,72,z0+15,base_block)
+                fill(x0,73,z0,x0+15,85,z0+15,"minecraft:water")
+                fill(x0,69,z0,x0+7,72,z0+7,trim_block)
+                fill(x0+8,69,z0+8,x0+15,72,z0+15,accent_block)
+                rcon(f"tp {player} {x0+8} 80 {z0+8}",secret)
+
+                deadline = time.monotonic() + 72
+                while time.monotonic() < deadline:
+                    if kind in material_witnesses():
+                        break
+                    if client.process.poll() is not None:
+                        raise RuntimeError("P3.8受控水下自动材料识别时真实客户端退出")
+                    time.sleep(2)
+                if kind not in material_witnesses():
+                    chat(window, "/wsl structures", actual_env)
+                    screenshot(out/f"p38-material-not-found-{i}.png",actual_env)
+                    raise RuntimeError("P3.8自动材料分类缺失：" + kind
+                                       + "；不得宣称完整识别验收")
+                p38_found.append(kind)
+                print(f"[P38] ACTUAL GUI AUTO MATERIAL {i+1}/{len(samples)}:"
+                      f" {kind}, CLIENT_OBSERVED, CONTROLLED_ARTIFICIAL_NON_NATURAL,"
+                      " zero per-site client commands",flush=True)
+            (out/"p38-automatic-material-classes.json").write_text(json.dumps({
+                "phase":"P3.8","type":"CONTROL_WORLD_ARTIFICIAL_MATERIAL_FIXTURES",
+                "client_detected_types":p38_found,
+                "manual_per_structure_client_commands":0,
+                "client_materials_only":True,
+                "natural_origin_verified":False,
+                "structure_start_known":False,
+                "unknown_server_seed_derived":False
+            },ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+
         chat(window, "/wsl auto status",actual_env)
         screenshot(out/"actual-client-last-automatic.png",actual_env)
         chat(window, "/wsl auto off",actual_env)
@@ -248,7 +333,7 @@ def run(version: str):
         terrain_count = len(terrain_evidence.read_text(encoding="utf-8").splitlines())
         if biome_count < 1 or terrain_count < 1:
             raise RuntimeError("一键自动模式未产生真实非空客户端群系或地貌记录")
-        structure_index = scoped_folder/"structure-scanned-v1.csv"
+        structure_index = scoped_folder/"structure-scanned-v2.csv"
         completed_p26 = len(structure_index.read_text(encoding="utf-8").splitlines()) \
             if structure_index.is_file() else 0
         (out/"client-coupled-evidence-summary.json").write_text(
@@ -362,5 +447,7 @@ def run(version: str):
 if __name__ == "__main__":
     parser=argparse.ArgumentParser()
     parser.add_argument("--minecraft",required=True,choices=("26.1.2","26.2"))
+    parser.add_argument("--p38-materials",action="store_true",
+                        help="仅受控世界：额外测试人工海底材料夹具自动识别")
     args=parser.parse_args()
-    run(args.minecraft)
+    run(args.minecraft, p38_materials=args.p38_materials)

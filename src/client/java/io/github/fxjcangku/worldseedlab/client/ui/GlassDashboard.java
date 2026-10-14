@@ -1,7 +1,7 @@
 package io.github.fxjcangku.worldseedlab.client.ui;
 
 import io.github.fxjcangku.worldseedlab.client.probe.WorldProbeController;
-import io.github.fxjcangku.worldseedlab.client.PlatformScreens;
+import io.github.fxjcangku.worldseedlab.client.probe.AutoDesertFootprintController;
 import io.github.fxjcangku.worldseedlab.client.PlatformScreens;
 import java.util.List;
 import java.util.Map;
@@ -20,11 +20,14 @@ import net.minecraft.network.chat.Component;
  */
 public final class GlassDashboard extends Screen {
     private final WorldProbeController controller;
+    private final AutoDesertFootprintController automatic;
     private int bx, by, bw, bh, side, cx, cw;
 
-    public GlassDashboard(WorldProbeController controller) {
-        super(Component.literal("WorldSeedLab · 世界研究面板"));
+    public GlassDashboard(WorldProbeController controller,
+                          AutoDesertFootprintController automatic) {
+        super(Component.literal("WorldSeedLab · 多结构自动研究"));
         this.controller = controller;
+        this.automatic = automatic;
     }
 
     @Override
@@ -39,17 +42,28 @@ public final class GlassDashboard extends Screen {
 
         // Draw backdrop first so actual focusable controls remain above glass.
         addRenderableWidget(new Backdrop(0, 0, width, height, bx, by, bw, bh,
-                side, cx, cw, this.font, controller));
-        button(bx + 18, by + 111, side - 33, 27,
-                () -> controller.active() ? "停止采集" : "开始采集",
-                () -> { if (controller.active()) controller.stop("已手动停止，后台队列继续完成写入");
-                        else controller.start(Minecraft.getInstance()); }, true);
-        button(bx + 18, by + 149, side - 33, 25, () -> "标记沉船",
-                () -> controller.markStructure(Minecraft.getInstance(), "minecraft:shipwreck"), false);
-        button(bx + 18, by + 183, side - 33, 25, () -> "标记沙漠神殿",
-                () -> controller.markStructure(Minecraft.getInstance(), "minecraft:desert_pyramid"), false);
-        button(bx + 18, by + 217, side - 33, 25, () -> "标记村庄",
-                () -> controller.markStructure(Minecraft.getInstance(), "worldseedlab:village_unclassified"), false);
+                side, cx, cw, this.font, controller, automatic));
+        // 一键自动联合取证始终占最显眼位置；旧的逐座手动结构标记仍可通过命令使用。
+        button(bx + 16, by + 110, side - 32, 32,
+                () -> automatic.running() ? "停止自动取证" : "一键自动取证",
+                () -> {
+                    if (automatic.running()) {
+                        automatic.stop("用户通过F8关闭自动取证；已接受文件继续落盘");
+                    } else {
+                        automatic.start(Minecraft.getInstance());
+                    }
+                }, true);
+        button(bx + 16, by + 153, side - 32, 26,
+                () -> controller.active() ? "停止基础采集" : "仅采集群系地形",
+                () -> {
+                    if (controller.active()) controller.stop("用户停止基础采集");
+                    else controller.start(Minecraft.getInstance());
+                }, false);
+        button(bx + 16, by + 190, side - 32, 26,
+                () -> "已探索世界地图",
+                () -> PlatformScreens.openMap(Minecraft.getInstance(), controller), false);
+        button(bx + 16, by + 226, side - 32, 26,
+                () -> "导出本地研究报告", controller::exportReport, false);
 
         int tileW = Math.max(80, (cw - 20) / 3);
         int sy = by + 228;
@@ -85,7 +99,7 @@ public final class GlassDashboard extends Screen {
             button(bx + 18, by + bh - 71, side - 33, 28,
                     () -> "导出研究日志", controller::exportReport, false);
         }
-        // 高分辨率玻璃控制台提供结构侦测快捷开关；小界面仍可用 /wsl structures。
+        // 结构材料候选辅助开关仍提供；一键自动开启时也联动该系统。
         if (bw >= 640) {
             button(bx + bw - 304, by + 18, 106, 22,
                     () -> controller.structureScanEnabled() ? "结构侦测：开" : "结构侦测：关",
@@ -110,9 +124,12 @@ public final class GlassDashboard extends Screen {
         private final int bx, by, bw, bh, side, cx, cw;
         private final Font font;
         private final WorldProbeController controller;
+        private final AutoDesertFootprintController automatic;
 
         private Backdrop(int x, int y, int w, int h, int bx, int by, int bw, int bh,
-                         int side, int cx, int cw, Font font, WorldProbeController controller) {
+                         int side, int cx, int cw, Font font,
+                         WorldProbeController controller,
+                         AutoDesertFootprintController automatic) {
             super(x, y, w, h, Component.empty());
             this.bx = bx;
             this.by = by;
@@ -123,6 +140,7 @@ public final class GlassDashboard extends Screen {
             this.cw = cw;
             this.font = font;
             this.controller = controller;
+            this.automatic = automatic;
             this.active = false;
         }
 
@@ -136,16 +154,19 @@ public final class GlassDashboard extends Screen {
                     0xA9182A3E, 0xA00A172A);
             g.fill(bx + side + 4, by + 14, bx + side + 5, by + bh - 14, 0x285AD8FF);
             g.text(font, "W / S / L", bx + 21, by + 27, GlassUi.CYAN, true);
-            g.text(font, "WORLDSEEDLAB", bx + 21, by + 51, GlassUi.TEXT, true);
-            g.text(font, "世界生成研究", bx + 21, by + 72, GlassUi.MUTED, false);
-            GlassUi.badge(g, bx + 18, by + 263, side - 35, 27, 0x57467A92);
-            g.text(font, "P1 · OBSERVATION", bx + 27, by + 271, GlassUi.TEXT, false);
+            g.text(font, "世界种子研究", bx + 21, by + 51, GlassUi.TEXT, true);
+            g.text(font, "自定义地形 · 自动取证", bx + 21, by + 72, GlassUi.MUTED, false);
+            GlassUi.badge(g, bx + 18, by + 263, side - 35, 27,
+                    automatic.running() ? 0x5D246E57 : 0x57467A92);
+            g.text(font, "P3.8 · 多结构", bx + 27, by + 271,
+                    automatic.running() ? GlassUi.MINT : GlassUi.CYAN, true);
             if (bh >= 355) {
-                g.text(font, "仅分析可见数据",
-                        bx + 21, by + 311, GlassUi.MUTED, false);
+                g.text(font, GlassUi.compact("沉船 / 海底遗迹 / 神殿",
+                                Math.max(11, (side - 23) / 6)),
+                        bx + 21, by + 311, GlassUi.CYAN, false);
             }
             if (bh >= 370) {
-                g.text(font, "本地存储 · 无数据上传",
+                g.text(font, "本地采集 · 不上传",
                         bx + 21, by + 329, GlassUi.MUTED, false);
             }
 
@@ -158,8 +179,8 @@ public final class GlassDashboard extends Screen {
                         bx + 21, by + 374, GlassUi.MUTED, false);
             }
 
-            g.text(font, "世界生成观察台", cx, by + 29, GlassUi.TEXT, true);
-            g.text(font, "WORLD PROBE / BIOME INTELLIGENCE", cx, by + 48, GlassUi.MUTED, false);
+            g.text(font, "世界生成与建筑自动取证", cx, by + 29, GlassUi.CYAN, true);
+            g.text(font, "群系 · 高度 · 地层 · 遗迹 · 沉船", cx, by + 48, GlassUi.MUTED, false);
             var profile = controller.dimensionProfile();
             if (profile != null) {
                 g.text(font, "维度 " + GlassUi.compact(profile.dimension(),
@@ -169,34 +190,36 @@ public final class GlassDashboard extends Screen {
                         cx, by + 63, GlassUi.MUTED, false);
             }
             GlassUi.badge(g, cx + cw - 104, by + 24, 99, 23,
-                    controller.active() ? 0x5533BD9B : 0x555B728C);
-            g.text(font, controller.active() ? "采集中" : "已停止",
-                    cx + cw - 82, by + 32,
-                    controller.active() ? GlassUi.MINT : GlassUi.TEXT, false);
+                    automatic.running() ? 0x5533BD9B : 0x555B728C);
+            g.text(font, automatic.running() ? "自动运行" : "等待授权",
+                    cx + cw - 88, by + 32,
+                    automatic.running() ? GlassUi.MINT : GlassUi.AMBER, true);
 
             int gap = 10, tileWidth = (cw - 2 * gap) / 3;
-            metric(g, cx, by + 81, tileWidth, "已观察群系种类",
+            metric(g, cx, by + 81, tileWidth, "真实群系种类",
                     String.valueOf(controller.biomeTypes()), GlassUi.CYAN);
-            metric(g, cx + tileWidth + gap, by + 81, tileWidth, "已读取网格样本",
-                    String.valueOf(controller.observedSamples()), GlassUi.TEXT);
-            metric(g, cx + (tileWidth + gap) * 2, by + 81, tileWidth, "累计完成区块",
-                    String.valueOf(controller.writtenChunks()), GlassUi.MINT);
+            metric(g, cx + tileWidth + gap, by + 81, tileWidth, "疑似建筑组数",
+                    String.valueOf(controller.structureCandidateGroups()), GlassUi.AMBER);
+            metric(g, cx + (tileWidth + gap) * 2, by + 81, tileWidth, "完整神殿轮廓",
+                    String.valueOf(automatic.verifiedFootprints()), GlassUi.MINT);
 
             GlassUi.glass(g, cx, by + 173, cw, 43, false);
-            g.text(font, "状态 / " + GlassUi.compact(controller.status(),
-                    Math.max(14, (cw - 18) / 6)), cx + 13, by + 184,
-                    GlassUi.TEXT, false);
             g.text(font, GlassUi.compact(
-                    "已加载群系待办 " + controller.queuedChunks()
-                    + " · 待写盘 " + controller.pendingWrites()
-                    + " · 地形 " + controller.terrainChunksWritten()
-                    + " · 细节 " + controller.detailChunksWritten()
-                    + " · 疑似结构组 " + controller.structureCandidateGroups(),
-                    Math.max(28, (cw - 18) / 6)),
+                    "自动建筑：" + (automatic.running() ? "运行中" : "已关闭")
+                    + "    原始证据已落盘 " + automatic.persistedFootprints()
+                    + "    结构候选 " + controller.structureCandidateRecordsWritten(),
+                    Math.max(18, (cw - 18) / 6)),
+                    cx + 13, by + 184, automatic.running() ? GlassUi.MINT : GlassUi.AMBER, true);
+            g.text(font, GlassUi.compact(
+                    "群系点 " + controller.observedSamples()
+                    + " · 地形区块 " + controller.terrainChunksWritten()
+                    + " · 地层区块 " + controller.detailChunksWritten()
+                    + " · 写盘待办 " + (controller.pendingWrites() + automatic.pendingFiles()),
+                    Math.max(24, (cw - 18) / 6)),
                     cx + 13, by + 200, GlassUi.MUTED, false);
 
             GlassUi.glass(g, cx, by + 223, cw, 102, false);
-            g.text(font, "采样参数 / SAMPLING", cx + 12, by + 234, GlassUi.TEXT, true);
+            g.text(font, "取证参数 · 有界扫描", cx + 12, by + 234, GlassUi.TEXT, true);
             g.text(font, "半径：" + controller.settings().radiusChunks() + " 区块",
                     cx + 12, by + 251, GlassUi.CYAN, false);
             g.text(font, "高度：" + controller.settings().verticalStride() + " 方块",
@@ -208,7 +231,7 @@ public final class GlassDashboard extends Screen {
                 int listY = by + 338;
                 GlassUi.glass(g, cx, listY, cw,
                         Math.max(55, bh - (listY - by) - 25), false);
-                g.text(font, "真实群系 / OBSERVED BIOMES", cx + 13, listY + 13,
+                g.text(font, "真实群系 · 当前观察样本", cx + 13, listY + 13,
                         GlassUi.TEXT, true);
                 List<Map.Entry<String, Long>> entries = controller.topBiomes(
                         Math.max(1, Math.min(6, (bh - (listY - by) - 49) / 19)));
@@ -228,8 +251,8 @@ public final class GlassDashboard extends Screen {
                     }
                 }
             }
-            g.text(font, "只读群系 + 手动结构观察 | Seed 求解器未实现",
-                    bx + 20, by + bh - 17, GlassUi.MUTED, false);
+            g.text(font, "只读已加载区块  ·  结构自然来源未知  ·  无法直接证明完整64位Seed",
+                    bx + 20, by + bh - 17, GlassUi.AMBER, false);
         }
 
         private void metric(GuiGraphicsExtractor g, int x, int y, int w,

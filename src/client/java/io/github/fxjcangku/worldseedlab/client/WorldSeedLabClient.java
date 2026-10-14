@@ -6,6 +6,7 @@ import io.github.fxjcangku.worldseedlab.client.probe.ClientQuartCaptureControlle
 import io.github.fxjcangku.worldseedlab.client.probe.ClientDesertFootprintCaptureController;
 import io.github.fxjcangku.worldseedlab.client.probe.AutoDesertFootprintController;
 import io.github.fxjcangku.worldseedlab.core.BootstrapCheck;
+import io.github.fxjcangku.worldseedlab.client.ui.WslCommandDisplay;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommands;
@@ -45,6 +46,7 @@ public final class WorldSeedLabClient implements ClientModInitializer {
         quart = new ClientQuartCaptureController(probe, gameVersion);
         footprint = new ClientDesertFootprintCaptureController(probe, gameVersion);
         automatic = new AutoDesertFootprintController(probe, gameVersion);
+        PlatformScreens.registerAutomatic(automatic);
         KeyMapping.Category category = KeyMapping.Category.register(
                 Identifier.fromNamespaceAndPath("worldseedlab", "general"));
         KeyMapping panelKey = KeyMappingHelper.registerKeyMapping(
@@ -54,7 +56,7 @@ public final class WorldSeedLabClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(minecraft -> {
             while (panelKey.consumeClick()) {
                 if (minecraft.player != null) {
-                    PlatformScreens.open(minecraft, probe);
+                    PlatformScreens.open(minecraft, probe, automatic);
                 }
             }
             probe.tick(minecraft);
@@ -72,167 +74,169 @@ public final class WorldSeedLabClient implements ClientModInitializer {
         });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
-            // 全部为用户主动标记，绝不以观察坐标冒充结构生成起始区块。
+            // 所有客户端指令采用统一的中文分行/加粗/颜色设计，且不会自动刷聊天。
             var mark = ClientCommands.literal("mark");
             for (var structure : WorldProbeController.structureCatalog().entrySet()) {
                 String alias = structure.getKey();
                 mark.then(ClientCommands.literal(alias).executes(context -> {
                     probe.markStructureByAlias(Minecraft.getInstance(), alias);
-                    context.getSource().sendFeedback(Component.literal(probe.status()));
+                    WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                            "手动结构标记 · 非天然起点", probe.status());
                     return 1;
                 }));
             }
             var quartCmd = ClientCommands.literal("quart")
                     .executes(context -> {
-                        context.getSource().sendFeedback(Component.literal(quart.status()));
+                        WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                "群系独立取样", quart.status());
                         return 1;
                     })
                     .then(ClientCommands.literal("sample").executes(context -> {
-                        context.getSource().sendFeedback(Component.literal(
-                                quart.sample(Minecraft.getInstance())));
+                        WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                "群系独立取样", quart.sample(Minecraft.getInstance()));
                         return 1;
                     }))
                     .then(ClientCommands.literal("export").executes(context -> {
-                        context.getSource().sendFeedback(Component.literal(
-                                quart.export(Minecraft.getInstance())));
+                        WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                "群系样本导出", quart.export(Minecraft.getInstance()));
                         return 1;
                     }))
                     .then(ClientCommands.literal("clear").executes(context -> {
-                        quart.clear("用户手动清空 P3.2 群系样本");
-                        context.getSource().sendFeedback(Component.literal(quart.status()));
+                        quart.clear("用户清空独立quart观测");
+                        WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                "群系样本", quart.status());
                         return 1;
                     }));
-            // P3.5 独立的双角手动取证，与后台P2.6稀疏材料扫描完全隔离。
-            var footprintCommand = ClientCommands.literal("footprint")
+            var footprintCmd = ClientCommands.literal("footprint")
                     .executes(context -> {
-                        context.getSource().sendFeedback(Component.literal(footprint.status()));
+                        WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                "沙漠神殿手动完整轮廓（高级）", footprint.status());
                         return 1;
                     })
                     .then(ClientCommands.literal("first").executes(context -> {
-                        context.getSource().sendFeedback(Component.literal(
-                                footprint.first(Minecraft.getInstance())));
+                        WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                "手动轮廓 · 第一个角", footprint.first(Minecraft.getInstance()));
                         return 1;
                     }))
                     .then(ClientCommands.literal("second").executes(context -> {
-                        context.getSource().sendFeedback(Component.literal(
-                                footprint.second(Minecraft.getInstance())));
+                        WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                "手动轮廓 · 第二个角", footprint.second(Minecraft.getInstance()));
                         return 1;
                     }))
                     .then(ClientCommands.literal("export").executes(context -> {
-                        context.getSource().sendFeedback(Component.literal(
-                                footprint.export(Minecraft.getInstance())));
+                        WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                "手动轮廓导出", footprint.export(Minecraft.getInstance()));
                         return 1;
                     }))
                     .then(ClientCommands.literal("clear").executes(context -> {
-                        footprint.clear("用户取消P3.5客户端建筑轮廓取证");
-                        context.getSource().sendFeedback(Component.literal(footprint.status()));
+                        footprint.clear("用户取消手动轮廓取证");
+                        WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                "手动轮廓", footprint.status());
                         return 1;
                     }));
-            // P3.6 一次手动授权后自动取证，且只生成客户端可见模型证据。
-            var automaticCommand = ClientCommands.literal("auto")
+            var autoCmd = ClientCommands.literal("auto")
                     .executes(context -> {
-                        context.getSource().sendFeedback(Component.literal(automatic.status()));
+                        WslCommandDisplay.auto(context.getSource()::sendFeedback, automatic, probe);
                         return 1;
                     })
                     .then(ClientCommands.literal("on").executes(context -> {
-                        context.getSource().sendFeedback(Component.literal(
-                                automatic.start(Minecraft.getInstance())));
+                        String result = automatic.start(Minecraft.getInstance());
+                        WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                "一键自动取证 · 授权结果", result);
+                        WslCommandDisplay.auto(context.getSource()::sendFeedback, automatic, probe);
                         return 1;
                     }))
                     .then(ClientCommands.literal("off").executes(context -> {
-                        context.getSource().sendFeedback(Component.literal(
-                                automatic.stop("用户主动关闭P3.6自动取证；已接受文件继续排空")));
+                        String result = automatic.stop("用户主动停止P3.8自动取证；已接收证据继续落盘");
+                        WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                "自动取证 · 安全停止", result);
+                        WslCommandDisplay.auto(context.getSource()::sendFeedback, automatic, probe);
                         return 1;
                     }))
                     .then(ClientCommands.literal("status").executes(context -> {
-                        context.getSource().sendFeedback(Component.literal(automatic.status()));
+                        WslCommandDisplay.auto(context.getSource()::sendFeedback, automatic, probe);
                         return 1;
                     }));
             dispatcher.register(ClientCommands.literal("wsl")
                     .executes(context -> {
-                        PlatformScreens.open(Minecraft.getInstance(), probe);
+                        PlatformScreens.open(Minecraft.getInstance(), probe, automatic);
                         return 1;
                     })
                     .then(ClientCommands.literal("gui").executes(context -> {
-                        PlatformScreens.open(Minecraft.getInstance(), probe);
+                        PlatformScreens.open(Minecraft.getInstance(), probe, automatic);
+                        return 1;
+                    }))
+                    .then(ClientCommands.literal("help").executes(context -> {
+                        WslCommandDisplay.help(context.getSource()::sendFeedback);
                         return 1;
                     }))
                     .then(ClientCommands.literal("map").executes(context -> {
-                        // 只查看本地真实区块观测索引，不要求开启采集，也不获取 Seed。
                         PlatformScreens.openMap(Minecraft.getInstance(), probe);
                         return 1;
                     }))
                     .then(ClientCommands.literal("status").executes(context -> {
-                        context.getSource().sendFeedback(Component.literal(
-                                "WorldSeedLab | " + (probe.active() ? "采集中" : "已停止")
-                                + " | 本次群系: " + probe.biomeTypes()
-                                + " | 观测样本: " + probe.observedSamples()
-                                + " | 自动结构: " + (probe.structureScanEnabled() ? "开" : "关")
-                                + " | 疑似聚合组: " + probe.structureCandidateGroups()
-                                + " | P3.6自动取证: " + (automatic.running() ? "开" : "关")
-                                + " | " + probe.status()));
+                        WslCommandDisplay.general(context.getSource()::sendFeedback, probe, automatic);
                         return 1;
                     }))
                     .then(ClientCommands.literal("epoch")
                             .executes(context -> {
-                                context.getSource().sendFeedback(Component.literal(
-                                        probe.worldEpochStatus(Minecraft.getInstance())));
+                                WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                        "当前世界纪元", probe.worldEpochStatus(Minecraft.getInstance()));
                                 return 1;
                             })
                             .then(ClientCommands.literal("new").executes(context -> {
-                                context.getSource().sendFeedback(Component.literal(
-                                        probe.newWorldEpoch(Minecraft.getInstance())));
+                                WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                        "创建新世界纪元", probe.newWorldEpoch(Minecraft.getInstance()));
                                 return 1;
                             })))
                     .then(ClientCommands.literal("report").executes(context -> {
-                        context.getSource().sendFeedback(Component.literal(probe.exportReport()));
+                        WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                "研究报告导出", probe.exportReport());
                         return 1;
                     }))
                     .then(ClientCommands.literal("path").executes(context -> {
-                        context.getSource().sendFeedback(Component.literal(
-                                "WorldSeedLab 本地证据目录: " + probe.dataRoot().toAbsolutePath()));
+                        WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                "本机证据路径", probe.dataRoot().toAbsolutePath().toString());
                         return 1;
                     }))
                     .then(mark)
                     .then(quartCmd)
-                    .then(footprintCommand)
-                    .then(automaticCommand)
+                    .then(footprintCmd)
+                    .then(autoCmd)
                     .then(ClientCommands.literal("marks").executes(context -> {
-                        context.getSource().sendFeedback(Component.literal(
-                                "可手动标记的结构: " + String.join(", ",
-                                        WorldProbeController.structureCatalog().keySet().stream()
-                                                .sorted().toList())));
+                        WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                "可手动标记类型 · 与自动识别分离",
+                                String.join(" | ", WorldProbeController.structureCatalog()
+                                        .keySet().stream().sorted().toList()));
                         return 1;
                     }))
                     .then(ClientCommands.literal("detail").executes(context -> {
                         probe.changeSettings(probe.settings().nextDetailMode());
-                        context.getSource().sendFeedback(Component.literal(
-                                "扩展取证档位: " + probe.settings().detailMode().chineseLabel()
-                                + " | " + probe.status()));
+                        WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                "自定义地形详情档位",
+                                probe.settings().detailMode().chineseLabel()
+                                        + " | " + probe.status());
                         return 1;
                     }))
-                    // 结构识别必须独立手动授权，不因普通跑图采集自动启动。
                     .then(ClientCommands.literal("structures")
                             .executes(context -> {
-                                context.getSource().sendFeedback(Component.literal(
-                                        "结构材料扫描: " + (probe.structureScanEnabled() ? "开启" : "关闭")
-                                        + " | 近邻候选组: " + probe.structureCandidateGroups()
-                                        + " | 已落盘候选: " + probe.structureCandidateRecordsWritten()));
+                                WslCommandDisplay.structures(context.getSource()::sendFeedback, probe);
                                 return 1;
                             })
                             .then(ClientCommands.literal("on").executes(context -> {
-                                context.getSource().sendFeedback(Component.literal(
-                                        probe.setStructureScanning(true)));
+                                WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                        "结构材料扫描", probe.setStructureScanning(true));
+                                WslCommandDisplay.structures(context.getSource()::sendFeedback, probe);
                                 return 1;
                             }))
                             .then(ClientCommands.literal("off").executes(context -> {
-                                context.getSource().sendFeedback(Component.literal(
-                                        probe.setStructureScanning(false)));
+                                WslCommandDisplay.notice(context.getSource()::sendFeedback,
+                                        "结构材料扫描", probe.setStructureScanning(false));
+                                WslCommandDisplay.structures(context.getSource()::sendFeedback, probe);
                                 return 1;
                             })))
                     .then(ClientCommands.literal("about").executes(context -> {
-                        context.getSource().sendFeedback(Component.literal(
-                                "独立世界生成研究 | /wsl auto on开启结构+群系+地形联合取证 | 仅本地已加载区块 | 生成器未知时不提供Seed结论"));
+                        WslCommandDisplay.help(context.getSource()::sendFeedback);
                         return 1;
                     })));
         });

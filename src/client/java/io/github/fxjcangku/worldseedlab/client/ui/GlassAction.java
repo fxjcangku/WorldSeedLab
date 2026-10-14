@@ -40,7 +40,8 @@ public final class GlassAction extends AbstractWidget {
         g.fill(x + 5, y + h - 1, x + w - 5, y + h, 0x406BC8EC);
         String label = GlassUi.compact(text.get(), Math.max(5, w / 7));
         int textX = x + (w - font.width(label)) / 2;
-        g.text(font, label, textX, y + (h - font.lineHeight) / 2, GlassUi.TEXT, false);
+        g.text(font, label, textX, y + (h - font.lineHeight) / 2,
+                primary ? GlassUi.MINT : GlassUi.TEXT, true);
     }
 
     @Override

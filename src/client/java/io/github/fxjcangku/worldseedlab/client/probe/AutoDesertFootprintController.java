@@ -144,6 +144,20 @@ public final class AutoDesertFootprintController {
 
     public boolean running() { return running; }
 
+    /** P3.8 多行中文指令面板仅读取统计快照，不访问世界方块。 */
+    public long verifiedFootprints() { return verified; }
+    public int persistedFootprints() { return filesPersisted.get(); }
+    public int pendingFiles() {
+        return executor == null ? 0
+                : executor.getQueue().size() + executor.getActiveCount();
+    }
+    public long completedScanPasses() { return completedChunks; }
+    public long interruptedScans() { return interrupted; }
+    public long rejectedFootprints() { return incomplete; }
+    public long deduplicatedFootprints() { return duplicates; }
+    public int recentChunkCacheSize() { return scannedChunks.retained(); }
+    public long evictedChunkCacheEntries() { return scannedChunks.evictions(); }
+
     public String status() {
         String progress = capture != null
                 ? " | 当前完整轮廓 " + capture.next + "/" + capture.voxels.length + " 方块"
