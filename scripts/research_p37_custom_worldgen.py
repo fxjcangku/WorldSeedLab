@@ -147,6 +147,20 @@ class P37Audit:
     def _region(chunk_x, chunk_z):
         return (chunk_x // 32, chunk_z // 32)
 
+    @staticmethod
+    def _spatially_separated_regions(regions):
+        """32区块宏区域宽512方块；间隔至少3个宏区域才保证边缘间≥1024。
+        本步骤是保守候选筛选，并没有真正执行模型FIT/HOLDOUT。
+        """
+        chosen = []
+        for point in sorted(regions):
+            if all(max(abs(point[0] - old[0]), abs(point[1] - old[1])) >= 3
+                   for old in chosen):
+                chosen.append(point)
+                if len(chosen) == 5:
+                    break
+        return len(chosen)
+
     def _add_region(self, target, key):
         if key not in target:
             self._require(len(target) < MAX_REGIONS,
@@ -263,7 +277,9 @@ class P37Audit:
                   if ns != "minecraft"}
         namespaces = {name: self.namespaces[name]
                       for name in sorted(self.namespaces)}
-        independent = len(self.biome_regions & self.terrain_regions)
+        independent_regions = self.biome_regions & self.terrain_regions
+        independent = len(independent_regions)
+        spaced = self._spatially_separated_regions(independent_regions)
         self._require(not salt_hypotheses or
                       (len(salt_hypotheses) <= 32
                        and len(salt_hypotheses) == len(set(salt_hypotheses))),
@@ -288,7 +304,9 @@ class P37Audit:
                 "biome_macroregions": len(self.biome_regions),
                 "terrain_macroregions": len(self.terrain_regions),
                 "regions_with_both_biome_and_terrain": independent,
-                "possible_future_2fit_1holdout_regions": independent >= 3,
+                "conservatively_spaced_1024_block_regions_up_to_5": spaced,
+                "possible_future_structure_2fit_1holdout_regions": spaced >= 3,
+                "possible_future_biome_3fit_2holdout_regions": spaced >= 5,
                 "actual_model_fit_or_holdout_run": False,
                 "global_world_coverage_percent": None,
             },
@@ -345,8 +363,10 @@ def format_chinese(report):
         f"详细地形：{sources['terrain_detail_chunks']}条；"
         f"地下剖面格点：{sources['strata_vertical_cells']}\n"
         f"双链宏区域：{geo['regions_with_both_biome_and_terrain']}；"
-        f"可供未来2FIT+1HOLDOUT：{'是' if geo['possible_future_2fit_1holdout_regions'] else '否'}"
-        "（尚未运行任何生成器拟合）\n"
+        f"≥1024方块保守间隔的候选区：{geo['conservatively_spaced_1024_block_regions_up_to_5']}；"
+        f"未来结构2FIT+1HOLDOUT：{'可划分' if geo['possible_future_structure_2fit_1holdout_regions'] else '不足'}；"
+        f"未来群系3FIT+2HOLDOUT：{'可划分' if geo['possible_future_biome_3fit_2holdout_regions'] else '不足'}"
+        "（均未实际拟合）\n"
         f"群系ID种类：{biome['distinct_observed_ids']}；"
         f"非minecraft命名空间数：{biome['custom_namespace_count']}；"
         f"未修改原版群系模型：{biome['unmodified_vanilla_biome_model']}\n"

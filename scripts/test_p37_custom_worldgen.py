@@ -83,7 +83,7 @@ class P37AuditTest(unittest.TestCase):
         self.path = Path(self.td.name) / "observations.zip"
 
     def controlled(self):
-        chunks = [(0, 0), (32, 0), (64, 0)]
+        chunks = [(0, 0), (96, 0), (192, 0), (288, 0), (384, 0)]
         return {
             "evidence.jsonl": [
                 biome(x, z, "terralith:mirage_isles" if i % 2 == 0
@@ -96,11 +96,13 @@ class P37AuditTest(unittest.TestCase):
     def test_real_client_custom_evidence_is_not_unknown_seed_break(self):
         build_zip(self.path, self.controlled())
         result = verify_zip(self.path, (14357617, 14357844))
-        self.assertEqual(result["sources"]["actual_client_biome_samples"], 3)
-        self.assertEqual(result["sources"]["actual_client_terrain_chunks"], 3)
+        self.assertEqual(result["sources"]["actual_client_biome_samples"], 5)
+        self.assertEqual(result["sources"]["actual_client_terrain_chunks"], 5)
         self.assertEqual(result["sources"]["strata_vertical_cells"], 1)
-        self.assertEqual(result["independence"]["regions_with_both_biome_and_terrain"], 3)
-        self.assertTrue(result["independence"]["possible_future_2fit_1holdout_regions"])
+        self.assertEqual(result["independence"]["regions_with_both_biome_and_terrain"], 5)
+        self.assertEqual(result["independence"]["conservatively_spaced_1024_block_regions_up_to_5"], 5)
+        self.assertTrue(result["independence"]["possible_future_structure_2fit_1holdout_regions"])
+        self.assertTrue(result["independence"]["possible_future_biome_3fit_2holdout_regions"])
         self.assertFalse(result["independence"]["actual_model_fit_or_holdout_run"])
         self.assertEqual(result["biome"]["custom_namespace_count"], 1)
         self.assertEqual(result["biome"]["unmodified_vanilla_biome_model"],
@@ -114,6 +116,18 @@ class P37AuditTest(unittest.TestCase):
         self.assertNotIn('"chunk_x"', serialized)
         self.assertNotIn('"chunk_z"', serialized)
         self.assertNotIn('"position"', serialized)
+
+    def test_adjacent_macroregions_do_not_pass_1024_block_independence(self):
+        rows = {
+            "evidence.jsonl": [biome(0,0), biome(32,0), biome(64,0)],
+            "terrain.jsonl": [terrain(0,0), terrain(32,0), terrain(64,0)],
+        }
+        build_zip(self.path, rows)
+        result = verify_zip(self.path)
+        self.assertEqual(result["independence"]["regions_with_both_biome_and_terrain"], 3)
+        self.assertEqual(result["independence"]["conservatively_spaced_1024_block_regions_up_to_5"], 1)
+        self.assertFalse(result["independence"]["possible_future_structure_2fit_1holdout_regions"])
+        self.assertFalse(result["independence"]["possible_future_biome_3fit_2holdout_regions"])
 
     def test_vanilla_biome_names_do_not_authenticate_generator(self):
         rows = self.controlled()
