@@ -1,0 +1,56 @@
+{
+  "schema": 1,
+  "project": "WorldSeedLab",
+  "phase": "P3.4.1",
+  "date": "2026-10-14",
+  "repository": "fxjcangku/WorldSeedLab",
+  "source_commit": "439f3c1949a3ab5b939fe059f6992f035664af1c",
+  "run_id": 38520815668,
+  "run_url": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/38520815668",
+  "conclusion": "success",
+  "tested_environment": "actual Minecraft dedicated controlled server, not ordinary client",
+  "controlled_world_seed_signed": "2731",
+  "worldgen": "custom flat desert",
+  "modified_structure_set": "minecraft:desert_pyramids",
+  "actual_datapack_path": "data/minecraft/worldgen/structure_set/desert_pyramids.json",
+  "unmodified_vanilla_salt": 14357617,
+  "modified_salt": 14357844,
+  "versions": {
+    "26.1.2": {
+      "job_id": 115709837002,
+      "conclusion": "success",
+      "datapack_minecraft_enabled": true,
+      "datapack_format": "101.1",
+      "full_chunks_with_custom_terrain": 406,
+      "actual_saved_structure_starts": 7,
+      "modified_salt_fits": 7,
+      "original_salt_conflicts": 7,
+      "fit_count": 2,
+      "holdout_count": 5
+    },
+    "26.2": {
+      "job_id": 115709837372,
+      "conclusion": "success",
+      "datapack_minecraft_enabled": true,
+      "datapack_format": "107.1",
+      "full_chunks_with_custom_terrain": 406,
+      "actual_saved_structure_starts": 7,
+      "modified_salt_fits": 7,
+      "original_salt_conflicts": 7,
+      "fit_count": 2,
+      "holdout_count": 5
+    }
+  },
+  "conclusions": [
+    "Real updated structure-set datapack is enabled by the target Minecraft server",
+    "Saved actual StructureStart positions match only the modified Salt under these two tested models",
+    "Unknown Salt remains generator unknown; legacy structure start positions alone cannot recover upper 16 bits"
+  ],
+  "not_proven": [
+    "unknown/private server generator identity",
+    "unknown salt recovery from only ordinary client-visible structures",
+    "client-visible complete geometry to exact StructureStart",
+    "full64 seed recovery with custom generator"
+  ],
+  "privacy": "No private server coordinates, credentials, player world state, or identity secrets included."
+}

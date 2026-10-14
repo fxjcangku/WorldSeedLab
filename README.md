@@ -141,7 +141,7 @@ WorldSeedLab 已建立新的**只读、显式离线执行**的双轴研究流程
 - **两版本真实 Fabric GUI 客户端联机也通过**：在隔离的自定义地形服务器由真正游戏聊天框手动执行 5 次 `/wsl quart sample` 和 1 次 `/wsl quart export`，5/5 CLIENT_OBSERVED 均与服务器另行存储的 FULL 区块匹配，3 FIT + 2 HOLDOUT。**这是受控 Seed=2731 世界的兼容性验收，不是未知服的完整64位 Seed 恢复。**
 - 所有匿名审计摘要不输出私人坐标、世界指纹或 Seed；普通客户端不会自动访问新区块，也不会自动上传证据。
 
-P3.4.1 已新增真实修改原版神殿结构集 Salt 的隔离服务器实验（双版 CI 待验收），以真实保存的 StructureStart 分辨“已修改 Salt 符合 / 旧 Salt 冲突”；详情见 [P3.4.1 真实修改 Salt 研究](docs/P34_REAL_MODIFIED_SALT_CONTROL.md)。这不代表未知目标服 Salt 已被破解。
+**P3.4.1 新增真实修改 Salt 的双版本服务器对照，已通过**：两版 Minecraft 都确实启用了实验数据包，真实保存的7条沙漠神殿StructureStart均匹配修改后的Salt `14357844`，并全部拒绝原版Salt `14357617`。见[真实修改Salt研究报告](docs/P34_REAL_MODIFIED_SALT_CONTROL.md)与[实际Actions #38520815668](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38520815668)。这不代表未知目标服务器Salt已被破解。
 
 [详细技术与测试边界](docs/P34_CUSTOM_WORLDGEN_COMPATIBILITY.md) · [真实自定义服务端 Actions #38518930209](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38518930209) · [真实自定义客户端 Actions #38518930253](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38518930253) · [P3.4 PR #21](https://github.com/fxjcangku/WorldSeedLab/pull/21)
 

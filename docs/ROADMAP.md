@@ -206,8 +206,8 @@
 - [x] 新增可由 CI 调用的真实 Minecraft 自定义平坦沙漠地形服务器实验脚本及 FULL Anvil/StructureStart 回放测试。
 - [x] GitHub Actions **26.1.2 和 26.2** 自定义世界真实生成、原版对照/自定义反例和双版编译通过（Actions #38518930209、#38518930186；基线 faa429da）。
 - [x] 真实 Fabric 图形客户端在**受控自定义**服务器中经过正常游戏聊天框取得 5 条 CLIENT_OBSERVED（3 FIT + 2 HOLDOUT），独立FULL存档逐点5/5核对；两版通过 Actions #38518930253。
-- [x] 创建 P3.4.1 **真正覆盖 `minecraft:desert_pyramids` 结构集 Salt** 的双版本受控世界测试脚本，要求Minecraft自身启用数据包、真实FULL StructureStart与已修改/原版Salt正反检查（代码已写；正式通过取决于CI）。
-- [ ] 真正运行并核对两版P3.4.1的数据包/StructureStart成功报告；任何版本失败必须修复后再标完成。
+- [x] P3.4.1 **真正覆盖 `minecraft:desert_pyramids` 结构集 Salt** 的双版本受控世界测试：Minecraft自身确认启用数据包、真实FULL Anvil StructureStart与新旧Salt正反对照。
+- [x] GitHub Actions #38520815668 两版均 success：各7处真正保存的 StructureStart 全部满足修改 Salt=14357844，7/7 拒绝原版 Salt=14357617，未知Salt保守判定。
 - [ ] 真实客户端完整建筑外轮廓以及跨生成时代混合存档的更大规模正反例（仅有Salt模型测试不能替代）。
 - [ ] 非零高16及负数真实Seed完整65,536高位域覆盖和独立留出，不把P3.1的2731单例结果冒充普遍证明。
 
