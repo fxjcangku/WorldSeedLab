@@ -99,6 +99,14 @@ P2.7 已确认的 Minecraft Legacy RandomSpread 数学模型现可转换成**可
 
 [P2.9 几何逆推说明](docs/P29_GEOMETRY_INVERSION.md) · [真实 Minecraft 受控世界验收报告](docs/P29_REAL_WORLD_KNOWN_SEED.md)
 
+## P3.3 / 真正 Fabric 联机 GUI 群系取证成功
+
+**Minecraft 26.1.2 和 26.2 的实际客户端联机端到端测试已通过**：真实 Fabric 图形客户端连接公开已知 Seed 的受控原版专用服务器，使用 Minecraft 聊天框执行五次 `/wsl quart sample`，再执行 `/wsl quart export`，独立回放真实 `CLIENT_OBSERVED` CSV。两版均与服务器真实 FULL 区块群系五处完全一致，在有前提的原版模型下，有限高16窗口保留正确64位 Seed `2731` 并排除窗口内错误值。
+
+这与 P3.1 从受控服务端存档的全部65,536高16位验证**不同**；本次客户端真实取证只对 `[0,8)` 搜索，且结构low48先验来自既有 P2.9。**不是已破解未知自定义服务器**。
+
+[查看真实游戏内输入与CSV逐点验收](docs/P33_REAL_FABRIC_CLIENT_E2E.md) · [成功的双版本CI](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38515523790)
+
 ## P3.2 / 客户端真实群系取证与负数完整64位验证
 
 在普通 Fabric 客户端新增**手动读取已接收FULL区块的quart群系**：`/wsl quart sample`、`/wsl quart export`、`/wsl quart clear`。默认关闭，5处不同地区（3 FIT / 2 HOLDOUT、相隔至少1024方块）才允许本地导出；复用匿名HMAC世界指纹和世界纪元隔离。客户端不会主动下载区块、读取服务器Seed或自动上传坐标。

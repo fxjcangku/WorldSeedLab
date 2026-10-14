@@ -25,3 +25,5 @@ P3.0 完整64位研究必须阅读 [docs/P30_FULL64_EVIDENCE_RESEARCH.md](docs/P
 P3.1 全高16位验收先读 [docs/P31_REAL_HIGH16_EXHAUSTIVE.md](docs/P31_REAL_HIGH16_EXHAUSTIVE.md)。必须用真实已生成 FULL 区块的 quart 群系证据与目标版本 Mojmap 的原版生成器模型，所有高16分片完整覆盖、无重叠、检查数量等于总域才允许写“全域完成”；已验证的控制世界不代表未知服务器真实 Seed。
 
 P3.2 客户端 quart 证据与负数64位世界对照必须阅读 [docs/P32_CLIENT_QUART_NEGATIVE_FULL64.md](docs/P32_CLIENT_QUART_NEGATIVE_FULL64.md)。普通客户端仅允许用户手动读取已加载 FULL 区块、HMAC 世界和维度隔离，不得默认抓取或上传原始坐标；离线求解先独立复核结构 low48，原版生成器只能作为用户显式声明的假设。负数Seed受控服务端存档和客户端可见数据不可混淆。
+
+P3.3 真实客户端联机回归必须阅读 [docs/P33_REAL_FABRIC_CLIENT_E2E.md](docs/P33_REAL_FABRIC_CLIENT_E2E.md)：验证须通过真正 Fabric GUI 联机及手动命令取得 CLIENT_OBSERVED quart CSV，和独立 FULL 区块存档真值复核。不得将虚拟 GUI 启动、模拟传输、服务端 StructureStart 或未完成分片混为一谈；受控 Seed 正反例不代表未知自定义服务器 Seed 恢复。CI 特定 options.txt 只跳过首次欢迎页，不修改用户配置或任何种子证据。

@@ -427,3 +427,16 @@ tasks.register('p32NegativeRealWorldTest', JavaExec) {
          providers.gradleProperty('p32RealBiomes').orElse('NO_REAL_BIOMES').get(),
          targetMinecraft
 }
+
+
+// P3.3 实际 Fabric 客户端接入隔离原版服务器，经游戏聊天框执行命令后
+// 才有完整客户端原始CSV。不能在普通check里伪造CSV或自动生成私服坐标。
+tasks.register('p33RealFabricClientQuartTest', JavaExec) {
+    group = 'research'
+    description = 'Verify real Minecraft client-exported manual quart CSV against authentic FULL Anvil evidence.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P33RealFabricClientQuartTest'
+    args providers.gradleProperty('p33ClientEvidence').orElse('NO_ACTUAL_CLIENT_EVIDENCE').get(),
+         targetMinecraft
+}

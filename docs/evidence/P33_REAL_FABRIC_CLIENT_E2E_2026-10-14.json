@@ -1,0 +1,46 @@
+{
+  "schema": 1,
+  "phase": "P3.3",
+  "date": "2026-10-14",
+  "project": "WorldSeedLab",
+  "status": "REAL_FABRIC_CLIENT_LOOPBACK_E2E_PASSED",
+  "validatedHeadSha": "b807b7548dfdc53c4dc6d1e03174bbb598133600",
+  "sourceRun": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/38515523790",
+  "sourceBuildRun": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/38515523807",
+  "controlledWorldSeedSigned": "2731",
+  "controlledWorldSeedHex16": "0000000000000aab",
+  "source": "PUBLIC_CONTROLLED_VANILLA_DEDICATED_SERVER_AND_ACTUAL_FABRIC_GUI_CLIENT",
+  "fitBiomeSamples": 3,
+  "holdoutBiomeSamples": 2,
+  "realClientChatSamples": 5,
+  "independentAnvilFullChunkMatches": 5,
+  "high16Window": {
+    "startInclusive": 0,
+    "endExclusive": 8
+  },
+  "versions": {
+    "26.1.2": {
+      "guiProtocolConnection": true,
+      "cliQuartSamples": 5,
+      "clientCsvExport": true,
+      "matchRealSavedChunks": 5,
+      "full64HypothesisCandidateHex": "0000000000000aab",
+      "status": "success"
+    },
+    "26.2": {
+      "guiProtocolConnection": true,
+      "cliQuartSamples": 5,
+      "clientCsvExport": true,
+      "matchRealSavedChunks": 5,
+      "full64HypothesisCandidateHex": "0000000000000aab",
+      "status": "success"
+    }
+  },
+  "limitations": [
+    "Actual Fabric client via loopback dedicated vanilla server, not integrated singleplayer GUI.",
+    "P2.9 low48 verified independently from true controlled StructureStart, not derived from this client CSV.",
+    "High16 [0,8) only on client exported quart evidence; P3.1 all 65536 was a different controlled-world experiment.",
+    "Remote custom server worldgen/unknown Salt and actual ore generation were not proved.",
+    "Raw remote server coordinates never auto-uploaded."
+  ]
+}
