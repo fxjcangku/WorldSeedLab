@@ -29,3 +29,5 @@ P3.2 客户端 quart 证据与负数64位世界对照必须阅读 [docs/P32_CLIE
 P3.3 真实客户端联机回归必须阅读 [docs/P33_REAL_FABRIC_CLIENT_E2E.md](docs/P33_REAL_FABRIC_CLIENT_E2E.md)：验证须通过真正 Fabric GUI 联机及手动命令取得 CLIENT_OBSERVED quart CSV，和独立 FULL 区块存档真值复核。不得将虚拟 GUI 启动、模拟传输、服务端 StructureStart 或未完成分片混为一谈；受控 Seed 正反例不代表未知自定义服务器 Seed 恢复。CI 特定 options.txt 只跳过首次欢迎页，不修改用户配置或任何种子证据。
 
 P3.4 自定义生成器研究先读 [docs/P34_CUSTOM_WORLDGEN_COMPATIBILITY.md](docs/P34_CUSTOM_WORLDGEN_COMPATIBILITY.md)。结构与群系双轴判定必须区分模型一致/证据不足/模型冲突/生成器未知；未知 Salt、历史区块或人工建筑必须降级。真实受控存档的 FULL Anvil 与 StructureStart 不能标记为普通客户端 CLIENT_OBSERVED；只有两版实测全通过才可合并。
+
+P3.4.1 修改 Salt 研究必须先读 [docs/P34_REAL_MODIFIED_SALT_CONTROL.md](docs/P34_REAL_MODIFIED_SALT_CONTROL.md)。将真实受控 Minecraft 数据包 enabled、FULL Anvil 及保存的 StructureStart 作为三项独立验收条件；仅校验 JSON 文件存在不能声称实际自定义结构规则生效。普通客户端不能访问这些服务端真值。
