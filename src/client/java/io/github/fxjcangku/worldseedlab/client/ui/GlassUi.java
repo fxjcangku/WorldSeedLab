@@ -11,6 +11,8 @@ public final class GlassUi {
     public static final int MUTED = 0xFFA0BBD0;
     public static final int CYAN = 0xFF7EE5FF;
     public static final int MINT = 0xFF6DE9C6;
+    public static final int AMBER = 0xFFFFD37C;
+    public static final int ROSE = 0xFFFF8B9A;
 
     private GlassUi() {}
 

@@ -125,6 +125,10 @@ public final class WorldProbeController {
 
     public boolean structureScanEnabled() { return structureScanEnabled; }
     public int structureCandidateGroups() { return structureClusters.totalGroups(); }
+    /** 一次主动打开状态/指令才查询：仅返回本次会话的候选类型计数。 */
+    public Map<String, Long> detectedStructureKinds() {
+        return Map.copyOf(detectedSignatureKinds);
+    }
     public long structureScansQueued() { return acceptedStructureScans; }
     public long persistedStructureScans() {
         return structureScanCompletedAtStart
