@@ -101,14 +101,14 @@ def client_display_environments(base_env):
     found = {(base_env.get("DISPLAY"), base_env.get("XAUTHORITY"))}
     for item in Path("/proc").glob("[0-9]*/cmdline"):
         try:
-            command = item.read_bytes().replace(b"\\x00", b" ").decode("utf-8", "replace")
+            command = item.read_bytes().replace(b"\x00", b" ").decode("utf-8", "replace")
             if not any(part in command for part in (
                     "net.fabricmc.devlaunchinjector", "net.fabricmc.loader.impl.launch",
                     "net.minecraft.client.main.Main")):
                 continue
             values = dict(field.split("=", 1)
                 for field in (chunk.decode("utf-8", "replace")
-                    for chunk in (item.parent / "environ").read_bytes().split(b"\\x00"))
+                    for chunk in (item.parent / "environ").read_bytes().split(b"\x00"))
                 if "=" in field and field.split("=",1)[0] in
                     ("DISPLAY", "XAUTHORITY", "XDG_SESSION_TYPE"))
             display = values.get("DISPLAY")
