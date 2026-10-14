@@ -58,25 +58,26 @@ public final class P36RealFabricAutoEvidenceTest {
         }
         if (count != 4) throw new AssertionError("客户端自动建筑数量不完整");
         // P3.6必须不止证明神殿：实际Fabric客户端P1群系/P2地貌也要落盘。
-        var coupled=Files.readString(root.resolve("client-coupled-evidence-summary.json"));
-        if (!coupled.contains("\\"source\\": \\"ACTUAL_CLIENT_P1_P2_OBSERVATIONS\\"")
-                || !coupled.contains("\\"manual_auto_on_commands\\": 1")
-                || !coupled.contains("\\"manual_per_structure_corner_commands\\": 0")
-                || !coupled.contains("\\"manual_per_structure_export_commands\\": 0")
-                || !coupled.contains("\\"generator_identity\\": \\"UNKNOWN\\"")) {
+        // P3.6 必须连同真正的客户端群系及地形记录一起落盘。
+        var coupled = Files.readString(root.resolve("client-coupled-evidence-summary.json"));
+        if (!coupled.contains("\"source\": \"ACTUAL_CLIENT_P1_P2_OBSERVATIONS\"")
+                || !coupled.contains("\"manual_auto_on_commands\": 1")
+                || !coupled.contains("\"manual_per_structure_corner_commands\": 0")
+                || !coupled.contains("\"manual_per_structure_export_commands\": 0")
+                || !coupled.contains("\"generator_identity\": \"UNKNOWN\"")) {
             throw new AssertionError("缺少真正的一键自动结构+客户端地形/群系联合证据");
         }
         var counts=java.util.regex.Pattern.compile(
-                "\\"persisted_real_client_(?:biome_records|terrain_chunks)\\": (\\\\d+)")
+                "\"persisted_real_client_(?:biome_records|terrain_chunks)\"\\s*:\\s*(\\d+)")
                 .matcher(coupled);
         int evidenceCounts=0;
-        while(counts.find()) {
+        while (counts.find()) {
             if (Integer.parseInt(counts.group(1))<1) {
                 throw new AssertionError("自动模式实际客户端群系或地形证据为空");
             }
             evidenceCounts++;
         }
-        if(evidenceCounts!=2) {
+        if (evidenceCounts!=2) {
             throw new AssertionError("无法独立证实P1群系+P2地貌均已在客户端落盘");
         }
         var control=Files.readString(root.resolve("posthoc-control-summary.json"));
