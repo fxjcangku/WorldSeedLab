@@ -25,7 +25,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.chunk.status.ChunkStatus;
 
@@ -297,8 +296,10 @@ public final class AutoDesertFootprintController {
             n /= cursor.height;
             int z = cursor.z * 16 + n % 16;
             int x = cursor.x * 16 + n / 16;
-            if (cursor.chunk.getBlockState(new BlockPos(x, y, z)).getBlock()
-                    != Blocks.BLUE_TERRACOTTA) continue;
+            // 26.1.2/26.2 的 Blocks 静态字段存在差异；复用已验证注册表键取证。
+            String actualId = BuiltInRegistries.BLOCK.getKey(
+                    cursor.chunk.getBlockState(new BlockPos(x, y, z)).getBlock()).toString();
+            if (!"minecraft:blue_terracotta".equals(actualId)) continue;
             var blue = new AutoDesertFootprintPlan.BlueTerracottaAnchor(x, y, z);
             String key = hintKey(blue);
             if (!observedHints.add(key)) continue;
