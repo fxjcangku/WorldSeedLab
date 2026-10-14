@@ -77,7 +77,11 @@ class NbtReader:
                     return result
                 if len(result) >= 50_000:
                     raise ValueError("oversized NBT compound")
-                result[self.string()] = self.tag(child, depth + 1)
+                # Python 先求赋值右侧，再求下标表达式；必须显式先读取 NBT 名称，
+                # 否则会把 payload 当作名称解析，导致读指针错位。
+                name = self.string()
+                value = self.tag(child, depth + 1)
+                result[name] = value
         if typ in (11, 12):
             count = self.num("i")
             unit = 4 if typ == 11 else 8
