@@ -1,7 +1,7 @@
 # WorldSeedLab · P3.2 客户端真实群系证据与负数64位 Seed 验证
 
 > Minecraft Java 26.1.2 / 26.2 · Java 25 · Fabric 原生 · Mojang Mojmap  
-> **核心进度：** 普通客户端手动 quart 群系取证与明确假设下的离线 Seed 研究入口已经实现；负数高16位真实 Minecraft 受控世界验证已取得双版本成功结果。  
+> **实际验收：** 普通客户端手动 quart 群系取证与显式离线64位研究入口已在双版本CI编译和正反回归通过；负数高16位受控真实 Minecraft 世界与双版本 Fabric runClient 启动均取得成功记录。  
 > **不可误读：** 客户端 GUI 实际加入单人世界、多人服务器取证，仍需要独立实机交互验收；自定义生成器/假矿的完整复现没有得到证明。
 
 ## 1. 与 P3.1 的实质区别
@@ -59,10 +59,12 @@ gradle --no-daemon -PmcVersion=26.2 \
 
 ## 4. 自动化验收及尚未完成的任务
 
+真实执行报告：[P3.2双版本受控验收清单](evidence/P32_CLIENT_QUART_NEGATIVE_FULL64_2026-10-14.json)；实际 Actions 为 [双版本客户端入口启动](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38510514412)、[负数完整64位受控世界](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38510194467)、[当前双版本编译](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38510813619)。
+
 - `p32ClientQuartEvidenceTest`：手动采样归档与 world HMAC 作用域、最多64样本、最小水平距离、用户明确原版模型假设、恶意修改文件及重复 FIT/HOLDOUT 负例。
 - `p32OfflinePipelineIntegrationTest`：真实 P2.9 神殿起点/真实 P3.1 FULL 存档 quart 群系，经**模拟的客户端传输层**进入独立 Z3 与原版64位群系模型。模拟传输成功**不能等价于实际 runClient 进入游戏取证**。
 - `p32NegativeRealWorldTest`：在两个版本真实负数 Seed 游戏生成世界上检查实际 StructureStart、群系、正确高16与错误高16，不能改用自己编造的群系标签。
-- `p32-client-startup.yml`：使用 Xvfb 尝试实际启动两个版本的 Fabric `runClient`，要求日志出现 WorldSeedLab client entrypoint 初始化。**即使成功也只是启动/载入模组验收，不是完整单人世界点击UI及采样验收**。
+- `p32-client-startup.yml`：使用 Xvfb **实际启动并验证**两个版本的 Fabric `runClient`；日志均出现 WorldSeedLab ClientModInitializer 初始化。CI软件音频/旁白库告警不等于模组启动失败。**它只是启动/载入模组验收，不是完整单人世界点击UI及采样验收**。
 - 下一阶段仍须在 GUI 单人/远程世界中实际采样、回放原始证据、研究完整轮廓自动恢复可靠起点、未知 Salt、自定义多代生成器、插件矿物/反矿透视证据可靠性。未经这些步骤不得承诺破解所有服务器。
 
 **WorldSeedLab 保持独立公开项目，不访问、不复制或公开 yiyiaddon 私有代码，不发布 Release。**
