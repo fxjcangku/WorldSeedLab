@@ -48,7 +48,7 @@ public final class P35ClientVisibleFootprintSmokeTest {
             var padded = new ClientVisibleDesertPyramidRaster(
                     scope,paddedRoi,Y,Y+31,synthetic(paddedRoi,footprint,Y,Y+31));
             check(padded.audit().completeVisiblePerimeter()
-                            && padded.audit().possibleOrigins()==1
+                            && padded.audit().matchedFootprints()==1
                             && padded.discoveredFootprint().equals(footprint),
                     "29x29已授权范围必须从可见BlockState中发现唯一真实21x21边界");
             check(padded.inferCalibratedHypotheses(List.of(calibration))
@@ -57,7 +57,7 @@ public final class P35ClientVisibleFootprintSmokeTest {
             var blank = new ClientVisibleDesertPyramidRaster(
                     scope,paddedRoi,Y,Y+31,new byte[padded.rasterSize()]);
             check(!blank.audit().completeVisiblePerimeter()
-                            && blank.audit().possibleOrigins()==0,
+                            && blank.audit().matchedFootprints()==0,
                     "不能把较大的授权框本身当作真实神殿轮廓");
             var alternative = StructureFootprintInverter.Calibration.fromControlled(
                     "control_second",version,DIM,SET,STRUCTURE,"west",
@@ -93,6 +93,30 @@ public final class P35ClientVisibleFootprintSmokeTest {
                 Files.deleteIfExists(archive);
             }
 
+            // 真实服务器沙漠地层与神殿底部同高贴合：在四面外环的底层
+            // 放非建筑方块，但高处仍能观测到空气，应保留真实完整边界。
+            byte[] exteriorSand = cells.clone();
+            for(int z=footprint.minZ();z<=footprint.maxZ();z++) {
+                exteriorSand[ClientVisibleDesertPyramidRaster.index(
+                        footprint.minX()-1,Y,z,footprint,Y,Y+31)] =
+                        ClientVisibleDesertPyramidRaster.OTHER;
+                exteriorSand[ClientVisibleDesertPyramidRaster.index(
+                        footprint.maxX()+1,Y,z,footprint,Y,Y+31)] =
+                        ClientVisibleDesertPyramidRaster.OTHER;
+            }
+            for(int x=footprint.minX();x<=footprint.maxX();x++) {
+                exteriorSand[ClientVisibleDesertPyramidRaster.index(
+                        x,Y,footprint.minZ()-1,footprint,Y,Y+31)] =
+                        ClientVisibleDesertPyramidRaster.OTHER;
+                exteriorSand[ClientVisibleDesertPyramidRaster.index(
+                        x,Y,footprint.maxZ()+1,footprint,Y,Y+31)] =
+                        ClientVisibleDesertPyramidRaster.OTHER;
+            }
+            var partlySand = new ClientVisibleDesertPyramidRaster(
+                    scope,footprint,Y,Y+31,exteriorSand);
+            check(partlySand.audit().completeVisiblePerimeter()
+                            && partlySand.audit().westEdge()==21,
+                    "真实沙地同高度遮住建筑地基不能误判完整露天轮廓缺失");
             byte[] missingEast = cells.clone();
             for (int z=footprint.minZ(); z<=footprint.maxZ();z++) {
                 for (int y=Y;y<=Y+31;y++) {

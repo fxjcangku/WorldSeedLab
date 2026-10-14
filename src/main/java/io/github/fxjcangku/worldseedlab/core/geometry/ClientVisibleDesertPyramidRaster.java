@@ -45,7 +45,7 @@ public final class ClientVisibleDesertPyramidRaster {
     public record Audit(boolean completeVisiblePerimeter, String reason,
                         int orangeBlocks, int blueBlocks, int carvedBlocks,
                         int westEdge, int eastEdge, int northEdge, int southEdge,
-                        int possibleOrigins) {}
+                        int matchedFootprints) {}
 
     private final Scope scope;
     private final StructureFootprintInverter.BlockBounds bounds;
@@ -219,16 +219,24 @@ public final class ClientVisibleDesertPyramidRaster {
         for (int n = first; n <= last; n++) {
             int x = fixedX ? fixed : n;
             int z = fixedX ? n : fixed;
-            boolean witnessed = false;
+            boolean buildingOnEdge = false;
+            boolean exteriorHasAir = false;
+            boolean exteriorHasBuilding = false;
             for (int y = minY; y <= maxY; y++) {
-                byte cell = at(x, y, z);
-                if ((cell == SANDSTONE || cell == CARVED_OR_CUT)
-                        && at(x + offX, y, z + offZ) == AIR) {
-                    witnessed = true;
-                    break;
+                byte inside = at(x, y, z);
+                byte outside = at(x + offX, y, z + offZ);
+                if (inside >= SANDSTONE && inside <= BLUE_TERRACOTTA) {
+                    buildingOnEdge = true;
                 }
+                if (outside >= SANDSTONE && outside <= BLUE_TERRACOTTA) {
+                    exteriorHasBuilding = true;
+                }
+                if (outside == AIR) exteriorHasAir = true;
             }
-            if (witnessed) hits++;
+            // 真实神殿底部紧靠沙子，同高度外侧可能是沙方块而非空气。
+            // 但外侧整列必须不存在结构材料且确实有露天空气；地形掩埋、
+            // 结构延伸越过候选框、整列遮挡均不能当完整外沿。
+            if (buildingOnEdge && !exteriorHasBuilding && exteriorHasAir) hits++;
         }
         return hits;
     }
