@@ -173,6 +173,19 @@
 
 [P3.1 高16完整域验收与证据边界](P31_REAL_HIGH16_EXHAUSTIVE.md)
 
+## P3.2 / Client Quart Evidence and Signed Full64 Controls（研发中）
+
+- [x] 为普通 Fabric 客户端接入明确的 `/wsl quart sample/export/clear`，只从已接收 FULL 区块获取真实quart群系，按HMAC世界/维度/世界纪元隔离，用户显式导出本地坐标CSV。
+- [x] 至少3 FIT + 2 HOLDOUT，水平间隔>=1024方块；拒绝跨版本/世界/维度、重复、过量、默认原版生成器声明或冒充CLIENT_OBSERVED的伪输入。
+- [x] 实现离线 `p32OfflineClientQuartResearch`：显式Z3结构low48 + 用户确认原版模型假设 + 高16位分片；客户端启动不自动求解。
+- [x] 真实负数完整64位Seed `0xBEEF000000000AAB` 的 Minecraft 26.1.2、26.2 控制世界原版生成，实际5处StructureStart和5条FULL quart群系、3 FIT / 2 HOLDOUT验证正确高16并排除0及邻近候选。
+- [ ] 真实两个版本客户端 `runClient` Xvfb启动日志验收（以P3.2 Actions实际日志为准）。
+- [ ] 用户真正进入单人/服务器世界进行交互手动采集和离线重播、证明生成器一致性与保存证据的端到端真实体验。
+- [ ] 非零高16负数完整64位真实世界的全部65536高位重新穷举、更多随机种子和未知生成器兼容性。
+- [ ] 自定义地形+保留原版结构的真实客户端可见几何约束及自定义矿/防透视独立验证。
+
+[详细P3.2研发与验收边界](P32_CLIENT_QUART_NEGATIVE_FULL64.md)
+
 ## P3 / Solver Research — 种子候选
 
 - [ ] 从已验证的结构生成模型研究约束与候选搜索。
