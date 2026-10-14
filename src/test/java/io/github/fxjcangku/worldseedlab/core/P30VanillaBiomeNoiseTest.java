@@ -49,10 +49,10 @@ public final class P30VanillaBiomeNoiseTest {
                 return Full64BiomeCandidateSearch.ModelTrust.CONTROLLED_EXPERIMENT_ONLY;
             }
             public Full64BiomeCandidateSearch.BiomeSampler prepare(long seed) {
-                RandomState state = RandomState.create(noiseParameters, seed, settings);
+                RandomState state = RandomState.create(settings, noiseParameters, seed);
                 var sampler = state.sampler();
                 return (x,y,z) -> source.getNoiseBiome(x,y,z,sampler).unwrapKey()
-                        .orElseThrow().location().toString();
+                        .orElseThrow().identifier().toString();
             }
         };
         var truth = model.prepare(CONTROL);
