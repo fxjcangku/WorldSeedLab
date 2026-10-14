@@ -85,6 +85,13 @@ public final class GlassDashboard extends Screen {
             button(bx + 18, by + bh - 71, side - 33, 28,
                     () -> "导出研究日志", controller::exportReport, false);
         }
+        // 高分辨率玻璃控制台提供结构侦测快捷开关；小界面仍可用 /wsl structures。
+        if (bw >= 640) {
+            button(bx + bw - 304, by + 18, 106, 22,
+                    () -> controller.structureScanEnabled() ? "结构侦测：开" : "结构侦测：关",
+                    () -> controller.setStructureScanning(!controller.structureScanEnabled()),
+                    controller.structureScanEnabled());
+        }
         button(bx + bw - 186, by + 18, 84, 22,
                 () -> "真实地图",
                 () -> PlatformScreens.openMap(Minecraft.getInstance(), controller), true);
@@ -183,7 +190,8 @@ public final class GlassDashboard extends Screen {
                     "已加载群系待办 " + controller.queuedChunks()
                     + " · 待写盘 " + controller.pendingWrites()
                     + " · 地形 " + controller.terrainChunksWritten()
-                    + " · 细节 " + controller.detailChunksWritten(),
+                    + " · 细节 " + controller.detailChunksWritten()
+                    + " · 疑似结构组 " + controller.structureCandidateGroups(),
                     Math.max(28, (cw - 18) / 6)),
                     cx + 13, by + 200, GlassUi.MUTED, false);
 

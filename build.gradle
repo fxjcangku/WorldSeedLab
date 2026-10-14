@@ -176,3 +176,15 @@ tasks.register('p25MapSmokeTest', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('p25MapSmokeTest')
 }
+
+// P2.6 材料指纹候选识别：针对假矿、误识别、证据分级和跨世界隔离的独立回归。
+tasks.register('p26StructureSmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Verify bounded client structure signatures and fail-closed evidence semantics.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P26StructureRecognitionSmokeTest'
+}
+tasks.named('check') {
+    dependsOn tasks.named('p26StructureSmokeTest')
+}

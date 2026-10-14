@@ -27,6 +27,8 @@ public final class AsyncEvidenceWriter implements AutoCloseable {
     private final AtomicLong writtenManualMarks = new AtomicLong();
     private final AtomicLong writtenTerrainChunks = new AtomicLong();
     private final AtomicLong writtenDetailChunks = new AtomicLong();
+    private final AtomicLong writtenStructureScans = new AtomicLong();
+    private final AtomicLong writtenStructureCandidates = new AtomicLong();
 
     public AsyncEvidenceWriter(CompletedChunkStore store, String fingerprint, String dimension) {
         this.store = store;
@@ -177,6 +179,34 @@ public final class AsyncEvidenceWriter implements AutoCloseable {
             return false;
         }
     }
+
+
+    /** 材料候选与 P1/P2 共用同一个单线程 I/O 队列，按世界/维度严格隔离。 */
+    public boolean offerStructureScan(
+            io.github.fxjcangku.worldseedlab.core.recognition.StructureScanEvidence scan
+    ) {
+        if (io.isShutdown() || failure.get() != null
+                || !fingerprint.equals(scan.worldFingerprint())
+                || !dimension.equals(scan.dimension())) return false;
+        try {
+            io.execute(() -> {
+                try {
+                    store.appendStructureScan(scan);
+                    writtenStructureScans.incrementAndGet();
+                    writtenStructureCandidates.addAndGet(scan.candidates().size());
+                } catch (IOException | RuntimeException failureCause) {
+                    failure.compareAndSet(null,
+                            "P2.6 结构候选写入失败：" + failureCause.getMessage());
+                }
+            });
+            return true;
+        } catch (RejectedExecutionException full) {
+            return false;
+        }
+    }
+
+    public long writtenStructureScans() { return writtenStructureScans.get(); }
+    public long writtenStructureCandidates() { return writtenStructureCandidates.get(); }
 
     public long writtenDetailChunks() {
         return writtenDetailChunks.get();

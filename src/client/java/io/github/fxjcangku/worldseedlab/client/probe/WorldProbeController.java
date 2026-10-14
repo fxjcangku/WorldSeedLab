@@ -29,6 +29,8 @@ import io.github.fxjcangku.worldseedlab.core.probe.CompletedChunkStore;
 import io.github.fxjcangku.worldseedlab.core.probe.ProbeConfigFile;
 import io.github.fxjcangku.worldseedlab.core.probe.ProbeGate;
 import io.github.fxjcangku.worldseedlab.core.probe.ProbeSettings;
+import io.github.fxjcangku.worldseedlab.core.recognition.CandidateClusterIndex;
+import io.github.fxjcangku.worldseedlab.core.recognition.StructureScanEvidence;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -73,6 +75,16 @@ public final class WorldProbeController {
     private final Map<String, Long> markedStructureCounts = new HashMap<>();
     private final Map<String, Long> biomes = new HashMap<>();
     private ProbeSettings settings;
+    /** 结构指纹扫描是独立手动授权，重启/换维度/退出后始终关闭。 */
+    private boolean structureScanEnabled;
+    private LoadedStructureScanCursor structureCursor;
+    private final Set<Long> structureScanned = new HashSet<>();
+    private CandidateClusterIndex structureClusters = new CandidateClusterIndex();
+    private final Map<String, Long> detectedSignatureKinds = new HashMap<>();
+    private long structureScanCompletedAtStart;
+    private long acceptedStructureScans;
+    private long structureScanInterrupted;
+    private long structureQueueBackpressure;
     private DimensionProfile dimensionProfile;
     private AdvertisedDimensions advertisedDimensions;
     private GenerationDiagnostics generationDiagnostics;
@@ -109,6 +121,34 @@ public final class WorldProbeController {
     public long writtenChunks() { return previouslyCompleted + (writer == null ? 0 : writer.writtenChunks()); }
     public int pendingWrites() { return writer == null ? 0 : writer.pending(); }
     public int queuedChunks() { return pending.size(); }
+
+    public boolean structureScanEnabled() { return structureScanEnabled; }
+    public int structureCandidateGroups() { return structureClusters.totalGroups(); }
+    public long structureScansQueued() { return acceptedStructureScans; }
+    public long persistedStructureScans() {
+        return structureScanCompletedAtStart
+                + (writer == null ? 0 : writer.writtenStructureScans());
+    }
+    public long structureCandidateRecordsWritten() {
+        return writer == null ? 0 : writer.writtenStructureCandidates();
+    }
+
+    /**
+     * P2.6 独立手动开关：普通群系/地形采集即使开启，结构扫描仍默认关闭。
+     * 用户停用后会丢弃本次未扫描完成的临时游标，绝不写出伪造证据。
+     */
+    public String setStructureScanning(boolean enabled) {
+        if (!active()) {
+            status = "请先手动启动世界采集，随后才可开启结构候选扫描";
+            return status;
+        }
+        structureScanEnabled = enabled;
+        if (!enabled) structureCursor = null;
+        status = enabled
+                ? "P2.6 结构候选扫描已开启：只读已加载区块，矿石不参与判定"
+                : "P2.6 结构候选扫描已关闭，已接受的写盘队列继续排空";
+        return status;
+    }
     public Path dataRoot() { return configRoot.resolve("observations"); }
 
     /** 游戏当前维度的客户端可见元数据，不能视为服务端完整生成器配置。 */
@@ -201,7 +241,8 @@ public final class WorldProbeController {
             report = extended.toString()
                     + DetailReportAppendix.render(
                             detailStats == null ? null : detailStats.snapshot())
-                    + CoverageReportAppendix.render(coverageStats());
+                    + CoverageReportAppendix.render(coverageStats())
+                    + structureResearchAppendix();
             Path path = new ResearchReportStore(dataRoot()).export(dimensionProfile, report);
             status = "P2 研究日志已导出：" + path.toAbsolutePath();
             return status;
@@ -210,6 +251,30 @@ public final class WorldProbeController {
             logger.error("P2 report export failed", error);
             return status;
         }
+    }
+
+
+    /**
+     * 摘要只有本次会话候选统计，不包含精确区块坐标；
+     * 不对假矿、完整世界种子或任何候选结构起始区块作出推测。
+     */
+    private String structureResearchAppendix() {
+        StringBuilder out = new StringBuilder("\n【P2.6 自动结构材料候选】\n");
+        out.append("扫描模式: ").append(structureScanEnabled ? "启用" : "关闭").append('\n');
+        out.append("历史及本次已完成稀疏扫描区块: ")
+                .append(persistedStructureScans()).append('\n');
+        out.append("本次提交写盘的扫描区块: ").append(acceptedStructureScans).append('\n');
+        out.append("本次已写入候选记录: ").append(structureCandidateRecordsWritten()).append('\n');
+        out.append("本次候选近邻聚合组: ").append(structureCandidateGroups()).append('\n');
+        out.append("中途卸载/停止导致未完成: ").append(structureScanInterrupted).append('\n');
+        out.append("结构写盘队列背压: ").append(structureQueueBackpressure).append('\n');
+        detectedSignatureKinds.entrySet().stream().sorted(Map.Entry.comparingByKey())
+                .forEach(e -> out.append("  疑似 ").append(e.getKey())
+                        .append(" 材料证据批次: ").append(e.getValue()).append('\n'));
+        out.append("注意：材料相似≠服务器自然生成；无命中≠没有结构。\n");
+        out.append("假矿与矿石分布不参与此识别，任何记录都不能当作真正的结构起点。\n");
+        out.append("精确证据位于结构候选 JSONL，请勿未经脱敏公开。\n");
+        return out.toString();
     }
 
     public List<Map.Entry<String, Long>> topBiomes(int count) {
@@ -371,6 +436,7 @@ public final class WorldProbeController {
             Set<ChunkKey> resume = nextStore.loadCompleted(f, d);
             Set<TerrainChunkKey> terrainResume = nextStore.loadTerrainCompleted(f, d);
             Set<TerrainDetailKey> detailsResume = nextStore.loadDetailCompleted(f, d);
+            Set<Long> structureResume = nextStore.loadStructureScanned(f, d);
             DimensionProfile nextProfile =
                     TerrainObserver.dimensionProfile(client.level, f, gameVersion);
             AdvertisedDimensions registry = inspectAvailableDimensions(client, f, d);
@@ -384,6 +450,16 @@ public final class WorldProbeController {
             detailSeen.addAll(detailsResume);
             detailCursor = null;
             detailStats = new DetailObservationStats(f, d);
+            structureScanEnabled = false;
+            structureCursor = null;
+            structureScanned.clear();
+            structureScanned.addAll(structureResume);
+            structureClusters = new CandidateClusterIndex();
+            detectedSignatureKinds.clear();
+            structureScanCompletedAtStart = structureResume.size();
+            acceptedStructureScans = 0;
+            structureScanInterrupted = 0;
+            structureQueueBackpressure = 0;
             markedStructureCounts.clear();
             detailCompletedAtStart = (int) detailsResume.stream()
                     .filter(k -> k.mode() == settings.detailMode()).count();
@@ -419,6 +495,9 @@ public final class WorldProbeController {
 
     public void stop(String reason) {
         gate.disarm();
+        structureScanEnabled = false;
+        if (structureCursor != null) structureScanInterrupted++;
+        structureCursor = null;
         pending.clear();
         enqueued.clear();
         cursor = null;
@@ -469,6 +548,7 @@ public final class WorldProbeController {
             }
             // 附加方块扫描每 Tick 最多 24 次 BlockState 读取，独立于群系预算。
             advanceDetail(client, 24);
+            if (structureScanEnabled) advanceStructureScan(client);
             int budget = settings.samplesPerTick();
             while (budget > 0) {
                 if (cursor == null && !beginChunk(client.level)) break;
@@ -590,6 +670,67 @@ public final class WorldProbeController {
             detailSeen.add(detailCursor.key());
             detailCursor = null;
         }
+    }
+
+
+    /**
+     * 结构自动候选独立于 P1 群系扫描。每 Tick 最多读取 64 个已缓存 BlockState，
+     * 并且最多保留一个区块的工作游标，避免鞘翅快速飞行累积无限待办。
+     */
+    private void advanceStructureScan(Minecraft client) {
+        if (writer == null || writer.pending() >= 12) return;
+        if (structureCursor == null) {
+            if (ticks % 8 != 1) return;
+            int cx = Math.floorDiv(client.player.blockPosition().getX(), 16);
+            int cz = Math.floorDiv(client.player.blockPosition().getZ(), 16);
+            int radius = Math.min(settings.radiusChunks(), 2);
+            outer:
+            for (int ring = 0; ring <= radius; ring++) {
+                for (int dx = -ring; dx <= ring; dx++) {
+                    for (int dz = -ring; dz <= ring; dz++) {
+                        if (Math.max(Math.abs(dx), Math.abs(dz)) != ring) continue;
+                        int x = cx + dx, z = cz + dz;
+                        if (structureScanned.contains(packStructureChunk(x, z))) continue;
+                        if (client.level.getChunkSource().getChunk(
+                                x, z, ChunkStatus.FULL, false) == null) continue;
+                        structureCursor = new LoadedStructureScanCursor(
+                                client.level, x, z, fingerprint, dimension, gameVersion);
+                        break outer;
+                    }
+                }
+            }
+            if (structureCursor == null) return;
+        }
+        if (!structureCursor.isLoaded(client.level)) {
+            structureScanInterrupted++;
+            structureCursor = null;
+            return;
+        }
+        if (!structureCursor.finished()) {
+            structureCursor.advance(client.level, 64);
+        }
+        if (!structureCursor.finished()) return;
+        StructureScanEvidence evidence = structureCursor.finishEvidence();
+        if (!writer.offerStructureScan(evidence)) {
+            structureQueueBackpressure++;
+            return; // 保留完整游标，下一 Tick 重试写盘
+        }
+        structureScanned.add(packStructureChunk(evidence.chunkX(), evidence.chunkZ()));
+        acceptedStructureScans++;
+        for (var candidate : evidence.candidates()) {
+            structureClusters.add(candidate.structureId(),
+                    evidence.chunkX(), evidence.chunkZ());
+            detectedSignatureKinds.merge(candidate.structureId(), 1L, Long::sum);
+        }
+        if (!evidence.candidates().isEmpty()) {
+            status = "发现 " + evidence.candidates().size()
+                    + " 条疑似结构材料线索（未经自然生成验证）";
+        }
+        structureCursor = null;
+    }
+
+    private static long packStructureChunk(int x, int z) {
+        return ((long) x << 32) | (z & 0xffffffffL);
     }
 
     /**

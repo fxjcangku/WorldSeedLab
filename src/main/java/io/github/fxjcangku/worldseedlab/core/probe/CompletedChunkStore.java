@@ -202,6 +202,57 @@ public final class CompletedChunkStore {
         return result;
     }
 
+
+    /**
+     * 同一版本的结构稀疏扫描区块完成日志。旧版算法的“未发现”不能阻止
+     * 将来新模型重新扫描；因此索引文件包含模型版本 v1。
+     */
+    public Set<Long> loadStructureScanned(String fingerprint, String dimension)
+            throws IOException {
+        Path file = base(fingerprint, dimension).resolve("structure-scanned-v1.csv");
+        Set<Long> finished = new HashSet<>();
+        if (!Files.exists(file)) return finished;
+        try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
+            String row;
+            int count = 0;
+            while ((row = reader.readLine()) != null) {
+                if (++count > MAX_JOURNAL_ROWS || row.length() > 64) {
+                    throw new IOException("structure index exceeds safe bounds");
+                }
+                try {
+                    String[] parts = row.split(",", -1);
+                    if (parts.length != 2) throw new IllegalArgumentException("columns");
+                    int x = Integer.parseInt(parts[0]);
+                    int z = Integer.parseInt(parts[1]);
+                    finished.add(packChunk(x, z));
+                } catch (RuntimeException invalid) {
+                    throw new IOException("invalid v1 structure scan journal", invalid);
+                }
+            }
+        }
+        return finished;
+    }
+
+    /** 仅是材料扫描完成，不是“证明此处没有自然生成结构”。 */
+    public void appendStructureScan(
+            io.github.fxjcangku.worldseedlab.core.recognition.StructureScanEvidence scan
+    ) throws IOException {
+        Path folder = base(scan.worldFingerprint(), scan.dimension());
+        Files.createDirectories(folder);
+        if (!scan.candidates().isEmpty()) {
+            writeDetailWithLimit(folder.resolve("structure-candidates-v1.jsonl"),
+                    io.github.fxjcangku.worldseedlab.core.recognition.StructureEvidenceJson
+                            .line(scan) + "\n");
+        }
+        // 当扫描产出候选时，必须先写入审计证据，最后再记录完成索引。
+        writeAndForce(folder.resolve("structure-scanned-v1.csv"),
+                scan.chunkX() + "," + scan.chunkZ() + "\n");
+    }
+
+    private static long packChunk(int x, int z) {
+        return ((long) x << 32) | (z & 0xffffffffL);
+    }
+
     /** 地图只读取本地已完成证据索引，路径不携带明文服务器地址。 */
     public Path scopedFolder(String fingerprint, String dimension) {
         return base(fingerprint, dimension);
