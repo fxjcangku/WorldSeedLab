@@ -163,11 +163,29 @@ def scan_structure_starts(world: Path, located):
                 if (sid != STRUCTURE and key != STRUCTURE) or sid in ("", "INVALID"):
                     continue
                 cx, cz = start.get("ChunkX"), start.get("ChunkZ")
-                bb, pieces = start.get("BB"), start.get("Children")
+                pieces = start.get("Children")
                 if not (isinstance(cx, int) and isinstance(cz, int)
-                        and isinstance(bb, list) and len(bb) == 6
                         and isinstance(pieces, list) and len(pieces) > 0):
                     continue
+                bb = start.get("BB")
+                bb_source = "structure_start"
+                if not (isinstance(bb, list) and len(bb) == 6):
+                    # 26.1+/26.2: StructureStart NBT may omit its aggregate BB.
+                    # Full generated piece extents are in Children[].BB, not at the root.
+                    piece_boxes = [piece.get("BB") for piece in pieces
+                                   if isinstance(piece, dict)]
+                    if len(piece_boxes) != len(pieces) or any(
+                            not isinstance(box, list) or len(box) != 6
+                            or not all(isinstance(value, int) for value in box)
+                            for box in piece_boxes):
+                        continue
+                    bb = [min(box[0] for box in piece_boxes),
+                          min(box[1] for box in piece_boxes),
+                          min(box[2] for box in piece_boxes),
+                          max(box[3] for box in piece_boxes),
+                          max(box[4] for box in piece_boxes),
+                          max(box[5] for box in piece_boxes)]
+                    bb_source = "union_of_serialized_structure_pieces"
                 # 只有本区块保存的真实 start 才可成为权威起点。
                 if chunk.get("xPos") != cx or chunk.get("zPos") != cz:
                     continue
@@ -176,6 +194,10 @@ def scan_structure_starts(world: Path, located):
                     "start_chunk_x": cx,
                     "start_chunk_z": cz,
                     "generated_structure_box": bb,
+                    "generated_box_source": bb_source,
+                    "piece_orientations": sorted(set(
+                        int(piece["O"]) for piece in pieces
+                        if isinstance(piece, dict) and isinstance(piece.get("O"), int))),
                     "piece_count": len(pieces),
                     "provenance": "saved_vanilla_structure_start_nbt",
                 }
