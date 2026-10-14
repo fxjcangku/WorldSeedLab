@@ -99,6 +99,14 @@ P2.7 已确认的 Minecraft Legacy RandomSpread 数学模型现可转换成**可
 
 [P2.9 几何逆推说明](docs/P29_GEOMETRY_INVERSION.md) · [真实 Minecraft 受控世界验收报告](docs/P29_REAL_WORLD_KNOWN_SEED.md)
 
+## P3.2 / 客户端真实群系取证与负数完整64位验证
+
+在普通 Fabric 客户端新增**手动读取已接收FULL区块的quart群系**：`/wsl quart sample`、`/wsl quart export`、`/wsl quart clear`。默认关闭，5处不同地区（3 FIT / 2 HOLDOUT、相隔至少1024方块）才允许本地导出；复用匿名HMAC世界指纹和世界纪元隔离。客户端不会主动下载区块、读取服务器Seed或自动上传坐标。
+
+离线新增“**经过Z3复核的结构low48 + 用户明确确认的原版Overworld模型假设 + quart群系high16**”研究入口，并在**真实Minecraft两版生成的负数完整64位受控世界**中验证 `0xBEEF000000000AAB`（`-4688528687069394261`）的高位保留与错误高位排除。**受控世界服务端NBT正反验收不等于未知服务器完整Seed已破解，也不等于GUI玩家采集已实测。**
+
+[查看P3.2代码、测试与隐私边界](docs/P32_CLIENT_QUART_NEGATIVE_FULL64.md)
+
 ## P3.1 / 完整高16位的真实原版群系分片反演
 
 **已通过双版本完整65,536高16位真实原版群系模型搜索**：26.1.2和26.2各16分片，32片全部通过，独立审计确保无缺口、无重复、输入实际 FULL 世界群系 SHA 一致。每版仅剩1个完整64位模型候选 `2731`，正确匹配受控已知 Seed。代码包括取消/预算/恢复与独立FIT/HOLDOUT。
