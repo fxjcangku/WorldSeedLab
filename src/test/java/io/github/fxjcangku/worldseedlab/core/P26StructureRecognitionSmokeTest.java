@@ -147,8 +147,8 @@ public final class P26StructureRecognitionSmokeTest {
         var absence = new StructureScanEvidence(world, "minecraft:overworld", "26.2",
                 -19, 5, 416, 29, 91, List.of(), now);
         String row = StructureEvidenceJson.line(candidate);
-        require(row.contains("\"schema\":2") && row.contains("\"model_version\":2"),
-                "P3.8升级后的材料索引须使用新版本，旧阴性不得阻断重扫");
+        require(row.contains("\"schema\":2") && row.contains("\"model_version\":3"),
+                "材料JSONL保持schema2，但必须标记新扫描模型版本3");
         require(row.contains("\"natural_origin_verified\":false")
                         && row.contains("\"structure_start_known\":false")
                         && row.contains("\"uses_ore_seed_evidence\":false"),
@@ -165,10 +165,13 @@ public final class P26StructureRecognitionSmokeTest {
             var store = new CompletedChunkStore(directory);
             Path v1Journal = store.scopedFolder(world, "minecraft:overworld")
                     .resolve("structure-scanned-v1.csv");
+            Path v2Journal = store.scopedFolder(world, "minecraft:overworld")
+                    .resolve("structure-scanned-v2.csv");
             Files.createDirectories(v1Journal.getParent());
             Files.writeString(v1Journal, "-19,5\n", StandardCharsets.UTF_8);
+            Files.writeString(v2Journal, "-20,5\n", StandardCharsets.UTF_8);
             require(store.loadStructureScanned(world, "minecraft:overworld").isEmpty(),
-                    "旧v1扫描阴性索引不应阻止新模型重新扫描");
+                    "旧v1/v2扫描阴性不能阻止新v3模型重新扫描");
             store.appendStructureScan(absence);
             require(store.loadStructureScanned(world, "minecraft:overworld")
                     .contains(chunk(-19, 5)), "empty candidate chunk still has scan journal");
@@ -203,7 +206,7 @@ public final class P26StructureRecognitionSmokeTest {
             Path corrupted = directory.resolve("corrupted");
             var optionalStore = new CompletedChunkStore(corrupted);
             Path damagedJournal = optionalStore.scopedFolder(world, "minecraft:overworld")
-                    .resolve("structure-scanned-v2.csv");
+                    .resolve("structure-scanned-v3.csv");
             Files.createDirectories(damagedJournal.getParent());
             Files.writeString(damagedJournal, "broken-coordinate\n", StandardCharsets.UTF_8);
             boolean structureIndexRejected = false;
