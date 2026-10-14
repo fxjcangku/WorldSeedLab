@@ -472,3 +472,17 @@ tasks.register('p34OfflineAudit', JavaExec) {
          providers.gradleProperty('p34Salt').orElse('UNKNOWN').get(),
          providers.gradleProperty('p34Biomes').orElse('UNKNOWN_OR_CUSTOM').get()
 }
+
+
+// P3.4 真正启动自建自定义平坦服务端之后，读取其FULL Anvil区块和
+// StructureStart控制真值。本任务不能作为普通客户端可访问服务端NBT的证明。
+tasks.register('p34RealCustomWorldTest', JavaExec) {
+    group = 'research'
+    description = 'Audit actual saved custom-terrain Minecraft StructureStart and FULL biomes.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P34RealCustomWorldTest'
+    args providers.gradleProperty('p34ControlDir')
+            .orElse("build/p34-controlled/${targetMinecraft}").get(),
+         targetMinecraft
+}
