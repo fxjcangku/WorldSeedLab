@@ -36,6 +36,8 @@ public final class MapTileArchive {
     private static final int BIOME = 1;
     private static final int HEIGHT = 2;
     private static final int MARKER = 3;
+    // 极高自定义维度允许最多 1024 个垂直层 × 16 个水平 quart 样本。
+    private static final int MAX_BIOME_SAMPLES = 16384;
     private static final int MAX_FILE = 256 * 1024;
 
     private MapTileArchive() {}
@@ -64,7 +66,7 @@ public final class MapTileArchive {
 
     public static void writeBiomes(Path root, ChunkKey key, List<EvidenceRecord> records)
             throws IOException {
-        if (records.isEmpty() || records.size() > 4096) {
+        if (records.isEmpty() || records.size() > MAX_BIOME_SAMPLES) {
             throw new IOException("invalid biome map tile size");
         }
         byte[] bytes = encode(out -> {
@@ -126,7 +128,7 @@ public final class MapTileArchive {
             int x = in.readInt(), z = in.readInt(), actualStride = in.readInt();
             int count = in.readInt();
             if (x != chunkX || z != chunkZ || actualStride != stride
-                    || count < 1 || count > 4096) {
+                    || count < 1 || count > MAX_BIOME_SAMPLES) {
                 throw new IOException("biome map tile metadata mismatch");
             }
             List<BiomePoint> found = new ArrayList<>(count);
