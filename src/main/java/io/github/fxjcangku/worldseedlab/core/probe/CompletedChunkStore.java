@@ -2,6 +2,7 @@ package io.github.fxjcangku.worldseedlab.core.probe;
 
 import io.github.fxjcangku.worldseedlab.core.evidence.EvidenceJsonLines;
 import io.github.fxjcangku.worldseedlab.core.evidence.EvidenceRecord;
+import io.github.fxjcangku.worldseedlab.core.map.MapTileArchive;
 import io.github.fxjcangku.worldseedlab.core.privacy.WorldFingerprint;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -76,6 +77,8 @@ public final class CompletedChunkStore {
         }
 
         writeAndForce(folder.resolve("evidence.jsonl"), data.toString());
+        // 在完成进度之前原子生成地图索引；任何失败都不得宣称区块采集成功。
+        MapTileArchive.writeBiomes(MapTileArchive.root(folder), key, records);
         writeAndForce(folder.resolve("completed-chunks.csv"), key.asJournalLine() + "\n");
     }
 
@@ -89,6 +92,7 @@ public final class CompletedChunkStore {
         Files.createDirectories(folder);
         writeAndForce(folder.resolve("evidence.jsonl"),
                 EvidenceJsonLines.serialize(record) + "\n");
+        MapTileArchive.writeMarker(MapTileArchive.root(folder), record);
     }
 
     /**
@@ -124,6 +128,7 @@ public final class CompletedChunkStore {
         writeAndForce(folder.resolve("terrain.jsonl"),
                 io.github.fxjcangku.worldseedlab.core.generation.GenerationJsonLines.terrain(terrain)
                         + "\n");
+        MapTileArchive.writeHeight(MapTileArchive.root(folder), terrain);
         writeAndForce(folder.resolve("terrain-completed.csv"),
                 terrain.chunkX() + "," + terrain.chunkZ() + "\n");
     }
@@ -191,6 +196,11 @@ public final class CompletedChunkStore {
             }
         }
         return result;
+    }
+
+    /** 地图只读取本地已完成证据索引，路径不携带明文服务器地址。 */
+    public Path scopedFolder(String fingerprint, String dimension) {
+        return base(fingerprint, dimension);
     }
 
     public Path dataPath(String fingerprint, String dimension) {
