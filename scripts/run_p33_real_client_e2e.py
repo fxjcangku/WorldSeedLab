@@ -91,9 +91,13 @@ def xcmd(*args, env):
 
 
 def visible_minecraft_window(env):
-    found = subprocess.run(["xdotool","search","--onlyvisible","--name","Minecraft"],
-                           env=env, text=True, capture_output=True, timeout=10)
-    return found.stdout.strip().splitlines()[-1] if found.returncode == 0         and found.stdout.strip() else None
+    # 不把Xvfb根窗口当作游戏；适配目标版本的窗口标题/WM_CLASS。
+    for mode in (("--name", "Minecraft"), ("--class", "minecraft")):
+        found = subprocess.run(["xdotool","search","--onlyvisible",*mode],
+                               env=env,text=True,capture_output=True,timeout=10)
+        if found.returncode == 0 and found.stdout.strip():
+            return found.stdout.strip().splitlines()[-1]
+    return None
 
 
 def chat(window: str, command: str, env: dict):
@@ -159,10 +163,17 @@ def run(version: str):
         start_new_session=True)
     server = None
     client = None
+    wm = None
     try:
         time.sleep(2)
         if display.poll() is not None:
             raise RuntimeError("Virtual X11 display exited before launching Minecraft")
+        wm = subprocess.Popen(["openbox", "--sm-disable"], cwd=ROOT, env=env,
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                              start_new_session=True)
+        time.sleep(1.5)
+        if wm.poll() is not None:
+            raise RuntimeError("Virtual display Openbox window manager did not start")
         server = ManagedProcess(
             ["gradle","--no-daemon","--console=plain","-PmcVersion="+version,
              "runServer","--args=nogui"], out / "server.log")
@@ -173,7 +184,7 @@ def run(version: str):
 
         client = ManagedProcess(
             ["gradle","--no-daemon","--console=plain","-PmcVersion="+version,
-             "runClient","--args=--server 127.0.0.1 --port 25565"],
+             "runClient","--args=--quickPlayMultiplayer 127.0.0.1:25565 --width 1024 --height 680"],
             out / "client.log",env=env)
         wait_until(lambda:client.saw("WorldSeedLab P1 ready for Minecraft "+version),
                    180, "actual Fabric client mod did not initialize", server, client)
@@ -242,6 +253,12 @@ def run(version: str):
             print("[P33] CLIENT LOG TAIL\n"+client.tail(),flush=True)
         if server:
             print("[P33] SERVER LOG TAIL\n"+server.tail(),flush=True)
+        try:
+            listing = subprocess.run(["xwininfo","-root","-tree"],env=env,
+                    text=True,capture_output=True,timeout=8)
+            print("[P33] X11 visible-window inventory:\n"+listing.stdout[-3500:],flush=True)
+        except (OSError,subprocess.TimeoutExpired):
+            pass
         screenshot(out/"controlled-client-failure.png",env)
         raise
     finally:
@@ -253,6 +270,13 @@ def run(version: str):
             except (OSError,RuntimeError,TimeoutError):
                 pass
             server.stop()
+        if wm is not None and wm.poll() is None:
+            os.killpg(wm.pid, signal.SIGTERM)
+            try:
+                wm.wait(timeout=4)
+            except subprocess.TimeoutExpired:
+                os.killpg(wm.pid, signal.SIGKILL)
+                wm.wait(timeout=4)
         if display.poll() is None:
             os.killpg(display.pid, signal.SIGTERM)
             try:
