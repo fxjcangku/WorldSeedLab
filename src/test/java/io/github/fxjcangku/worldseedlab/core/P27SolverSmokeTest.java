@@ -55,7 +55,7 @@ public final class P27SolverSmokeTest {
         expect(negatives.regionX(linear) == -4 && negatives.regionZ(linear) == -7,
                 "negative coordinates use floorDiv, not truncating division");
         expect(negatives.equals(RandomSpreadMath.potentialFromSourceChunk(
-                sourceSeed, (-4 * 32) - 12, (-7 * 32) + 6, linear)),
+                sourceSeed, (-4 * 32) + 12, (-7 * 32) + 6, linear)),
                 "source chunk coordinates use correct negative region");
         expect(RandomSpreadMath.potentialChunk(sourceSeed, -4, -7, linear)
                         .equals(RandomSpreadMath.potentialChunk(
@@ -96,7 +96,8 @@ public final class P27SolverSmokeTest {
         expect(budget.evaluations() == 5_000 && budget.nextLow48() == 5_000,
                 "resumption must be exact");
         var resumed = CandidateSeedSearch.search(models, constraints,
-                budget.window().resume(budget.nextLow48()), () -> false);
+                new CandidateSeedSearch.SearchWindow(budget.nextLow48(), 50_000,
+                        50_000, 32, 120_000), () -> false);
         expect(resumed.candidates().stream().anyMatch(x -> x.seedLow48() == sourceSeed),
                 "known seed should survive in resumed window");
         var cancelled = CandidateSeedSearch.search(models, constraints,

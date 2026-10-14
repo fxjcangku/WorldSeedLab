@@ -188,3 +188,24 @@ tasks.register('p26StructureSmokeTest', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('p26StructureSmokeTest')
 }
+
+
+// P2.7：纯 Java 有界候选求解器 + 对实际目标 Minecraft 本体的结构随机放置对照。
+tasks.register('p27SolverSmokeTest', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P27SolverSmokeTest'
+}
+
+tasks.register('p27MinecraftParityTest', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P27MinecraftParityTest'
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('p27SolverSmokeTest')
+    dependsOn tasks.named('p27MinecraftParityTest')
+}

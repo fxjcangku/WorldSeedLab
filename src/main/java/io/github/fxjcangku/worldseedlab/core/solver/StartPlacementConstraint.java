@@ -79,10 +79,11 @@ public record StartPlacementConstraint(
         if (regionCount > 64) {
             throw new IllegalArgumentException("candidate region too broad for bounded validation");
         }
-        for (int rx = fromX; rx <= toX; rx++) {
-            for (int rz = fromZ; rz <= toZ; rz++) {
+        // 使用 long 计数器，避免边界 region=Integer.MAX_VALUE 时 int++ 回绕。
+        for (long rx = fromX; rx <= toX; rx++) {
+            for (long rz = fromZ; rz <= toZ; rz++) {
                 RandomSpreadMath.Chunk predicted =
-                        RandomSpreadMath.potentialChunk(low48Seed, rx, rz, spec);
+                        RandomSpreadMath.potentialChunk(low48Seed, (int) rx, (int) rz, spec);
                 if (b.contains(predicted.x(), predicted.z())) {
                     return true;
                 }
