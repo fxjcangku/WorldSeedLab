@@ -229,6 +229,21 @@
 
 [研究边界与当前测试状态](P35_CLIENT_VISIBLE_DESERT_FOOTPRINT.md)。合成测试及仅有客户端材料识别都不能代替实际正常玩家可见轮廓；未验证不得合并 main。
 
+## P3.6 / 一次授权的自动结构+自定义地形联合取证（研发中）
+
+- [x] P3.5 双版真实客户端已证明可以从真实 BlockState 形成完整的沙漠神殿可见轮廓，并以真实受控 StructureStart 独立验证。
+- [x] P3.6 研发分支新增自动蓝陶瓦材料锚点→29×29粗ROI→P3.5严格唯一21×21轮廓的客户端流程，无须手动选两角。
+- [x] 接入一键 `/wsl auto on/off/status`，默认不运行；一次授权还接入现有 P1/P2 群系/地形取证与 P2.6 指纹候选。
+- [x] 有界 FULL 区块检查、延迟候选、临时缺片失败保护、异步写盘和 HMAC 作用域隔离；保存时不证明自然来源与Seed。
+- [x] 新增自动ROI正反例及真实双版GUI受控服务器一键启动 E2E 测试入口。
+- [ ] 两版 Java25 真实 Gradle clean build 和 Z3 回归全部成功，修复实测错误。
+- [ ] 两版真正 Fabric GUI 仅一次 /wsl auto on，自动采集各4座沙漠神殿的 CLIENT_OBSERVED，独立 FULL Anvil 和 StructureStart、2FIT+1HOLDOUT，通过后方可合并。
+- [ ] 更广泛的自定义地形模型辨识、未知 Salt/历史混合区块真实对照、非零高16负数64位全域搜索；不把结构 low48 冒充完整世界Seed。
+
+**研究定位：** 自动结构取证是低48位的条件约束入口；自定义地形/群系生成器未知时，不能根据神殿材料直接宣称破解后台 Seed。
+
+[详细 P3.6 研发和实测规则](P36_AUTOMATIC_CUSTOM_WORLD_EVIDENCE.md)。
+
 ## P3 / Solver Research — 种子候选
 
 - [ ] 从已验证的结构生成模型研究约束与候选搜索。
