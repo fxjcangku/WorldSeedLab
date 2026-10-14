@@ -126,7 +126,10 @@ public final class SymbolicRandomSpread {
                     allowedForRegion.add("(and " + inclusive(x.value(), w[0], w[1])
                             + " " + inclusive(z.value(), w[2], w[3]) + ")");
                 }
-                permitted.add(disjunction(allowedForRegion));
+                // 非二幂 nextInt 的有限拒绝路径，只约束被 OR 选中的 Region。
+                // 不能对尚未选中的其他朝向强制其 RNG 路径必须在 N 次内接受。
+                permitted.add("(and " + x.validPath() + " " + z.validPath()
+                        + " " + disjunction(allowedForRegion) + ")");
             }
             script.raw("(assert " + disjunction(permitted) + ")");
         }
@@ -214,7 +217,7 @@ public final class SymbolicRandomSpread {
 
     private record Region(int x, int z) {}
 
-    private record Offset(String value, String afterState) {}
+    private record Offset(String value, String afterState, String validPath) {}
 
     private static final class Builder {
         private final StringBuilder text = new StringBuilder(16_384);
@@ -270,9 +273,8 @@ public final class SymbolicRandomSpread {
                 }
                 current = step;
             }
-            if (!exactOneDraw) {
-                raw("(assert " + disjunction(accepts) + ")");
-            }
+            // 接受条件由调用方放入选中 Region 的合取项，
+            // 不再对每一个潜在 Region 无条件全局断言。
             String resolvedResult = results.getLast();
             String resolvedState = steps.getLast();
             for (int i = draws - 2; i >= 0; i--) {
@@ -282,7 +284,8 @@ public final class SymbolicRandomSpread {
                         + " " + resolvedState + ")";
             }
             return new Offset(word(prefix + "_value", resolvedResult),
-                    word(prefix + "_after", resolvedState));
+                    word(prefix + "_after", resolvedState),
+                    exactOneDraw ? "true" : disjunction(accepts));
         }
 
         Offset offset(String prefix, String state, int bound,
@@ -295,7 +298,8 @@ public final class SymbolicRandomSpread {
             String value = word(prefix + "_triangular",
                     "(bvlshr (bvadd " + first.value()
                             + " " + second.value() + ") " + bv(1) + ")");
-            return new Offset(value, second.afterState());
+            return new Offset(value, second.afterState(),
+                    "(and " + first.validPath() + " " + second.validPath() + ")");
         }
 
         String result() { return text.toString(); }
