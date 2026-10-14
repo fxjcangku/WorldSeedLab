@@ -159,9 +159,10 @@ def run(version: str):
         if len(located)<TARGET_COUNT:
             raise RuntimeError("隔离自建世界不足4座不同Region的真实神殿")
 
-        # 目标版本原版沙漠神殿真实部件水平占21x21格。使用玩家在可见
-        # 外角手动标记的形式指定ROI；该ROI来自受控/locate导航，
-        # 最终结构生成真值在独立 Anvil 读取之前始终不注入到客户端。
+        # /locate 仅告诉隔离受控测试玩家"建筑大致在附近"，
+        # 手动授权框故意在预期建筑外围留4格冗余，不直接传入
+        # StructureStart 的精确左上角或者21x21边界。
+        # 真实21x21紧致轮廓必须由客户端实际BlockState独立定位。
         for ordinal,(x,z) in enumerate(located):
             ax = (x//16)*16
             az = (z//16)*16
@@ -171,10 +172,10 @@ def run(version: str):
             if any(bad in forceload.lower() for bad in
                    ("too many","cannot","failed")):
                 raise RuntimeError("受控服务器无法正常生成建筑可见区域")
-            rcon(f"tp {player} {ax} 75 {az}",secret)
+            rcon(f"tp {player} {ax-4} 75 {az-4}",secret)
             time.sleep(10)
             chat(window,"/wsl footprint first",actual_env)
-            rcon(f"tp {player} {ax+20} 75 {az+20}",secret)
+            rcon(f"tp {player} {ax+24} 75 {az+24}",secret)
             time.sleep(10)
             chat(window,"/wsl footprint second",actual_env)
             # 至少 ~83k/256 ticks；超时不能假称已完成。
@@ -194,7 +195,7 @@ def run(version: str):
             result.write_bytes(newest.read_bytes())
             records.append((ordinal,x,z,ax,az))
             print(f"[P35] REAL GUI {ordinal+1}/{TARGET_COUNT}: 2 chat corner commands "
-                  f"+ 1 manual export; original CLIENT_OBSERVED raster {result.name}",
+                  f"+ 1 manual export; padded ROI and original CLIENT_OBSERVED raster {result.name}",
                   flush=True)
         screenshot(out/"actual-client-last-footprint.png",actual_env)
         (out/"navigation.csv").write_text(
