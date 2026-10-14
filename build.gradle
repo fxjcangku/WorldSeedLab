@@ -229,3 +229,35 @@ tasks.register('p27InputSmokeTest', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('p27InputSmokeTest')
 }
+
+
+// P2.8 原创 SMT 位向量反演：快照/证据检查 + 真 Z3 模型校验。
+tasks.register('p28SymbolicSmokeTest', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P28SymbolicSmokeTest'
+}
+
+tasks.register('p28Z3IntegrationTest', JavaExec) {
+    group = 'verification'
+    description = 'Run real SMT models with local z3 and independently recheck seed candidates.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P28Z3IntegrationTest'
+}
+
+tasks.register('p28SmtResearch', JavaExec) {
+    group = 'research'
+    description = 'Explicit optional Z3 solver; bounded evidence-based low48 candidates only.'
+    dependsOn tasks.named('classes')
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.solver.SymbolicSeedCli'
+    args providers.gradleProperty('solverInput').orElse('NO_SOLVER_INPUT').get(),
+         providers.gradleProperty('smtMaxModels').orElse('12').get()
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('p28SymbolicSmokeTest')
+    dependsOn tasks.named('p28Z3IntegrationTest')
+}

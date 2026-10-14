@@ -15,3 +15,5 @@ WorldSeedLab 仅是普通 Fabric 客户端的世界生成研究工具：默认�
 P2.6 材料结构候选需要先看 [docs/P26_STRUCTURE_RECOGNITION.md](docs/P26_STRUCTURE_RECOGNITION.md)。矿石、假矿不得成为结构证据；客户端观察点和候选材料永远不能冒充原版真实 structure start。
 
 P2.7 研发请先阅读 [docs/P27_RANDOM_SPREAD_SOLVER.md](docs/P27_RANDOM_SPREAD_SOLVER.md)，禁止把结构候选模型的“potential chunk”解释为结构真实生成。修改 RNG、Salt、随机 spread、Region 计算或约束求解时，必须运行目标 Minecraft 26.1.2 与 26.2 本体对照，不复制 SeedCrackerX 或其依赖中的求解算法。
+
+P2.8/P3 符号求解请阅读 [docs/P28_SYMBOLIC_SOLVER_AND_ORE_POLICY.md](docs/P28_SYMBOLIC_SOLVER_AND_ORE_POLICY.md)：SMT 的拒绝重抽路径有界，UNSAT 不代表服务器没有 Seed；SAT 候选也只能算有参数前提的 low48。矿石显示受到假矿干扰，不能以可见 ore 作为自然生成真值，完全 Seed 与原版矿点必须独立验证。

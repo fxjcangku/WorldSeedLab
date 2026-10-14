@@ -32,6 +32,12 @@ jobs:
         with:
           gradle-version: '9.6.1'
 
+      - name: Install bounded local SMT backend for P2.8 tests
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq z3
+          z3 --version
+
       - name: Compile and verify
         run: gradle --no-daemon --stacktrace -PmcVersion=${{ matrix.minecraft }} clean build
 
