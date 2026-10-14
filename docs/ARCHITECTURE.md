@@ -90,3 +90,24 @@ core/solver/SolverResearchCli（显式离线输入）
 - P2.6 材料候选没有精确结构起始坐标，不能自动提升为 P2.7 输入。
 - 未公开或自定义的结构 Salt、频率/排除规则等会影响结论，模型无从自动得知。
 - CI 对照的是**潜在结构放置区块**，不代表所有 Minecraft 结构实际自然生成。
+
+## P2.8 低48位约束反演（单独离线进程）
+
+```text
+用户明确提供的结构集合参数（spacing/separation/Salt）
++ 可信起点范围（至少 2 FIT + 1 独立 HOLDOUT）
+                    │
+                    ▼
+core/solver/SymbolicRandomSpread（原创 QF_BV / 48bit LCG）
+                    │
+                    ▼
+LocalSmtSeedSolver → 本机外部 Z3（可选依赖）
+                    │
+                    ▼
+候选 Seed → P2.7 精确 RandomSpreadMath FIT + HOLDOUT
+                    │
+                    ▼
+LOW48_CANDIDATE（不等于后台64位真实世界Seed）
+```
+
+`p28SmtResearch` 只能由用户显式执行，不得自动读取玩家世界、后台 Seed、矿物 NBT 或服务器未公开参数。模型均基于已知版本与已知 Salt 的**条件假设**，不能把 SAT / UNSAT 当作自定义服真实 Seed 的证明。非二幂 nextInt 的有限拒绝路径须在报告中注明，最终候选用完整 Java RNG 二次验证。

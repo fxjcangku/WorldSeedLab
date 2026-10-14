@@ -99,6 +99,18 @@ gradle -PmcVersion=26.2 -PsolverInput=/path/to/solver-input.properties p27Resear
 
 [P2.7 使用方法、输入样例和已知限制](P27_RANDOM_SPREAD_SOLVER.md)。
 
+## P2.8 原创 SMT 符号种子求解
+
+本地显式安装 Z3 命令行版（`z3 --version`）；只供离线研究，**不捆绑或自动下载到 Fabric JAR**。需要确知起始区块范围和已核对的结构集合参数。
+
+```bash
+gradle -PmcVersion=26.2 -PsolverInput=/path/to/solver-input.properties -PsmtMaxModels=12 p28SmtResearch
+```
+
+两版本 CI 增加 `p28SymbolicSmokeTest`、`p28Z3IntegrationTest`；其中后者**真正运行 Z3 并将低48候选送回 Java 精确复算与独立留出验证**。不使用矿石或假矿观察作为 Seed 约束。遇到非二幂 nextInt 的受界拒绝重采，SMT 的 UNSAT 不被视为全空间不可满足证明。
+
+[完整实现约束、注意事项及 Seed 挖矿限制](P28_SYMBOLIC_SOLVER_AND_ORE_POLICY.md)。
+
 ## 正式验收仍需实机测试
 
 1. 在 Minecraft 26.1.2 / 26.2 的正常客户端上装载 mod。

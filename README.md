@@ -83,6 +83,14 @@ P0 基础框架及 P1/P2 研发源码已提交：**F8 或 `/wsl gui`** 打开中
 
 [查看 P2.7 算法与离线求解器](docs/P27_RANDOM_SPREAD_SOLVER.md)
 
+## P2.8 / 原创位向量 Seed 反演研究
+
+P2.7 已确认的 Minecraft Legacy RandomSpread 数学模型现可转换成**可执行的 48 位 SMT 约束**。P2.8 接入可选的本机 Z3 后端，采用**结构起点 FIT 训练 + HOLDOUT 独立验证 + Java RNG 精确复核**，寻找低48种子候选；它不同于简单逐个枚举所有种子。
+
+两个 Minecraft 目标版本均通过真正的 Z3 受控已知 Seed 实验，**但未实现从普通玩家的材料观察自动定位可信结构起点，也未恢复任何未知服务器的完整64位 Seed**。自定义服务器 Salt、世界生成器或矿物规则一旦未知，不能把候选说成后台实际种子。
+
+[查看原创 SMT 求解和真假矿边界](docs/P28_SYMBOLIC_SOLVER_AND_ORE_POLICY.md)
+
 ## 02 / 研究边界
 
 | 研究对象 | 我们希望回答的问题 |
