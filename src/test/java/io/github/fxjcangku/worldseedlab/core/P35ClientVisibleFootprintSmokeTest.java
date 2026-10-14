@@ -41,6 +41,24 @@ public final class P35ClientVisibleFootprintSmokeTest {
             check(inferred.possibleChunkCount()==1 && inferred.alternatives().equals(
                     List.of(new ChunkBounds(-20,-32,-20,-32))),
                     "客户端足迹->P2.9必须得到离散的正确负坐标");
+            // 授权框比真实建筑四边各多4格：起点不能再由玩家对角框推定。
+            var paddedRoi = new StructureFootprintInverter.BlockBounds(
+                    footprint.minX()-4,footprint.minZ()-4,
+                    footprint.maxX()+4,footprint.maxZ()+4);
+            var padded = new ClientVisibleDesertPyramidRaster(
+                    scope,paddedRoi,Y,Y+31,synthetic(paddedRoi,footprint,Y,Y+31));
+            check(padded.audit().completeVisiblePerimeter()
+                            && padded.audit().possibleOrigins()==1
+                            && padded.discoveredFootprint().equals(footprint),
+                    "29x29已授权范围必须从可见BlockState中发现唯一真实21x21边界");
+            check(padded.inferCalibratedHypotheses(List.of(calibration))
+                            .alternatives().equals(inferred.alternatives()),
+                    "扩大玩家手动ROI不能改变从可见建筑推导的精确起点");
+            var blank = new ClientVisibleDesertPyramidRaster(
+                    scope,paddedRoi,Y,Y+31,new byte[padded.rasterSize()]);
+            check(!blank.audit().completeVisiblePerimeter()
+                            && blank.audit().possibleOrigins()==0,
+                    "不能把较大的授权框本身当作真实神殿轮廓");
             var alternative = StructureFootprintInverter.Calibration.fromControlled(
                     "control_second",version,DIM,SET,STRUCTURE,"west",
                     new StructureFootprintInverter.BlockBounds(-383,-511,-363,-491),
@@ -125,20 +143,26 @@ public final class P35ClientVisibleFootprintSmokeTest {
 
     private static byte[] synthetic(
             StructureFootprintInverter.BlockBounds bounds,int minY,int maxY) {
+        return synthetic(bounds,bounds,minY,maxY);
+    }
+
+    private static byte[] synthetic(
+            StructureFootprintInverter.BlockBounds bounds,
+            StructureFootprintInverter.BlockBounds actual,int minY,int maxY) {
         int width=bounds.maxX()-bounds.minX()+3;
         int depth=bounds.maxZ()-bounds.minZ()+3;
         byte[] b=new byte[width*depth*(maxY-minY+1)];
-        for(int x=bounds.minX();x<=bounds.maxX();x++) {
-            for(int z=bounds.minZ();z<=bounds.maxZ();z++) {
-                if(x==bounds.minX() || x==bounds.maxX()
-                        || z==bounds.minZ() || z==bounds.maxZ()) {
+        for(int x=actual.minX();x<=actual.maxX();x++) {
+            for(int z=actual.minZ();z<=actual.maxZ();z++) {
+                if(x==actual.minX() || x==actual.maxX()
+                        || z==actual.minZ() || z==actual.maxZ()) {
                     b[ClientVisibleDesertPyramidRaster.index(x,Y,z,bounds,minY,maxY)]
                             =ClientVisibleDesertPyramidRaster.SANDSTONE;
                 }
             }
         }
         for(int i=0;i<9;i++) {
-            int x=bounds.minX()+4+i, z=bounds.minZ()+8;
+            int x=actual.minX()+4+i, z=actual.minZ()+8;
             b[ClientVisibleDesertPyramidRaster.index(x,Y+1,z,bounds,minY,maxY)] =
                     i<4?ClientVisibleDesertPyramidRaster.ORANGE_TERRACOTTA:
                     i<5?ClientVisibleDesertPyramidRaster.BLUE_TERRACOTTA:
