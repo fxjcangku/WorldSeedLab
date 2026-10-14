@@ -10,7 +10,6 @@ import net.minecraft.world.level.biome.MultiNoiseBiomeSource;
 import net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterLists;
 import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
-import net.minecraft.world.level.levelgen.densityfunction.SamplerContext;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,7 +32,7 @@ public final class P30VanillaBiomeNoiseTest {
     public static void main(String[] args) {
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
-        var provider = VanillaRegistries.createWorldLookup();
+        var provider = VanillaRegistries.createLookup();
         var noiseParameters = provider.lookupOrThrow(Registries.NOISE);
         var settings = provider.lookupOrThrow(Registries.NOISE_SETTINGS)
                 .getOrThrow(NoiseGeneratorSettings.OVERWORLD).value();
@@ -51,7 +50,7 @@ public final class P30VanillaBiomeNoiseTest {
             }
             public Full64BiomeCandidateSearch.BiomeSampler prepare(long seed) {
                 RandomState state = RandomState.create(noiseParameters, seed, settings);
-                var sampler = state.createClimateSampler(SamplerContext.EMPTY_UNCACHED);
+                var sampler = state.sampler();
                 return (x,y,z) -> source.getNoiseBiome(x,y,z,sampler).unwrapKey()
                         .orElseThrow().location().toString();
             }
