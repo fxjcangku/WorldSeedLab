@@ -26,7 +26,7 @@ GitHub Actions p35-real-client-footprint.yml 使用 Java25/Gradle9.6.1，两个�
 
 测试布景允许公开已知 Seed2731 的受控服务器 RCON locate/forceload/tp，用于导航和准备可见建筑，**绝不将locate所得坐标直接视作紧致外轮廓输入P2.9**；这不等于普通玩家可以在未知服运行 RCON，也不等于盲找建筑验收。验证器要求真实客户端四份不同 Region 的完整外围、受控真结构起点全部位于候选中、至少两种朝向、一个受控几何校准参考及其余 2 FIT+1 HOLDOUT，原创 Java RandomSpread/Z3 一致、错 Salt 和错 Seed 拒绝。
 
-当前任何 CI 未实际完成前，只能称代码/验收入口已编写，不能宣称双版本客户端真实验收通过。若任一真实轮廓与上面的可见性假设矛盾，应保留失败结果、修正模型及正反例后重跑，**未通过不得合并 main**。
+每次源码变化都必须在对应提交的 CI 重新验收，不能拿历史成功替代。双版本实机首次成功是 #38525522872；完整四边和逐个服务端FULL校验的最终成功是 #38527252093。任一版本失败必须留证并修复，只有全部必需CI成功才允许合并main。
 
 ## 尚未实现
 
@@ -39,3 +39,13 @@ GitHub Actions p35-real-client-footprint.yml 使用 Java25/Gradle9.6.1，两个�
 ## P3.5 实际双版成功记录（严格 FULL 后验复查之前）
 
 2026-10-14 的 [GitHub Actions #38525522872](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38525522872)，研发 SHA `f6a4ed8bb18e1af14f61e43d0e17a8d54f531179`，实际为 **26.1.2 + 26.2 双 job success**。两个版本都启动了真的 Minecraft 自定义沙漠专用服务器、Fabric GUI runClient、回环多人联机，在原生游戏聊天框对4处不同Region分别执行两个取证角与一个显式导出命令。每版4/4真实 CLIENT_OBSERVED 栅格（每座30752实际方块）、4/4唯一21×21水平真实材料轮廓、每边21/21可见边缘、至少2个真实朝向，后验真正 StructureStart 包含全部4个客户端起点。真 Z3 + Java RNG 使用1控制样本校准与2FIT+1HOLDOUT找到已知受控low48=2731，排除错误Salt和错误Seed；所有原始区块、真实NBT仅从受控服务端另行读取。该次存档具有独立StructureStart和真实生成区块，但当次脚本**尚未逐一强制检查四个起点区块是否达到FULL**；当前研发分支新增了这个硬验收，再次以最新 Actions 实际结果为准，不提前称其通过。
+
+## P3.5 最终严格版本 · FULL Anvil + 真 Fabric 客户端验证全部通过
+
+- 最终受控实机源码：`a73561a785faea9c21edbafde137b1532539dd65`，2026-10-14 [Actions #38527252093](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38527252093)。26.1.2 与 26.2 两个实际服务端 + 真 Fabric GUI 客户端 E2E job 均 **success**，不存在未完成、模拟或失败的目标样本。
+- 两版各在真实 Minecraft 聊天框执行 **4×（first+second+export）=12 次命令**，每版保存 4 份独立 CLIENT_OBSERVED 分类栅格、每份读取 **30,752 个真实方块状态**。授权粗ROI比实际神殿四边各多4格，紧致21×21外沿来自方块读取与模型判断而非直接采用 /locate 坐标。
+- 两版四处神殿均各自只有 **1 个**有效紧致完整轮廓，四边严格 **21/21**，无法用不完整外沿继续反演；至少两种不同真实结构朝向。观测到的 4/4 正例通过，受控观察框中0个误报；这**不是**全世界检出率/误报率为0的证明。人工复制形态依旧标为自然来源 `UNKNOWN`。
+- **客户端取证文件全部完成后**，受控服务器读取真实存档 StructureStart：每版保存8处；其中所测的4处全部独立复查其实际 Anvil Chunk 的 Status 为 **FULL（4/4）**。两版额外检查真实自定义地层的 FULL：26.1.2 **1,226** 个，26.2 **1,260** 个。这些服务端真值永远仅属于 `CONTROL_WORLD_POSTHOC_FULL`，不能写成普通客户端证据。
+- 使用第1处受控参考校准，余下3处独立结构为 **2 FIT +1 HOLDOUT**，真实 Z3 + Java RandomSpread 在明确已知 Salt/版本前提下保留低48值 **2731**，错 Salt 和错 Seed 被拒绝。Legacy low48不含高16信息；不得据此宣称任意未知自定义服务器完整64位 Seed 恢复。
+- 最终提交双版构建 [Actions #38527252088](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38527252088) 成功；同 SHA 的 P3.1 高16完整域、P3.2、P3.3、P3.4等所有9个PR工作流均核实 `success`。单列破坏、完整遮挡、证据来源伪造、负坐标、离散候选包络缺口等正反例属于独立测试，不是额外未知私服实测。
+- [结构化最小公开受控证据](evidence/P35_REAL_FABRIC_CLIENT_FOOTPRINT_2026-10-14.json)，仅包含公开已知Seed与匿名统计，不发布私服坐标、地址或密钥。
