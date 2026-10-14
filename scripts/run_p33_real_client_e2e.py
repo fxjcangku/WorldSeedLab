@@ -193,9 +193,9 @@ def export_custom_world_full_truth(world_name: str, out: Path, positions):
     if len(verified) != 5 or len(set(verified)) != 5:
         raise AssertionError("P3.4 controlled independent full chunk samples incomplete")
     (out / "server-full-quart.csv").write_text(
-        "quart_x,quart_y,quart_z,biome_id\\n".replace("\\\\n", "\\n")
-        + "".join(f"{x},{y},{z},{b}\\n".replace("\\\\n", "\\n")
-                  for x,y,z,b in verified), encoding="utf-8")
+        "quart_x,quart_y,quart_z,biome_id\n"
+        + "".join(f"{x},{y},{z},{b}\n" for x,y,z,b in verified),
+        encoding="utf-8")
     print("[P34] Independently inspected 5 saved FULL Anvil quart biomes: all "
           "minecraft:desert; source=CONTROL_WORLD_OBSERVED, not client", flush=True)
 
