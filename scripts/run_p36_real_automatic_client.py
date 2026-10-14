@@ -200,6 +200,44 @@ def run(version: str):
         chat(window, "/wsl auto status",actual_env)
         screenshot(out/"actual-client-last-automatic.png",actual_env)
         chat(window, "/wsl auto off",actual_env)
+        time.sleep(5)
+        # 自动模式必须真正联动P1群系+P2地形，而不只是保存建筑。
+        # 不复制原始经纬坐标到公共Artifact，仅输出匿名数量统计。
+        matches = list(rundir.rglob("client-auto-desert-*.properties"))
+        if len(matches)!=TARGET_COUNT:
+            raise RuntimeError("P3.6在停止时客户端自动结构原始文件数量改变")
+        scoped_folder = matches[0].parent.parent
+        if any(file.parent.parent!=scoped_folder for file in matches):
+            raise RuntimeError("P3.6自动证据跨越世界指纹或维度，禁止合并")
+        biome_evidence = scoped_folder/"evidence.jsonl"
+        terrain_evidence = scoped_folder/"terrain.jsonl"
+        if not biome_evidence.is_file() or not terrain_evidence.is_file():
+            raise RuntimeError("自动模式未真实保存群系及地貌证据，仅结构成功不算完整P3.6")
+        biome_count = len(biome_evidence.read_text(encoding="utf-8").splitlines())
+        terrain_count = len(terrain_evidence.read_text(encoding="utf-8").splitlines())
+        if biome_count < 1 or terrain_count < 1:
+            raise RuntimeError("一键自动模式未产生真实非空客户端群系或地貌记录")
+        structure_index = scoped_folder/"structure-scanned-v1.csv"
+        completed_p26 = len(structure_index.read_text(encoding="utf-8").splitlines()) \
+            if structure_index.is_file() else 0
+        (out/"client-coupled-evidence-summary.json").write_text(
+            json.dumps({
+                "phase":"P3.6","version":version,
+                "source":"ACTUAL_CLIENT_P1_P2_OBSERVATIONS",
+                "manual_auto_on_commands":1,
+                "manual_per_structure_corner_commands":0,
+                "manual_per_structure_export_commands":0,
+                "auto_structure_archives":TARGET_COUNT,
+                "persisted_real_client_biome_records":biome_count,
+                "persisted_real_client_terrain_chunks":terrain_count,
+                "completed_p26_material_scans":completed_p26,
+                "generator_identity":"UNKNOWN",
+                "natural_structure_origin":"UNKNOWN",
+                "raw_private_coordinates_uploaded":False
+            },ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+        print("[P36] REAL CLIENT JOINED P1/P2: "
+              f"biome records={biome_count}, terrain chunks={terrain_count}, "
+              f"P2.6 completed={completed_p26}; no raw world records exported",flush=True)
         (out/"navigation.csv").write_text(
             "order,locate_x,locate_z,controlled_nearby_x,controlled_nearby_z\n"
             +"".join(f"{i},{x},{z},{near_x},{near_z}\n"
