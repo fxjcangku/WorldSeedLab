@@ -216,6 +216,40 @@ tasks.named('check') {
 }
 
 
+// P3.9 真正客户端自动轮廓直接离线导入，自动组装Z3低48位约束。
+// 不读取服务端Seed/StructureStart、不给未知自定义生成器虚构64位真值。
+tasks.register('p39RealSeedRecovery', JavaExec) {
+    group = 'research'
+    description = 'Run local Z3 on actual CLIENT_OBSERVED structure rasters, then optional high16 biome model.'
+    dependsOn tasks.named('classes')
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.solver.RealClientSeedRecoveryCli'
+    def evidenceArgs = [
+            providers.gradleProperty('recoveryEvidence').orElse('NO_CLIENT_EVIDENCE').get(),
+            providers.gradleProperty('recoverySalts').orElse('14357617').get()]
+    if (providers.gradleProperty('recoveryQuart').isPresent()) {
+        evidenceArgs.add(providers.gradleProperty('recoveryQuart').get())
+        evidenceArgs.add(providers.gradleProperty('recoveryBiomeMode').orElse('NOT_CONFIRMED').get())
+    }
+    args evidenceArgs
+    systemProperty 'mcVersion', targetMinecraft
+    systemProperty 'recoveryStart', providers.gradleProperty('recoveryStart').orElse('0').get()
+    systemProperty 'recoveryEnd', providers.gradleProperty('recoveryEnd')
+            .orElse('281474976710656').get()
+}
+
+tasks.register('p39RealSeedRecoverySmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate real archive import guards, unknown world scope and independent FIT/HOLDOUT.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P39RealSeedRecoverySmokeTest'
+    systemProperty 'mcVersion', targetMinecraft
+}
+tasks.named('check') {
+    dependsOn tasks.named('p39RealSeedRecoverySmokeTest')
+}
+
 // P2.7：纯 Java 有界候选求解器 + 对实际目标 Minecraft 本体的结构随机放置对照。
 tasks.register('p27SolverSmokeTest', JavaExec) {
     group = 'verification'
