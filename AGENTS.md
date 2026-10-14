@@ -19,3 +19,5 @@ P2.7 研发请先阅读 [docs/P27_RANDOM_SPREAD_SOLVER.md](docs/P27_RANDOM_SPREA
 P2.8/P3 符号求解请阅读 [docs/P28_SYMBOLIC_SOLVER_AND_ORE_POLICY.md](docs/P28_SYMBOLIC_SOLVER_AND_ORE_POLICY.md)：SMT 的拒绝重抽路径有界，UNSAT 不代表服务器没有 Seed；SAT 候选也只能算有参数前提的 low48。矿石显示受到假矿干扰，不能以可见 ore 作为自然生成真值，完全 Seed 与原版矿点必须独立验证。
 
 P2.9 结构几何逆推必须先阅读 [docs/P29_GEOMETRY_INVERSION.md](docs/P29_GEOMETRY_INVERSION.md)：材料指纹和玩家标记没有完整轮廓资格；受控校准来源须可追溯；不同朝向的离散起点并集不可被外包矩形代替，必须在 SMT、Java FIT 与 HOLDOUT 中使用完全相同的允许集合。
+
+P3.0 完整64位研究必须阅读 [docs/P30_FULL64_EVIDENCE_RESEARCH.md](docs/P30_FULL64_EVIDENCE_RESEARCH.md)：Legacy 结构仅含低48位信息；高16位需要独立、已验证的真实 Minecraft 世界生成证据。受控 Xoroshiro 随机数演示不能冒充客户端实际群系。即便64位候选唯一，也要在报告中保留生成器模型、候选集合、FIT/HOLDOUT 和尚未确认的服务端设置。

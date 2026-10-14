@@ -5,6 +5,7 @@ on:
     paths:
       - 'scripts/run_known_seed_server.py'
       - 'src/test/java/io/github/fxjcangku/worldseedlab/core/P29RealWorldStructureTest.java'
+      - 'src/test/java/io/github/fxjcangku/worldseedlab/core/P30VanillaBiomeNoiseTest.java'
       - '.github/workflows/p29-real-worldgen.yml'
   workflow_dispatch:
 
@@ -46,6 +47,9 @@ jobs:
 
       - name: Invert low48 from actual serialized StructureStart
         run: gradle --no-daemon --console=plain -PmcVersion=${{ matrix.minecraft }} -PknownSeedCsv=build/p29-realworld/${{ matrix.minecraft }}/real_structure_starts.csv p29RealWorldStructureTest
+
+      - name: Replay real saved quart biomes with Minecraft native 64bit climate model
+        run: gradle --no-daemon --console=plain -PmcVersion=${{ matrix.minecraft }} -PknownBiomeCsv=build/p29-realworld/${{ matrix.minecraft }}/real_biome_quart_samples.csv p30RealWorldBiomeTest
 
       - name: Upload controlled-world audit (without complete world save)
         if: always()

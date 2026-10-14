@@ -300,3 +300,44 @@ tasks.register('p29RealWorldStructureTest', JavaExec) {
     args providers.gradleProperty('knownSeedCsv').orElse('NO_CONTROL_WORLD_INPUT').get(),
          targetMinecraft
 }
+
+
+// P3.0 / 64位候选研究：只验证高16位组合、独立证据门控和全域有限枚举。
+// 真实 Mojang Xoroshiro 控制实验不得冒充原版群系世界生成器。
+tasks.register('p30Full64SmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Check complete high16 domain, signed full64 bits and fail-closed biome evidence.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P30Full64SmokeTest'
+}
+tasks.named('check') {
+    dependsOn tasks.named('p30Full64SmokeTest')
+}
+
+
+// P3.0 真正使用 Minecraft 对应版本的原版 Overworld 气候/群系数学。
+// 当前测试观测仍由同一受控模型构造，并非服务端存档中独立采样的真值。
+tasks.register('p30VanillaBiomeNoiseTest', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P30VanillaBiomeNoiseTest'
+    systemProperty 'mcVersion', targetMinecraft
+}
+tasks.named('check') {
+    dependsOn tasks.named('p30VanillaBiomeNoiseTest')
+}
+
+
+// P3.0 独立真实世界群系观察回放：只在已生成受控世界 CSV 后执行。
+// 不随默认 check 自动运行服务器，避免混淆“控制世界”与普通客户端探测。
+tasks.register('p30RealWorldBiomeTest', JavaExec) {
+    group = 'research'
+    description = 'Compare actual serialized Vanilla quart biomes with target Mojmap noise model.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P30VanillaBiomeNoiseTest'
+    systemProperty 'mcVersion', targetMinecraft
+    args providers.gradleProperty('knownBiomeCsv').orElse('NO_CONTROL_BIOME_INPUT').get()
+}

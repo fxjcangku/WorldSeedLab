@@ -204,6 +204,56 @@ def scan_structure_starts(world: Path, located):
     return list(result.values()), read_chunks
 
 
+def scan_observed_biome_quart_samples(world: Path):
+    """只提取实际生成区块中整节群系 palette 唯一的 quart 真值。
+
+    此模式不假设每个区块或整张地形只有一个群系；多态 palette 节
+    暂时跳过，避免错误解码压缩 long[] 引起假观测。它读取受控服务端
+    存档，而不是普通客户端自动观测。
+    """
+    regions = world / "dimensions" / "minecraft" / "overworld" / "region"
+    controls = []
+    for region in sorted(regions.glob("r.*.*.mca")):
+        for chunk in region_chunks(region):
+            # 尚未完成世界生成的区块其 palette 可能是默认 plains 占位。
+            # 必须达到 FULL 才能把存档群系当成真实、独立的观测数据。
+            if chunk.get("Status") not in ("minecraft:full", "full"):
+                continue
+            cx, cz = chunk.get("xPos"), chunk.get("zPos")
+            if not isinstance(cx, int) or not isinstance(cz, int):
+                continue
+            sections = chunk.get("sections")
+            if not isinstance(sections, list):
+                continue
+            for section in sections:
+                if not isinstance(section, dict) or section.get("Y") != 4:
+                    continue
+                biomes = section.get("biomes")
+                if not isinstance(biomes, dict):
+                    continue
+                palette = biomes.get("palette")
+                if not isinstance(palette, list) or len(palette) != 1:
+                    continue
+                biome = palette[0]
+                if not isinstance(biome, str) or not biome.startswith("minecraft:"):
+                    continue
+                # 仅 16 方块高的同一 section 的 4x4x4 quart 统一 palette 才准确。
+                controls.append((cx * 4 + 2, 4 * 4 + 2, cz * 4 + 2, biome))
+                break
+    # 选出多处相互远离的实际区块，避免一片沙漠内部重复点提供虚假的信息量。
+    accepted = []
+    for p in sorted(controls, key=lambda item: (item[0], item[2])):
+        if all((p[0] - earlier[0]) ** 2 + (p[2] - earlier[2]) ** 2 >= 256 ** 2
+               for earlier in accepted):
+            accepted.append(p)
+            if len(accepted) >= 20:
+                break
+    if len(accepted) < 3:
+        raise RuntimeError("not enough spatially independent actual-world biome sections: "
+                           + str(len(accepted)))
+    return accepted
+
+
 def read_exact(sock, n):
     data = bytearray()
     while len(data) < n:
@@ -372,6 +422,14 @@ def main():
             "saved_chunk_count":chunks, "real_structure_starts":starts,
             "note":"Server-side StructureStart, NOT client-observed building perimeter",
         }
+        biome_controls = scan_observed_biome_quart_samples(world)
+        (output / "real_biome_quart_samples.csv").write_text(
+            "quart_x,quart_y,quart_z,biome_id\n"
+            + "".join(f"{x},{y},{z},{biome}\n"
+                      for x, y, z, biome in biome_controls),
+            encoding="utf-8")
+        print("[P30-REAL] Independently serialized world quart biome samples:",
+              len(biome_controls), flush=True)
         (output / "real_structure_starts.json").write_text(
             json.dumps(fixture,indent=2,ensure_ascii=False),encoding="utf-8")
         (output / "real_structure_starts.csv").write_text(
