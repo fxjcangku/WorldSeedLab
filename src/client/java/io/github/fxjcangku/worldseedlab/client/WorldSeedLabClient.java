@@ -75,6 +75,11 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                         return 1;
                     }))
                     .then(ClientCommands.literal("map").executes(context -> {
+                        // 只查看本地真实区块观测索引，不要求开启采集，也不获取 Seed。
+                        PlatformScreens.openMap(Minecraft.getInstance(), probe);
+                        return 1;
+                    }))
+                    .then(ClientCommands.literal("map").executes(context -> {
                         PlatformScreens.openMap(Minecraft.getInstance(), probe);
                         return 1;
                     }))

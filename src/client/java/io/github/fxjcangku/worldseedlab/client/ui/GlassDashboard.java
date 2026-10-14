@@ -2,6 +2,7 @@ package io.github.fxjcangku.worldseedlab.client.ui;
 
 import io.github.fxjcangku.worldseedlab.client.probe.WorldProbeController;
 import io.github.fxjcangku.worldseedlab.client.PlatformScreens;
+import io.github.fxjcangku.worldseedlab.client.PlatformScreens;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -84,6 +85,9 @@ public final class GlassDashboard extends Screen {
             button(bx + 18, by + bh - 71, side - 33, 28,
                     () -> "导出研究日志", controller::exportReport, false);
         }
+        button(bx + bw - 186, by + 18, 84, 22,
+                () -> "真实地图",
+                () -> PlatformScreens.openMap(Minecraft.getInstance(), controller), true);
         button(bx + bw - 92, by + 18, 70, 22, () -> "关闭", this::onClose, false);
     }
 

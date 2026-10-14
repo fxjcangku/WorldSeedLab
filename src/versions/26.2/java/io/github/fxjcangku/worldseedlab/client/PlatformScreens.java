@@ -1,6 +1,7 @@
 package io.github.fxjcangku.worldseedlab.client;
 
 import io.github.fxjcangku.worldseedlab.client.ui.GlassDashboard;
+import io.github.fxjcangku.worldseedlab.client.ui.ObservedMapScreen;
 import io.github.fxjcangku.worldseedlab.client.ui.ObservedWorldMapScreen;
 import io.github.fxjcangku.worldseedlab.client.probe.WorldProbeController;
 import net.minecraft.client.Minecraft;
@@ -11,6 +12,10 @@ public final class PlatformScreens {
 
     public static void open(Minecraft minecraft, WorldProbeController controller) {
         minecraft.gui.setScreen(new GlassDashboard(controller));
+    }
+
+    public static void openMap(Minecraft minecraft, WorldProbeController controller) {
+        minecraft.gui.setScreen(new ObservedMapScreen(controller));
     }
     /** 26.2 原生 GUI 入口。 */
     public static void openMap(Minecraft client, WorldProbeController controller) {
