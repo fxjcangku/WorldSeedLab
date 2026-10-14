@@ -83,8 +83,10 @@ public final class ClientQuartEvidenceArchive {
             for (var item : points) {
                 long dx = (long) qx - item.quartX();
                 long dz = (long) qz - item.quartZ();
-                if (dx * dx + dz * dz < (long) MIN_HORIZONTAL_QUART_DISTANCE
-                        * MIN_HORIZONTAL_QUART_DISTANCE) {
+                if (Math.abs(dx) < MIN_HORIZONTAL_QUART_DISTANCE
+                        && Math.abs(dz) < MIN_HORIZONTAL_QUART_DISTANCE
+                        && dx * dx + dz * dz < (long) MIN_HORIZONTAL_QUART_DISTANCE
+                                * MIN_HORIZONTAL_QUART_DISTANCE) {
                     throw new IllegalArgumentException(
                             "采样点相隔不足1024方块，不能重复作为独立FIT/HOLDOUT");
                 }
@@ -185,8 +187,10 @@ public final class ClientQuartEvidenceArchive {
                 var other = points.get(j);
                 long dx = (long) point.quartX() - other.quartX();
                 long dz = (long) point.quartZ() - other.quartZ();
-                if (dx * dx + dz * dz < (long) MIN_HORIZONTAL_QUART_DISTANCE
-                        * MIN_HORIZONTAL_QUART_DISTANCE) {
+                if (Math.abs(dx) < MIN_HORIZONTAL_QUART_DISTANCE
+                        && Math.abs(dz) < MIN_HORIZONTAL_QUART_DISTANCE
+                        && dx * dx + dz * dz < (long) MIN_HORIZONTAL_QUART_DISTANCE
+                                * MIN_HORIZONTAL_QUART_DISTANCE) {
                     throw new IllegalArgumentException("群系候选空间距离不足");
                 }
             }
