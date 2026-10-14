@@ -17,6 +17,22 @@ public final class P36AutomaticEvidenceSmokeTest {
 
     public static void main(String[] args) throws Exception {
         for (String version : List.of("26.1.2", "26.2")) {
+            // 先前以玩家Y决定材料探测带，在鞘翅高空会错过地表蓝陶瓦。
+            var surfaceBand = AutoDesertFootprintPlan.aroundObservedSurface(79, -64, 320);
+            check(surfaceBand.equals(new AutoDesertFootprintPlan.ScanBand(55, 86))
+                            && surfaceBand.includes(63),
+                    "真实地表下方的蓝陶瓦必须纳入32格扫描带");
+            check(AutoDesertFootprintPlan.aroundObservedSurface(79,-64,320)
+                            .equals(surfaceBand),
+                    "同一区块地表高度相同，搜索带不应依赖玩家高度");
+            check(AutoDesertFootprintPlan.aroundObservedSurface(315,-64,320)
+                            .equals(new AutoDesertFootprintPlan.ScanBand(288,319)),
+                    "建造高度顶端必须裁剪出完整合法32格带");
+            check(AutoDesertFootprintPlan.aroundObservedSurface(-80,-64,320)
+                            .equals(new AutoDesertFootprintPlan.ScanBand(-64,-33)),
+                    "建造高度底端必须安全裁剪");
+            expectFailure(() -> AutoDesertFootprintPlan.aroundObservedSurface(20,0,31),
+                    "维度不足32格必须保守拒绝");
             var anchor = new AutoDesertFootprintPlan.BlueTerracottaAnchor(-14182,63,-14054);
             var survey = AutoDesertFootprintPlan.fromObservedBlue(anchor,-64,320);
             check(survey.roughBounds().equals(
