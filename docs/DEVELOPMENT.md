@@ -77,6 +77,14 @@ gradle -PmcVersion=26.2 runClient
 
 [P2.5 已探索地图操作说明](P25_OBSERVED_MAP.md)。
 
+## P2.6 自动结构材料候选
+
+确认服务器允许后：F8 开启普通群系采集，再用 `/wsl structures on` 或液态玻璃顶部“结构侦测”按钮开启可选扫描。`/wsl structures` 查看统计；`/wsl structures off` 停止。扫描只读取地表/海床周围的客户端已加载方块，假矿不参与计算。首次/再次登录，结构扫描自动保持关闭。
+
+结构候选文件 `structure-candidates-v1.jsonl` 含精确区块坐标，`structure-scanned-v1.csv` 是此版稀疏扫描的完成记录。无命中不代表该区块没有自然结构。材料指纹既不是起始区块，也不是 Seed 求解结果。
+
+[查看详细限制、操作和日志](P26_STRUCTURE_RECOGNITION.md)。
+
 ## 正式验收仍需实机测试
 
 1. 在 Minecraft 26.1.2 / 26.2 的正常客户端上装载 mod。
