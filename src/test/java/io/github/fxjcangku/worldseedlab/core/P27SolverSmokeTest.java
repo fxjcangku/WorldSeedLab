@@ -61,6 +61,18 @@ public final class P27SolverSmokeTest {
                         .equals(RandomSpreadMath.potentialChunk(
                                 sourceSeed + (1L << 48), -4, -7, linear)),
                 "high 16 world seed bits are NOT visible to 48bit structure placement");
+
+        // 一个结构集合中 worldSeed + Salt 以加法混合：
+        // 若 Salt 不是可信的原版参数，仅凭这个集合无法区分真实 Seed 与改变过的 Salt。
+        RandomSpreadSpec changedSalt = new RandomSpreadSpec(linear.structureSetId(),
+                linear.spacing(), linear.separation(), linear.distribution(), linear.salt() + 19);
+        for (int[] region : new int[][] {{-23, 19}, {0, 0}, {10, -8}}) {
+            expect(RandomSpreadMath.potentialChunk(sourceSeed, region[0], region[1], linear)
+                    .equals(RandomSpreadMath.potentialChunk(
+                            sourceSeed - 19, region[0], region[1], changedSalt)),
+                    "unknown salt and world seed are additively ambiguous");
+        }
+
         expect(!RandomSpreadMath.potentialChunk(sourceSeed, 2, 3, linear)
                         .equals(RandomSpreadMath.potentialChunk(sourceSeed, 2, 3, triangular)),
                 "different placement parameters should be distinguishable");
