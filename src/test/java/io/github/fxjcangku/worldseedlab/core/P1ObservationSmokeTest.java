@@ -57,6 +57,9 @@ public final class P1ObservationSmokeTest {
             require(store.loadCompleted(hash, "minecraft:overworld").isEmpty(), "initial empty index");
             store.appendChunk(hash, "minecraft:overworld", key, records);
             require(store.loadCompleted(hash, "minecraft:overworld").contains(key), "journal persistence");
+            // 受控测试数据不是服务器的真实世界记录，不能被着色为真实地图。
+            require(!Files.exists(store.scopedFolder(hash, "minecraft:overworld")
+                    .resolve("observed-map")), "CONTROLLED_TEST cannot paint observed map");
             require(Files.readAllLines(store.dataPath(hash, "minecraft:overworld")).size() == 16,
                     "all biome evidence rows must persist");
             require(store.loadCompleted(hash, "minecraft:the_nether").isEmpty(), "dimension isolation");
