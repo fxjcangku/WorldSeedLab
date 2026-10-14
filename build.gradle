@@ -164,3 +164,15 @@ tasks.register('p25CompatibilitySmokeTest', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('p25CompatibilitySmokeTest')
 }
+
+// 真实观测地图：跨重启、Y 切层、负坐标、未知区域及维度隔离。
+tasks.register('p25MapSmokeTest', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P25MapSmokeTest'
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('p25MapSmokeTest')
+}
