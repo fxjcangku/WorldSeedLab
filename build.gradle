@@ -287,3 +287,16 @@ tasks.named('check') {
     dependsOn tasks.named('p29GeometrySmokeTest')
     dependsOn tasks.named('p29Z3GeometryIntegrationTest')
 }
+
+
+// 仅在隔离的真实 Minecraft 世界已生成且 StructureStart CSV 存在时运行。
+// 默认 check 不读取任何单人存档或本地游戏数据。
+tasks.register('p29RealWorldStructureTest', JavaExec) {
+    group = 'research'
+    description = 'Validate true saved Minecraft StructureStart against Java RandomSpread and offline Z3.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P29RealWorldStructureTest'
+    args providers.gradleProperty('knownSeedCsv').orElse('NO_CONTROL_WORLD_INPUT').get(),
+         targetMinecraft
+}
