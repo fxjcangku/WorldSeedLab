@@ -204,12 +204,12 @@ public final class CompletedChunkStore {
 
 
     /**
-     * 同一版本的结构材料扫描完成日志。v1已扫描区块不阻止新的v2识别模型重新扫描；旧版算法的“未发现”不能阻止
-     * 将来新模型重新扫描；因此索引文件包含模型版本 v1。
+     * 每代扫描规则都有独立完成索引：客户端海床高度图缺失的旧v2
+     * 不能阻止v3重新检查原先漏检的已加载区块。历史v2索引保留不删除。
      */
     public Set<Long> loadStructureScanned(String fingerprint, String dimension)
             throws IOException {
-        Path file = base(fingerprint, dimension).resolve("structure-scanned-v2.csv");
+        Path file = base(fingerprint, dimension).resolve("structure-scanned-v3.csv");
         Set<Long> finished = new HashSet<>();
         if (!Files.exists(file)) return finished;
         try (BufferedReader reader = Files.newBufferedReader(file, StandardCharsets.UTF_8)) {
@@ -226,7 +226,7 @@ public final class CompletedChunkStore {
                     int z = Integer.parseInt(parts[1]);
                     finished.add(packChunk(x, z));
                 } catch (RuntimeException invalid) {
-                    throw new IOException("invalid v2 structure scan journal", invalid);
+                    throw new IOException("invalid v3 structure scan journal", invalid);
                 }
             }
         }
@@ -240,12 +240,13 @@ public final class CompletedChunkStore {
         Path folder = base(scan.worldFingerprint(), scan.dimension());
         Files.createDirectories(folder);
         if (!scan.candidates().isEmpty()) {
+            // 兼容既有v2 JSONL schema，逐行由model_version=3标识当前扫描规则。
             writeDetailWithLimit(folder.resolve("structure-candidates-v2.jsonl"),
                     io.github.fxjcangku.worldseedlab.core.recognition.StructureEvidenceJson
                             .line(scan) + "\n");
         }
         // 当扫描产出候选时，必须先写入审计证据，最后再记录完成索引。
-        writeAndForce(folder.resolve("structure-scanned-v2.csv"),
+        writeAndForce(folder.resolve("structure-scanned-v3.csv"),
                 scan.chunkX() + "," + scan.chunkZ() + "\n");
     }
 
