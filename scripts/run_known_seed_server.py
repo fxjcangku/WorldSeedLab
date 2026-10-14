@@ -378,6 +378,19 @@ def main():
             "chunk_x,chunk_z\n" + "".join(
                 str(s["start_chunk_x"]) + "," + str(s["start_chunk_z"]) + "\n"
                 for s in starts),encoding="utf-8")
+        # 受控服务端 StructurePiece 的已生成包围盒，绝非玩家可见材料轮廓。
+        (output / "real_structure_geometry.csv").write_text(
+            "chunk_x,chunk_z,min_x,min_z,max_x,max_z,orientation\n"
+            + "".join(
+                str(item["start_chunk_x"]) + ","
+                + str(item["start_chunk_z"]) + ","
+                + str(item["generated_structure_box"][0]) + ","
+                + str(item["generated_structure_box"][2]) + ","
+                + str(item["generated_structure_box"][3]) + ","
+                + str(item["generated_structure_box"][5]) + ","
+                + str(item["piece_orientations"][0]) + "\n"
+                for item in starts if len(item["piece_orientations"]) == 1
+            ), encoding="utf-8")
         print("[P29-REAL] Saved chunk count:", chunks, flush=True)
         print("[P29-REAL] Actual StructureStart count:", len(starts), flush=True)
         if len(starts) < 3:
