@@ -23,6 +23,7 @@ public final class P29GeometrySmokeTest {
     static final long SEED = 2731L;
     static final String WORLD = "d".repeat(64);
     static final String SET_ID = "minecraft:research_set";
+    static final String STRUCTURE_ID = "minecraft:desert_pyramid";
     static final String DIMENSION = "minecraft:overworld";
     static final RandomSpreadSpec SPEC = new RandomSpreadSpec(
             SET_ID, 32, 16, RandomSpreadSpec.Distribution.LINEAR, 4321);
@@ -87,6 +88,10 @@ public final class P29GeometrySmokeTest {
                     "constraint.0.geometry.calibration.0.gameVersion=" + version,
                     "constraint.0.geometry.calibration.0.gameVersion=1.19.4")),
                     "cross-version calibration must fail closed");
+            expectFail(() -> parseUnchecked(manifest.replace(
+                    "constraint.0.geometry.calibration.0.structureId=" + STRUCTURE_ID,
+                    "constraint.0.geometry.calibration.0.structureId=minecraft:shipwreck")),
+                    "different structures within one set may not share a geometry template");
             expectFail(() -> parseUnchecked(manifest + "constraint.0.minChunkX=0\n"),
                     "no ambiguous coexistence of manual region and geometry");
             expectFail(() -> parseUnchecked(manifest.replace(
@@ -97,10 +102,10 @@ public final class P29GeometrySmokeTest {
 
         // 校验 floorDiv/ceilDiv 的负坐标，保留精确起点。
         var calibration = StructureFootprintInverter.Calibration.fromControlled(
-                "control_negative", "26.2", DIMENSION, SET_ID, "north",
+                "control_negative", "26.2", DIMENSION, SET_ID, STRUCTURE_ID, "north",
                 footprint(-20, -31, OFFSET), -20, -31, 0);
         var negative = new StructureFootprintInverter.ObservedFootprint(
-                WORLD, "26.2", DIMENSION, SET_ID,
+                WORLD, "26.2", DIMENSION, SET_ID, STRUCTURE_ID,
                 footprint(-17, -29, OFFSET),
                 StructureFootprintInverter.FootprintQuality.COMPLETE_PERIMETER);
         var inferred = StructureFootprintInverter.infer(negative, List.of(calibration));
@@ -170,6 +175,7 @@ public final class P29GeometrySmokeTest {
             add(text, p + "origin", "GEOMETRY_ESTIMATE");
             add(text, p + "split", i < 3 ? "FIT" : "HOLDOUT");
             add(text, p + "geometry.quality", "COMPLETE_PERIMETER");
+            add(text, p + "geometry.structureId", STRUCTURE_ID);
             addFootprint(text, p + "geometry.", footprint(start.x(), start.z(), OFFSET));
             add(text, p + "geometry.calibrations.count", 2);
             for (int variant = 0; variant < 2; variant++) {
@@ -180,6 +186,7 @@ public final class P29GeometrySmokeTest {
                 add(text, c + "gameVersion", version);
                 add(text, c + "dimension", DIMENSION);
                 add(text, c + "structureSet", SET_ID);
+                add(text, c + "structureId", STRUCTURE_ID);
                 int rx = variant == 0 ? 12 : -12;
                 int rz = variant == 0 ? -13 : 14;
                 int[] offsets = variant == 0 ? OFFSET
@@ -243,10 +250,11 @@ public final class P29GeometrySmokeTest {
 
     private static void checkFailureForUnsupportedScope() {
         var calibration = StructureFootprintInverter.Calibration.fromControlled(
-                "controlled", "26.1.2", DIMENSION, SET_ID, "north",
+                "controlled", "26.1.2", DIMENSION, SET_ID, STRUCTURE_ID, "north",
                 footprint(2, 3, OFFSET), 2, 3, 0);
         var target = new StructureFootprintInverter.ObservedFootprint(
-                WORLD, "26.2", DIMENSION, SET_ID, footprint(4, 5, OFFSET),
+                WORLD, "26.2", DIMENSION, SET_ID, STRUCTURE_ID,
+                footprint(4, 5, OFFSET),
                 StructureFootprintInverter.FootprintQuality.COMPLETE_PERIMETER);
         expectFail(() -> StructureFootprintInverter.infer(target, List.of(calibration)),
                 "cross-version reference must not be promoted");
