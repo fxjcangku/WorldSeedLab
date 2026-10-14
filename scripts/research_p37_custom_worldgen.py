@@ -398,10 +398,19 @@ def main(argv=None):
             data.close()
         print(format_chinese(report))
         if args.json_out is not None:
-            args.json_out.parent.mkdir(parents=True, exist_ok=True)
-            args.json_out.write_text(
-                json.dumps(report, ensure_ascii=False, indent=2) + "\n",
-                encoding="utf-8")
+            destination = args.json_out
+            if destination.suffix.lower() != ".json" or destination.is_symlink():
+                raise EvidenceRejected("匿名摘要必须是新的普通.json文件，不得覆盖符号链接")
+            if destination.resolve() == args.input.resolve() or destination.exists():
+                raise EvidenceRejected("匿名摘要目标已存在或等于原始证据：拒绝覆盖任何文件")
+            if destination.name.lower() in {
+                "identity.key", "evidence.jsonl", "terrain.jsonl",
+                "terrain-detail.jsonl", "completed-chunks.csv"
+            }:
+                raise EvidenceRejected("禁止覆盖原始世界证据或本机HMAC密钥")
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with destination.open("x", encoding="utf-8") as output:
+                output.write(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
             print("匿名报告已保存至用户指定的本地文件（不打印目录/世界身份）")
         return 0
     except (EvidenceRejected, OSError, zipfile.BadZipFile) as exc:

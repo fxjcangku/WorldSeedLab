@@ -194,6 +194,20 @@ class P37AuditTest(unittest.TestCase):
         with self.assertRaisesRegex(EvidenceRejected, "16列"):
             verify_zip(self.path)
 
+    def test_cli_never_overwrites_any_original_or_existing_file(self):
+        build_zip(self.path, self.controlled())
+        destination = Path(self.td.name) / "summary.json"
+        destination.write_text("DO_NOT_OVERWRITE", encoding="utf-8")
+        with contextlib.redirect_stderr(io.StringIO()):
+            code = main(["--input", str(self.path), "--json-out", str(destination)])
+        self.assertEqual(code, 2)
+        self.assertEqual(destination.read_text(encoding="utf-8"), "DO_NOT_OVERWRITE")
+        with contextlib.redirect_stderr(io.StringIO()):
+            code = main(["--input", str(self.path), "--json-out", str(self.path)])
+        self.assertEqual(code, 2)
+        self.assertTrue(self.path.is_file())
+        self.assertGreater(self.path.stat().st_size, 0)
+
     def test_local_cli_report_only_anonymous_statistics(self):
         build_zip(self.path, self.controlled())
         target = Path(self.td.name) / "summary.json"
