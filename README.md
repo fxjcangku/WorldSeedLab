@@ -131,6 +131,16 @@ P2.7 已确认的 Minecraft Legacy RandomSpread 数学模型现可转换成**可
 
 [查看 P3.0 的准确能力与后续高16位验证条件](docs/P30_FULL64_EVIDENCE_RESEARCH.md)
 
+## P3.6 / 自定义地形与建筑自动联合取证（双版本受控实机已通过）
+
+**WorldSeedLab 的最终目标是研究自定义地形服务器的生成器和世界 Seed。** 沙漠神殿、海底神殿只能在其结构放置算法经过验证的前提下作为 low48 的条件约束；实际地形高度、群系、地层和未知的噪声映射必须单独取证。不能把识别建筑说成恢复了自定义地形的64位后台Seed。
+
+新增**一次手动授权 /wsl auto on**：玩家无需逐座选择两个角。客户端只在已经加载 FULL 区块中有界识别真实蓝陶瓦，自动尝试29×29粗区域→唯一21×21完整可见沙漠神殿外缘，并异步保存本机CLIENT_OBSERVED。同时自动开启现有 P1/P2 真实群系与地形、P2.6 低成本材料候选。切服/维度更改或无法确认完整性即停止/拒绝，不会请求新区块、上传坐标、读取服务端StructureStart或自动求解Seed。
+
+**2026-10-14 实际受控双版验收成功：** [双版 Java25 构建 #38532347569](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38532347569) 和 [真实双版 Fabric GUI 自动取证 #38532347680](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38532347680) 均 success。每版本在隔离公开已知 Seed=2731 的自定义沙漠服务器**仅执行一次自动启用命令**，分别自动保存4座独立神殿的真实方块栅格，各 4/4 与客户端取证后另行读取的FULL Anvil/StructureStart匹配，真实Z3+Java RNG的2FIT+1HOLDOUT保留受控low48=2731。自动模式也真实保存了 **26.1.2：105,984条客户端群系记录、144个地形区块；26.2：107,520条群系记录、146个地形区块**。这是证据能力验证，不是对任意私人服务器的原生Seed解码。
+
+[自动命令与模型限制](docs/P36_AUTOMATIC_CUSTOM_WORLD_EVIDENCE.md) · [P3.6双版受控实证JSON](docs/evidence/P36_REAL_AUTOMATIC_CUSTOM_EVIDENCE_2026-10-14.json)
+
 ## P3.5 / 普通客户端建筑轮廓真实取证（双版本受控实机已验收）
 
 新增独立的手动沙漠神殿轮廓取证：**/wsl footprint first / second / export / clear**。按玩家授权的两角区域只读已经完整加载的实际方块，外侧一圈与四条可见边缘一起审计；一旦区块缺失、遮挡或取证中断，即拒绝把残缺轮廓升级为结构起点候选。原始证据在用户显式导出时只存本机 HMAC 世界与维度隔离目录，不会主动加载新区块或上传。

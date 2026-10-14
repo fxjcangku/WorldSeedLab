@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "project": "WorldSeedLab",
+  "phase": "P3.6",
+  "date": "2026-10-14",
+  "repository": "fxjcangku/WorldSeedLab",
+  "source_commit": "7daa7c40645df15d498492bc0375be5ea8fd1719",
+  "build": {
+    "run_id": 38532347569,
+    "url": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/38532347569",
+    "conclusion": "success"
+  },
+  "real_fabric_gui": {
+    "run_id": 38532347680,
+    "url": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/38532347680",
+    "conclusion": "success"
+  },
+  "controlled_world": {
+    "public_seed_signed": "2731",
+    "terrain": "actual Minecraft custom flat desert",
+    "structure_set": "minecraft:desert_pyramids",
+    "salt_hypothesis": 14357617,
+    "wrong_salt": 14357844,
+    "control_server_rcon_for_navigation_only": true
+  },
+  "versions": {
+    "26.1.2": {
+      "job_id": 115746939375,
+      "conclusion": "success",
+      "manual_auto_on_commands": 1,
+      "per_structure_manual_corner_commands": 0,
+      "per_structure_manual_export_commands": 0,
+      "automatic_client_structure_archives": 4,
+      "observed_voxels_per_structure": 30752,
+      "unique_complete_21x21_perimeters": 4,
+      "posthoc_selected_full_structure_starts": 4,
+      "posthoc_actual_saved_structure_starts_total": 8,
+      "posthoc_actual_custom_terrain_full_chunks": 1125,
+      "client_persisted_biome_records": 105984,
+      "client_persisted_terrain_chunk_records": 144,
+      "p26_completed_material_scan_chunks": 101,
+      "fit": 2,
+      "holdout": 1,
+      "controlled_low48_found": "2731",
+      "wrong_seed_and_salt_rejected": true,
+      "artifact_id": 11878911423
+    },
+    "26.2": {
+      "job_id": 115746938742,
+      "conclusion": "success",
+      "manual_auto_on_commands": 1,
+      "per_structure_manual_corner_commands": 0,
+      "per_structure_manual_export_commands": 0,
+      "automatic_client_structure_archives": 4,
+      "observed_voxels_per_structure": 30752,
+      "unique_complete_21x21_perimeters": 4,
+      "posthoc_selected_full_structure_starts": 4,
+      "posthoc_actual_saved_structure_starts_total": 8,
+      "posthoc_actual_custom_terrain_full_chunks": 1125,
+      "client_persisted_biome_records": 107520,
+      "client_persisted_terrain_chunk_records": 146,
+      "p26_completed_material_scan_chunks": 104,
+      "fit": 2,
+      "holdout": 1,
+      "controlled_low48_found": "2731",
+      "wrong_seed_and_salt_rejected": true,
+      "artifact_id": 11879335743
+    }
+  },
+  "provenance": {
+    "client": "CLIENT_OBSERVED_BLOCK_STATES + CLIENT_OBSERVATION biomes/terrain, actual connected Fabric GUI",
+    "natural_origin": "UNKNOWN",
+    "generator_profile": "UNKNOWN",
+    "server_truth": "CONTROL_WORLD_POSTHOC_FULL_ANVIL_STRUCTURE_START; only after all client archives",
+    "raw_private_coordinates_uploaded": false
+  },
+  "failure_history": {
+    "initial_26_2_api": "Blocks.BLUE_TERRACOTTA constant unavailable in target 26.2; fixed via observed block registry key",
+    "initial_run_id": 38531279854,
+    "earlier_real_auto_success_run_id": 38531476993
+  },
+  "limits": [
+    "Only tested 4 controlled desert pyramids per version",
+    "Source from original loaded blocks does not authenticate natural generation",
+    "May miss temples when client altitude differs or unloaded chunks are skipped",
+    "No population-wide false positive or false negative rate from four controlled targets",
+    "Unknown Salt and custom terrain generator mapping not inferred",
+    "No high16 or complete64 recovery on unknown custom worlds",
+    "Not validated ocean monuments automated complete perimeter"
+  ],
+  "privacy": "Public control-world aggregates only, no private multiplayer coordinates, address or HMAC secret."
+}

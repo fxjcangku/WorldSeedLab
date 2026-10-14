@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.InputConstants;
 import io.github.fxjcangku.worldseedlab.client.probe.WorldProbeController;
 import io.github.fxjcangku.worldseedlab.client.probe.ClientQuartCaptureController;
 import io.github.fxjcangku.worldseedlab.client.probe.ClientDesertFootprintCaptureController;
+import io.github.fxjcangku.worldseedlab.client.probe.AutoDesertFootprintController;
 import io.github.fxjcangku.worldseedlab.core.BootstrapCheck;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -27,6 +28,7 @@ public final class WorldSeedLabClient implements ClientModInitializer {
     private WorldProbeController probe;
     private ClientQuartCaptureController quart;
     private ClientDesertFootprintCaptureController footprint;
+    private AutoDesertFootprintController automatic;
 
     @Override
     public void onInitializeClient() {
@@ -42,6 +44,7 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                 .getConfigDir().resolve("worldseedlab"), gameVersion, LOGGER);
         quart = new ClientQuartCaptureController(probe, gameVersion);
         footprint = new ClientDesertFootprintCaptureController(probe, gameVersion);
+        automatic = new AutoDesertFootprintController(probe, gameVersion);
         KeyMapping.Category category = KeyMapping.Category.register(
                 Identifier.fromNamespaceAndPath("worldseedlab", "general"));
         KeyMapping panelKey = KeyMappingHelper.registerKeyMapping(
@@ -57,10 +60,12 @@ public final class WorldSeedLabClient implements ClientModInitializer {
             probe.tick(minecraft);
             quart.tick(minecraft);
             footprint.tick(minecraft);
+            automatic.tick(minecraft);
         });
 
         // 客户端退出时有限等待落盘，不阻塞正常运行中的 UI。
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+            automatic.onClientStopping();
             quart.clear("客户端退出，未导出的手动群系样本已丢弃");
             footprint.clear("客户端退出，未导出的建筑轮廓已丢弃");
             probe.onClientStopping();
@@ -123,6 +128,26 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                         context.getSource().sendFeedback(Component.literal(footprint.status()));
                         return 1;
                     }));
+            // P3.6 一次手动授权后自动取证，且只生成客户端可见模型证据。
+            var automaticCommand = ClientCommands.literal("auto")
+                    .executes(context -> {
+                        context.getSource().sendFeedback(Component.literal(automatic.status()));
+                        return 1;
+                    })
+                    .then(ClientCommands.literal("on").executes(context -> {
+                        context.getSource().sendFeedback(Component.literal(
+                                automatic.start(Minecraft.getInstance())));
+                        return 1;
+                    }))
+                    .then(ClientCommands.literal("off").executes(context -> {
+                        context.getSource().sendFeedback(Component.literal(
+                                automatic.stop("用户主动关闭P3.6自动取证；已接受文件继续排空")));
+                        return 1;
+                    }))
+                    .then(ClientCommands.literal("status").executes(context -> {
+                        context.getSource().sendFeedback(Component.literal(automatic.status()));
+                        return 1;
+                    }));
             dispatcher.register(ClientCommands.literal("wsl")
                     .executes(context -> {
                         PlatformScreens.open(Minecraft.getInstance(), probe);
@@ -144,6 +169,7 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                                 + " | 观测样本: " + probe.observedSamples()
                                 + " | 自动结构: " + (probe.structureScanEnabled() ? "开" : "关")
                                 + " | 疑似聚合组: " + probe.structureCandidateGroups()
+                                + " | P3.6自动取证: " + (automatic.running() ? "开" : "关")
                                 + " | " + probe.status()));
                         return 1;
                     }))
@@ -170,6 +196,7 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                     .then(mark)
                     .then(quartCmd)
                     .then(footprintCommand)
+                    .then(automaticCommand)
                     .then(ClientCommands.literal("marks").executes(context -> {
                         context.getSource().sendFeedback(Component.literal(
                                 "可手动标记的结构: " + String.join(", ",
@@ -205,7 +232,7 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                             })))
                     .then(ClientCommands.literal("about").executes(context -> {
                         context.getSource().sendFeedback(Component.literal(
-                                "独立世界生成研究 | F8 打开液态玻璃面板 | 仅本地已加载区块 | 无 Seed 破解功能"));
+                                "独立世界生成研究 | /wsl auto on开启结构+群系+地形联合取证 | 仅本地已加载区块 | 生成器未知时不提供Seed结论"));
                         return 1;
                     })));
         });

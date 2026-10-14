@@ -31,3 +31,5 @@ P3.3 真实客户端联机回归必须阅读 [docs/P33_REAL_FABRIC_CLIENT_E2E.md
 P3.4 自定义生成器研究先读 [docs/P34_CUSTOM_WORLDGEN_COMPATIBILITY.md](docs/P34_CUSTOM_WORLDGEN_COMPATIBILITY.md)。结构与群系双轴判定必须区分模型一致/证据不足/模型冲突/生成器未知；未知 Salt、历史区块或人工建筑必须降级。真实受控存档的 FULL Anvil 与 StructureStart 不能标记为普通客户端 CLIENT_OBSERVED；只有两版实测全通过才可合并。
 
 P3.4.1 修改 Salt 研究必须先读 [docs/P34_REAL_MODIFIED_SALT_CONTROL.md](docs/P34_REAL_MODIFIED_SALT_CONTROL.md)。将真实受控 Minecraft 数据包 enabled、FULL Anvil 及保存的 StructureStart 作为三项独立验收条件；仅校验 JSON 文件存在不能声称实际自定义结构规则生效。普通客户端不能访问这些服务端真值。
+
+P3.6 自动世界生成证据研发必须先阅读 [docs/P36_AUTOMATIC_CUSTOM_WORLD_EVIDENCE.md](docs/P36_AUTOMATIC_CUSTOM_WORLD_EVIDENCE.md)。一键手动授权只检查已加载 FULL 区块，发现材料候选不得冒充自然生成 StructureStart；仅完整21×21外沿可以成为条件几何候选，且生成器和Salt未知时不得直接运行 low48/完整64位求解。群系/地形与结构证据必须保持独立来源，默认关闭、失败关闭、单次有界、局部异步保存、仅本机原始坐标，双版独立编译及真实 Fabric GUI 自动取证验收，不能用P3.5手动双角成功替代自动功能成功。
