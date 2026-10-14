@@ -372,3 +372,44 @@ tasks.register('p31Full64Shard', JavaExec) {
          "src/test/resources/p31/vanilla_${targetMinecraft}_seed2731_quart.csv",
          "build/p31-high16-shards/${targetMinecraft}/shard-${paddedIndex}.properties"
 }
+
+
+// P3.2：普通 Fabric 客户端手动群系 CSV 数据模型；本任务从不访问网络或启动求解。
+tasks.register('p32ClientQuartEvidenceTest', JavaExec) {
+    group = 'verification'
+    description = 'Verify manual CLIENT_OBSERVED quart archive, independent FIT/HOLDOUT, scope and privacy.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P32ClientQuartEvidenceTest'
+}
+tasks.named('check') {
+    dependsOn tasks.named('p32ClientQuartEvidenceTest')
+}
+
+// 64位研究离线入口：用户必须同时给出真实结构约束及手动导出群系证据；
+// 显式确认假设原版生成器，不允许在 Fabric Tick/GUI 中自动运行。
+tasks.register('p32OfflineClientQuartResearch', JavaExec) {
+    group = 'research'
+    description = 'Explicit offline Z3 low48 verification followed by client quart high16 hypothesis search.'
+    dependsOn tasks.named('classes')
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.solver.P32OfflineClientQuartResearch'
+    systemProperty 'mcVersion', targetMinecraft
+    args providers.gradleProperty('p32ClientCsv').orElse('NO_CLIENT_QUART_INPUT').get(),
+         providers.gradleProperty('p32StructureInput').orElse('NO_STRUCTURE_INPUT').get(),
+         providers.gradleProperty('p32ShardIndex').orElse('0').get(),
+         providers.gradleProperty('p32ShardCount').orElse('16').get(),
+         providers.gradleProperty('p32GeneratorAssumption').orElse('NOT_CONFIRMED').get()
+}
+
+// 独立启动真实 Minecraft 负数完整 Seed 服务器、保存FULL群系后再执行。
+// 默认 check 不能访问/读取任意单人世界或假设它运行在玩家电脑。
+tasks.register('p32NegativeRealWorldTest', JavaExec) {
+    group = 'research'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P32NegativeRealWorldTest'
+    args providers.gradleProperty('p32RealStarts').orElse('NO_REAL_STARTS').get(),
+         providers.gradleProperty('p32RealBiomes').orElse('NO_REAL_BIOMES').get(),
+         targetMinecraft
+}
