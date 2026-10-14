@@ -215,6 +215,10 @@ def scan_observed_biome_quart_samples(world: Path):
     controls = []
     for region in sorted(regions.glob("r.*.*.mca")):
         for chunk in region_chunks(region):
+            # 尚未完成世界生成的区块其 palette 可能是默认 plains 占位。
+            # 必须达到 FULL 才能把存档群系当成真实、独立的观测数据。
+            if chunk.get("Status") not in ("minecraft:full", "full"):
+                continue
             cx, cz = chunk.get("xPos"), chunk.get("zPos")
             if not isinstance(cx, int) or not isinstance(cz, int):
                 continue
