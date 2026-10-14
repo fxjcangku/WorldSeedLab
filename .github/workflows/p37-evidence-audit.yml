@@ -29,3 +29,13 @@ jobs:
           python3 -u scripts/test_p37_custom_worldgen.py -v
       - name: Confirm research CLI help and safe boundaries
         run: python3 scripts/research_p37_custom_worldgen.py --help
+      - name: Upload exact audited CLI source (public code only)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: P37-Verified-Offline-Source
+          path: |
+            scripts/research_p37_custom_worldgen.py
+            scripts/test_p37_custom_worldgen.py
+          if-no-files-found: error
+          retention-days: 7
