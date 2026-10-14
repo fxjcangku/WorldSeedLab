@@ -1,0 +1,57 @@
+name: P2.9 Real Known-Seed Worldgen
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/run_known_seed_server.py'
+      - 'src/test/java/io/github/fxjcangku/worldseedlab/core/P29RealWorldStructureTest.java'
+      - '.github/workflows/p29-real-worldgen.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    name: Actual Minecraft World ${{ matrix.minecraft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    strategy:
+      fail-fast: false
+      matrix:
+        minecraft: ['26.1.2', '26.2']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Gradle 9.6.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.1'
+
+      - name: Install local Z3 for exact controlled-world inverse checks
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq z3
+          z3 --version
+
+      - name: Build real known-seed world and read authoritative structure NBT
+        run: python3 -u scripts/run_known_seed_server.py --minecraft=${{ matrix.minecraft }}
+
+      - name: Invert low48 from actual serialized StructureStart
+        run: gradle --no-daemon --console=plain -PmcVersion=${{ matrix.minecraft }} -PknownSeedCsv=build/p29-realworld/${{ matrix.minecraft }}/real_structure_starts.csv p29RealWorldStructureTest
+
+      - name: Upload controlled-world audit (without complete world save)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: P29-Real-World-${{ matrix.minecraft }}
+          path: build/p29-realworld/${{ matrix.minecraft }}/
+          if-no-files-found: warn
+          retention-days: 7
