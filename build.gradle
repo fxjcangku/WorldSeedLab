@@ -542,3 +542,29 @@ tasks.register('p35RealFabricClientFootprintTest', JavaExec) {
             .orElse("build/p35-real-client-footprint/" + targetMinecraft).get(),
          targetMinecraft
 }
+
+
+// P3.6 一次手动授权的自动建筑轮廓与真实群系、地形联合取证。
+// 默认两个版本的 check 都跑纯Java正反例；真实客户端另立E2E。
+tasks.register('p36AutomaticEvidenceSmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Verify no-corner automatic rough ROI, provenance, bounded shape and fail-closed behavior.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P36AutomaticEvidenceSmokeTest'
+}
+tasks.named('check') {
+    dependsOn tasks.named('p36AutomaticEvidenceSmokeTest')
+}
+
+// 真实runClient/runServer + 无人工两角标记 + 独立Anvil FULL/Z3验证。
+tasks.register('p36RealFabricAutoEvidenceTest', JavaExec) {
+    group = 'research'
+    description = 'Validate actual automatically recorded Fabric block evidence against posthoc FULL Anvil and existing Z3.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P36RealFabricAutoEvidenceTest'
+    args providers.gradleProperty('p36AutoControlDir')
+            .orElse("build/p36-real-client-footprint/" + targetMinecraft).get(),
+         targetMinecraft
+}
