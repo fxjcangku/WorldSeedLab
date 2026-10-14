@@ -240,6 +240,8 @@
 - [x] 26.1.2与26.2真正Fabric GUI分别仅一次 `/wsl auto on`，自动采集4份CLIENT_OBSERVED结构栅格；独立FULL+StructureStart、2FIT+1HOLDOUT及错Salt/Seed对照成功：[最新 Actions #38534515870](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38534515870)。P3.1–P3.5 相关 PR 必需回归亦通过，PR #25 已合并。
 - [x] 最终 PR E2E 日志核实：26.1.2=107,520条群系/144地形区块/104个P2.6已扫区块；26.2=105,984条群系/148地形区块/106个P2.6已扫区块；生成器/Salt/自然来源均保留UNKNOWN。地下分层档位 `STRATA` 须用户先行显式设置，自动取证不会改变初装 OFF。
 - [x] P3.6.1 针对首次真实服务器日志中的高空玩家Y错层漏检与扫描中断误计数，修复为实际地表高度图驱动的有界32格搜索、独立卸载计数、完整轮廓会话去重与匿名诊断；[PR #28](https://github.com/fxjcangku/WorldSeedLab/pull/28) 已合并。最终源码 `b9f678c4` 双版 [clean build #38549576956](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576956) 与 [真实 Fabric GUI 4/4 + FULL + Z3 #38549576931](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576931) 成功。受控模型成功不代表未知服务器已检出结构。
+- [ ] P3.6.2 长期跑图：从4096即停机改为4096容量滚动去重缓存、窗口淘汰统计、区块卸载/候选待补全/轮廓拒绝独立计数，并以双版真实Fabric GUI验收（研发进行中）。
+- [ ] P3.7 自定义生成器数据证据分层与完整64位可辨识性研究：先从P1/P2/STRATA真实数据离线审计独立区域、非原版群系、地形/地层及历史未知状态，再研究明确假设下的结构Salt多模型与高16位；绝不直接声称恢复目标服完整64位。
 - [ ] 更广泛的自定义地形模型辨识、未知 Salt/历史混合区块真实对照、非零高16负数64位全域搜索；不把结构 low48 冒充完整世界Seed。
 
 **研究定位：** 自动结构取证是低48位的条件约束入口；自定义地形/群系生成器未知时，不能根据神殿材料直接宣称破解后台 Seed。
