@@ -31,7 +31,21 @@ P3.6 解决 P3.5 还要求玩家手动框选两个角的问题：在正常已经
 
 - 首次目标服日志显示：自动授权正常、蓝陶瓦线索0、完整轮廓0、区块扫描多次遭卸载；此前状态把区块卸载错误混进“不完整/歧义”，导致用户误认为3座建筑出错。
 - 源码复核发现：旧蓝陶瓦搜索基于玩家 `Y-20` 的单个32格高度带，鞘翅高空经过地表建筑时可能漏检且同一会话无自动换高度重扫。现在改为每列独立地表高度图规划，仍限制每Tick额外256个BlockState；并将扫描中断独立计数，增加每60秒匿名进度INFO与同座轮廓去重。
-- 本轮没有服务端真值输入或后台Seed读取，也没有把低48位结构约束冒充完整64位。以下旧版P3.6成功实验仍为历史基线；**新改动需两版clean build与真正Fabric GUI E2E复验成功后才能合并**。所有私人世界坐标、地址与原始日志不入公开仓库。
+- P3.6.1 功能 PR [#28](https://github.com/fxjcangku/WorldSeedLab/pull/28) **已合并**至 main（`e8d2c03d1614b307562663c28e284404de8b9dc2`），最终代码/受控GUI测试提交 `b9f678c4a6c6263b28cdbba7a1064a9f8dbfb6af`。双版本 Java25/Gradle9.6.1 [clean build #38549576956](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576956) 与真正 [Fabric GUI自动联合取证 #38549576931](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576931) 均 success；P3.2 客户端启动 [#38549576903](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576903)、P3.3 实际 GUI 联机 [#38549576896](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576896) 亦全绿。自动化实际执行命令一次（日志强验证），未手动框选或导出。所有私人世界坐标、地址与原始日志未入公开仓库，未知生成器/Salt/完整64位仍 UNKNOWN。
+
+## P3.6.1 最终受控双版本 GUI 验收数据
+
+| 真正 Fabric GUI + 自定义沙漠受控世界 | 26.1.2 | 26.2 |
+| --- | ---: | ---: |
+| 实际接受的 `/wsl auto on` | 1 | 1 |
+| 自动保存的完整21×21沙漠神殿 | 4/4 | 4/4 |
+| 客户端实际落盘 quart 群系记录 | 109,056 | 109,824 |
+| 客户端地形区块记录 | 148 | 148 |
+| P2.6 已完成材料扫描区块 | 105 | 107 |
+| 事后独立 FULL StructureStart 核查 | 4/4 | 4/4 |
+| 独立受控 Z3+Java RNG 1校准/2FIT/1HOLDOUT、错Salt/Seed反例 | 通过 | 通过 |
+
+早期两次 GUI 自动化失败来自 Minecraft 首次入服时 **Friends List** / **Advancements** 弹窗遮挡聊天输入，不是普通客户端取证失败。CI 截图保留了真值；后来在仅受控 GUI 测试脚本中处理弹窗并以 `P3.6 started` 日志验证仅一次成功授权。上述表格和最新回归结果以最终 `b9f678c4` 提交为准，不以早期实验模拟结果替代。
 
 ## 实验必须怎么验收
 
