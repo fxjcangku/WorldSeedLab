@@ -99,6 +99,14 @@ P2.7 已确认的 Minecraft Legacy RandomSpread 数学模型现可转换成**可
 
 [P2.9 几何逆推说明](docs/P29_GEOMETRY_INVERSION.md) · [真实 Minecraft 受控世界验收报告](docs/P29_REAL_WORLD_KNOWN_SEED.md)
 
+## P3.0 / 64位独立证据反演研究
+
+在已验证的低48位结构候选上，新增**完整64位候选位域、高16位65,536种组合、三维群系证据 FIT/HOLDOUT、有限搜索与断点续跑**。代码通过严格的证据类型和生成器作用域检查，避免把未知 Salt 或玩家目击的建筑位置冒充真实种子。
+
+**目前只有真实 Mojang Xoroshiro 随机数控制实验验证高16位枚举逻辑**；它不是实际原版群系气候噪声，尚不能凭普通客户端已见群系恢复真实世界的完整64位 Seed。只有使用目标 Minecraft 版本的真实生成器并进行已知 Seed 的独立对照后，才能讨论完整64位候选验证。
+
+[查看 P3.0 的准确能力与后续高16位验证条件](docs/P30_FULL64_EVIDENCE_RESEARCH.md)
+
 ## 02 / 研究边界
 
 | 研究对象 | 我们希望回答的问题 |
