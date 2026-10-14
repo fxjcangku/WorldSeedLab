@@ -341,3 +341,34 @@ tasks.register('p30RealWorldBiomeTest', JavaExec) {
     systemProperty 'mcVersion', targetMinecraft
     args providers.gradleProperty('knownBiomeCsv').orElse('NO_CONTROL_BIOME_INPUT').get()
 }
+
+
+// P3.1 全域搜索的每个分片是真正的 Minecraft Overworld MultiNoise 模型。
+// 日常双版本 check 只检查分片范围和两个真实群系候选；65536全域必须显式执行。
+// 不能通过分片子集的成功来宣称 full64 完成。
+tasks.register('p31ShardSmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Check disjoint high16 partition edges and real vanilla saved-biome guardrails.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P31Full64ShardSmokeTest'
+    systemProperty 'mcVersion', targetMinecraft
+}
+tasks.named('check') {
+    dependsOn tasks.named('p31ShardSmokeTest')
+}
+
+tasks.register('p31Full64Shard', JavaExec) {
+    group = 'research'
+    description = 'One exact real vanilla climate high16 shard, audited by full-domain aggregator.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P31Full64ShardRunner'
+    systemProperty 'mcVersion', targetMinecraft
+    def index = providers.gradleProperty('p31ShardIndex').orElse('0').get()
+    def count = providers.gradleProperty('p31ShardCount').orElse('16').get()
+    def paddedIndex = index.padLeft(2, '0')
+    args index, count,
+         "src/test/resources/p31/vanilla_${targetMinecraft}_seed2731_quart.csv",
+         "build/p31-high16-shards/${targetMinecraft}/shard-${paddedIndex}.properties"
+}
