@@ -44,6 +44,7 @@ public final class AutoDesertFootprintController {
     private static final int RADIUS_CHUNKS = 2;
     private static final int MAX_SCANNED_CHUNKS = 4096;
     private static final int MAX_OBSERVED_SITES = 64;
+    private static final int MAX_DISTINCT_BLUE_HINTS = 256;
     private static final int MAX_DEFERRED_HINTS = 24;
     private static final int DEFERRED_TICKS = 1200;
     private static final int QUEUED_FILES = 8;
@@ -132,6 +133,15 @@ public final class AutoDesertFootprintController {
     /** 一次手动开启完整联合证据。P1/P2 原有地形和群系仍独立保存，绝不自动启动Z3。 */
     public String start(Minecraft client) {
         if (running) return status();
+        // 上一轮自动写盘已接受的文件必须真正排空才能建立新一轮作用域。
+        // 禁止重新启动后清空上一轮错误和计数、造成证据写入状态误报。
+        if (executor != null && !executor.isTerminated()) {
+            return lastStatus = "上一轮客户端自动证据仍在落盘，请先确认写入排空";
+        }
+        if (diskError.get() != null) {
+            return lastStatus = "上一轮自动证据持久化失败：" + diskError.get()
+                    + "；需要重新启动客户端后才可再次采集";
+        }
         if (client.player == null || client.level == null
                 || WorldScopeResolver.discriminator(client) == null) {
             return lastStatus = "未进入可识别的世界，拒绝启动自动取证";
@@ -200,8 +210,7 @@ public final class AutoDesertFootprintController {
         dimension = null;
         folder = null;
         if (executor != null) {
-            executor.shutdown(); // 已接受的证据继续在受限后台线程写盘，不丢弃队列。
-            executor = null;
+            executor.shutdown(); // 已接受证据继续排空；保留引用供退出时限时等待。
         }
         lastStatus = reason;
         return status();
@@ -302,7 +311,14 @@ public final class AutoDesertFootprintController {
             if (!"minecraft:blue_terracotta".equals(actualId)) continue;
             var blue = new AutoDesertFootprintPlan.BlueTerracottaAnchor(x, y, z);
             String key = hintKey(blue);
-            if (!observedHints.add(key)) continue;
+            if (observedHints.contains(key)) continue;
+            // 创造/自定义世界可能存在大量蓝陶瓦，逐格字符串集合必须硬封顶。
+            // 不允许仅靠4096个已扫区块误以为候选线索内存有界。
+            if (observedHints.size() >= MAX_DISTINCT_BLUE_HINTS) {
+                stop("本次蓝陶瓦线索超过256个安全上限，避免内存无限累积");
+                return;
+            }
+            observedHints.add(key);
             attempts++;
             if (!tryCapture(blue, client.level)) {
                 if (deferred.size() == MAX_DEFERRED_HINTS) {
