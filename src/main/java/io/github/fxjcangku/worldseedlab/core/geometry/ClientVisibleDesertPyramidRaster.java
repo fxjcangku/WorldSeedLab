@@ -123,13 +123,71 @@ public final class ClientVisibleDesertPyramidRaster {
     }
 
     /**
-     * 对四条边逐列验证：同一高度上建筑侧真实砂岩与外侧一格真实空气相邻。
-     * 这比材料数量或包络大小更严格，但不是“自然生成”的证明。
+     * 用玩家授权的大范围3D栅格内的实际方块寻找尺寸为21x21的神殿外沿。
+     * 21x21只来自目标版本已独立校准的沙漠神殿受控模板，不代表后台Seed。
+     *
+     * <p>必须在原始栅格内部独立检验四侧“建筑方块对外侧实际空气”，
+     * 而不是直接把手动框的边缘或RCON导航位置作为建筑真实外边界。
+     * 多于一个相符矩形时保持歧义并拒绝生成起点，不凭最近玩家位置猜。
      */
+    public record VisibleDetection(StructureFootprintInverter.BlockBounds blocks, Audit audit) {}
+
+    private List<VisibleDetection> matchingBoundaries() {
+        var result = new java.util.ArrayList<VisibleDetection>();
+        if (bounds.maxX() - bounds.minX() + 1 < 21
+                || bounds.maxZ() - bounds.minZ() + 1 < 21) {
+            return List.of();
+        }
+        // 人工授权范围最大40x40，对21x21窗口最多400个有限测量假设。
+        for (int left = bounds.minX(); left <= bounds.maxX() - 20; left++) {
+            for (int north = bounds.minZ(); north <= bounds.maxZ() - 20; north++) {
+                var proposed = new StructureFootprintInverter.BlockBounds(
+                        left, north, left + 20, north + 20);
+                var resultForCandidate = auditRectangle(proposed);
+                if (resultForCandidate.completeVisiblePerimeter()) {
+                    result.add(new VisibleDetection(proposed, resultForCandidate));
+                    if (result.size() > 32) {
+                        // 过多包络误报不能绕过后续硬上限。
+                        return List.copyOf(result);
+                    }
+                }
+            }
+        }
+        return List.copyOf(result);
+    }
+
+    /** 审计此栅格中有多少个完全通过可见外轮廓门槛的潜在矩形。 */
     public Audit audit() {
+        var candidates = matchingBoundaries();
+        if (candidates.size() == 1) {
+            var pass = candidates.getFirst().audit();
+            return new Audit(true,
+                    "已从客户端方块独立定位21x21可见外沿；自然来源仍然UNKNOWN",
+                    pass.orangeBlocks(), pass.blueBlocks(), pass.carvedBlocks(),
+                    pass.westEdge(), pass.eastEdge(), pass.northEdge(), pass.southEdge(),1);
+        }
+        return new Audit(false,
+                candidates.isEmpty()
+                        ? "未从实际方块找到完整21x21可见外沿（可能遮挡/损坏/误选区域）"
+                        : "真实可见外沿有" + candidates.size()
+                          + "种重叠解释，必须拒绝不唯一的建筑起点",
+                0,0,0,0,0,0,0,candidates.size());
+    }
+
+    public StructureFootprintInverter.BlockBounds discoveredFootprint() {
+        var candidates = matchingBoundaries();
+        if (candidates.size() != 1) {
+            throw new IllegalArgumentException(
+                    "P3.5 客户端真实方块不能唯一确定完整建筑外沿，候选数=" + candidates.size());
+        }
+        return candidates.getFirst().blocks();
+    }
+
+    /** 只读取CLIENT_OBSERVED三维方块；人工ROI可大于最后发现的真实轮廓。 */
+    private Audit auditRectangle(StructureFootprintInverter.BlockBounds proposed) {
         int orange = 0, blue = 0, carved = 0;
-        for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
-            for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
+        for (int x = proposed.minX(); x <= proposed.maxX(); x++) {
+            for (int z = proposed.minZ(); z <= proposed.maxZ(); z++) {
                 for (int y = minY; y <= maxY; y++) {
                     byte cell = at(x, y, z);
                     if (cell == ORANGE_TERRACOTTA) orange++;
@@ -138,21 +196,21 @@ public final class ClientVisibleDesertPyramidRaster {
                 }
             }
         }
-        int west = edge(bounds.minX(), bounds.minZ(), bounds.maxZ(), -1, 0, true);
-        int east = edge(bounds.maxX(), bounds.minZ(), bounds.maxZ(), 1, 0, true);
-        int north = edge(bounds.minZ(), bounds.minX(), bounds.maxX(), 0, -1, false);
-        int south = edge(bounds.maxZ(), bounds.minX(), bounds.maxX(), 0, 1, false);
-        int w = bounds.maxX() - bounds.minX() + 1;
-        int d = bounds.maxZ() - bounds.minZ() + 1;
-        // 不完整或几何可疑时严格拒绝：不将缺口想象成完整围墙。
+        int west = edge(proposed.minX(), proposed.minZ(), proposed.maxZ(), -1, 0, true);
+        int east = edge(proposed.maxX(), proposed.minZ(), proposed.maxZ(), 1, 0, true);
+        int north = edge(proposed.minZ(), proposed.minX(), proposed.maxX(), 0, -1, false);
+        int south = edge(proposed.maxZ(), proposed.minX(), proposed.maxX(), 0, 1, false);
+        int w = proposed.maxX() - proposed.minX() + 1;
+        int d = proposed.maxZ() - proposed.minZ() + 1;
+        // 允许模板正常凹角，但任何大面积遮挡都直接失败。
         boolean edges = west >= Math.ceil(d * 0.8) && east >= Math.ceil(d * 0.8)
                 && north >= Math.ceil(w * 0.8) && south >= Math.ceil(w * 0.8);
         boolean decoration = orange >= 4 && blue >= 1 && carved >= 3;
-        String message = !decoration ? "缺少沙漠神殿可见装饰指纹"
-                : !edges ? "边界不完整/遮挡/破损或选区未贴合真实外沿"
-                : "四侧可见边界完整；人工复制和自然来源仍然未知";
-        return new Audit(edges && decoration, message, orange, blue, carved,
-                west, east, north, south, 0);
+        return new Audit(edges && decoration,
+                !decoration ? "缺少受控神殿装饰指纹"
+                        : !edges ? "四侧真实方块/空气外缘不完整"
+                        : "可见外轮廓成立（非自然来源认证）",
+                orange,blue,carved,west,east,north,south,0);
     }
 
     private int edge(int fixed, int first, int last, int offX, int offZ,
@@ -182,13 +240,11 @@ public final class ClientVisibleDesertPyramidRaster {
      */
     public StructureFootprintInverter.Inference inferCalibratedHypotheses(
             List<StructureFootprintInverter.Calibration> controlled) {
-        if (!audit().completeVisiblePerimeter()) {
-            throw new IllegalArgumentException("P3.5 不完整客户端轮廓不得进入 P2.9");
-        }
+        var discovered = discoveredFootprint();
         var observed = new StructureFootprintInverter.ObservedFootprint(
                 scope.worldFingerprint(), scope.gameVersion(), scope.dimension(),
                 "minecraft:desert_pyramids", "minecraft:desert_pyramid",
-                bounds, StructureFootprintInverter.FootprintQuality.COMPLETE_PERIMETER);
+                discovered, StructureFootprintInverter.FootprintQuality.COMPLETE_PERIMETER);
         return StructureFootprintInverter.infer(observed, controlled);
     }
 
