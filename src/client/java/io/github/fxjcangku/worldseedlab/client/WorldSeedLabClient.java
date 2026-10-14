@@ -46,6 +46,7 @@ public final class WorldSeedLabClient implements ClientModInitializer {
         quart = new ClientQuartCaptureController(probe, gameVersion);
         footprint = new ClientDesertFootprintCaptureController(probe, gameVersion);
         automatic = new AutoDesertFootprintController(probe, gameVersion);
+        PlatformScreens.registerAutomatic(automatic);
         KeyMapping.Category category = KeyMapping.Category.register(
                 Identifier.fromNamespaceAndPath("worldseedlab", "general"));
         KeyMapping panelKey = KeyMappingHelper.registerKeyMapping(

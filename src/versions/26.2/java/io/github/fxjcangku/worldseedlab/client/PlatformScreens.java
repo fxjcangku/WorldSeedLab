@@ -8,7 +8,21 @@ import net.minecraft.client.Minecraft;
 
 /** Minecraft 26.2 relocated the screen setter into Gui. */
 public final class PlatformScreens {
+    private static AutoDesertFootprintController automatic;
+
     private PlatformScreens() {}
+
+    /** F8/聊天与地图返回都复用唯一的一键自动扫描状态机。 */
+    public static void registerAutomatic(AutoDesertFootprintController controller) {
+        if (controller == null) throw new IllegalArgumentException("自动取证控制器缺失");
+        automatic = controller;
+    }
+
+    /** 旧版地图返回入口仍保留，不重复创建或重置自动控制器。 */
+    public static void open(Minecraft minecraft, WorldProbeController controller) {
+        if (automatic == null) throw new IllegalStateException("客户端自动取证尚未初始化");
+        open(minecraft, controller, automatic);
+    }
 
     public static void open(Minecraft minecraft, WorldProbeController controller,
                             AutoDesertFootprintController automatic) {
