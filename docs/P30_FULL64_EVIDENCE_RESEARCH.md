@@ -1,7 +1,7 @@
 # WorldSeedLab · P3.0 独立证据约束下的完整64位候选研究
 
 > 目标版本：Minecraft Java 26.1.2 / 26.2 · Java 25 · 原生 Fabric / Mojmap  
-> 研发状态：**64 位候选空间与高16位枚举引擎已实现；原版群系生成适配和真实64位反演尚未完成**。  
+> 研发状态：**完整64位候选与原版群系模型已实现；真实受控世界存档的两种高16位候选正反验证成功；尚未穷尽真实生成器的65,536个高位或恢复未知服务器 Seed**。  
 > 本文件不宣称已取得任何未知服务器的后台 Seed。
 
 ## 为什么 P2.9 的成功不能直接升级为64位
@@ -33,11 +33,25 @@ placement(seed) == placement(seed + k * 2^48)
 
 这证明完整64位枚举、位转换和独立条件求解**在控制模型下成立**；它**没有**证明这些随机输出等价于 Minecraft 26.1.2／26.2 的原版气候/群系生成，更**没有**通过普通客户端世界证据找回任何64位 Seed。原始 `XoroshiroRandomSource` 本身不是完整的 Overworld 生物群系生成器。
 
+## 真实 Minecraft 原版群系独立存档对照（已验收）
+
+2026-10-14 在两个版本的隔离本机真实 Minecraft 服务端，用完整已知 Seed `2731` 建立世界；保存实际生成区块到 Anvil。受控世界同时提供经独立验证的沙漠神殿低48位结构候选。
+
+- 使用 **仅 `Status=FULL` 的实际生成完成区块**。开始时误将结构搜索留下的未完成区块默认 `plains` 群系 palette 作为真实群系，独立交叉校验立即发现不一致；本轮已修复。不能通过调节算法去拟合伪造的默认 `plains`。
+- 为避免不安全地猜测紧凑 NBT 群系长数组下标，仅从 **`section.Y=4` 且 `biomes.palette` 恰有单一合法群系**的 16 方块高区块节提取 quart 格点；同一节内所有 4×4×4 quart 均对应相同群系。
+- 每版在距离至少 256 quart（1024 方块）约束下选择 **5 个互不重叠的空间观测位置**，采用 **3 FIT + 2 HOLDOUT**。
+- 用目标版本真实 `RandomState`、`NoiseGeneratorSettings` 与 `MultiNoiseBiomeSource` **复算游戏已保存的真实群系注册键**，所有选择的独立样本均匹配。
+- 已知低48为 `2731`，在真实原版群系模型中比较高16位 `0` 和 `1`（只检查 `[0,2)`）；实际完整 Seed `2731` 通过，错误 `2731 + 2^48` 被排除。错误高16差异不应被误解释为服务器完整 Seed 可被确定。
+- 使用 `P30VanillaBiomeNoiseTest` 的控制自校验（另一个高16位非零且符号位为1的已知完整64位 Seed）验证真实 MultiNoise 模型是高16位敏感的，但控制点来源仍由模型自身产生。
+- 对照来源是 **受控服务端保存的真实世界存档**，而不是目标远端普通 Fabric 客户端仅凭可见方块重建结构和群系；此处绝不使用服务器私有数据。
+
+双版实测运行：GitHub Actions [独立真实世界对照](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38506386891)。当前可以断言：真实原版群系能区分这两种高16候选；**不能**断言 65,536 种高位均已由实际世界生成器检查完成。
+
 ## P3.1 真正恢复完整64位的验收要求
 
-1. 以两个版本实际 Minecraft `RandomState`、`NoiseGeneratorSettings`、`MultiNoiseBiomeSource` 以及各自正确的世界预设/数据包为依据，构建**可重复播放**的原版 quart XYZ 群系生成模型，不能直接把单个 Xoroshiro 随机输出当作真实群系。
-2. 在已知完整64位 Seed、已实际生成的单人/离线受控 Minecraft 世界，读真实三维群系样本（不通过直接暴露 Seed 的配置作为拟合输入），独立生成多处训练与留出样本。
-3. 在已知低48、未知高16条件下执行真正的高16位候选筛选；至少做一例非零高16位、负数完整世界种子、反例错误模型，双版本对照并证明观测可以区分高位。预算过小只能报告搜索不完整。
+1. 已完成原版基础对照：两个版本已构建 `VanillaOverworldBiomeModel`，并在 `Status=FULL` 的受控实际存档群系中交叉验证。下一步须验证更多真实种子、非零高16和其它群系/高度带，不能仅凭一个固定种子宣称对所有世界有效。
+2. 需要真实客户端 `runClient`，仅从用户已加载区块取得对应 quart XYZ 的多个可靠群系观测，建立带世界/维度/版本/生成器配置的审计清单；不得借用服务端存档的结构起点做远端自动推断。
+3. 当前真实世界只检查了高16位 `0` 和 `1`；仍须制定可审计的全 `[0,65536)` 或分片预算、断点续跑与完成性判定，以及非零高16、负数完整世界种子的实际存档独立验收。预算过小只能报告搜索不完整。
 4. 面对自定义群系、TerrainGenerator、插件矿物或未知世界生成配置，先诊断兼容性；不能强套原版 Overworld 生成器输出“后台真实 Seed”。
 5. 严格控制成本：在游戏 Tick 之外显式运行，限制 Z3 计算、世界噪声初始化、CPU、内存、取消和结果数量。成功仅表示候选通过指定受控模型；真实矿点仍需另行确认。
 
@@ -46,8 +60,8 @@ placement(seed) == placement(seed + k * 2^48)
 ## 可审核源码
 
 - `src/main/java/io/github/fxjcangku/worldseedlab/core/solver/Full64BiomeCandidateSearch.java`
-- `src/test/java/io/github/fxjcangku/worldseedlab/core/P30Full64SmokeTest.java`
+- `src/main/java/io/github/fxjcangku/worldseedlab/core/solver/VanillaOverworldBiomeModel.java`\n- `src/test/java/io/github/fxjcangku/worldseedlab/core/P30Full64SmokeTest.java`\n- `src/test/java/io/github/fxjcangku/worldseedlab/core/P30VanillaBiomeNoiseTest.java`\n- `scripts/run_known_seed_server.py` 与双版本实际世界生成工作流
 - `gradle -PmcVersion=26.1.2 clean build`
 - `gradle -PmcVersion=26.2 clean build`
 
-全套测试通过之后，该引擎仍属于**受控模型的 64位候选研究基础设施**，而非已完成的真实服务器64位破解。
+即使本次真实独立群系验证通过，整体仍是**有前提的受控世界完整64位候选研究基础设施**，不是已破解任何未知服务器、也不能依此推断真假矿分布。
