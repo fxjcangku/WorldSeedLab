@@ -283,6 +283,25 @@ def main():
         process.wait(timeout=90)
         if process.returncode != 0:
             raise RuntimeError("Minecraft runServer exit code: " + str(process.returncode))
+        # Loom 的运行工作目录可能不同于脚本的项目目录；
+        # 只能选本轮新建的离线世界，先实际核实 level.dat 和 region 位置。
+        saved_worlds = sorted(ROOT.rglob("level.dat"))
+        print("[P29-REAL] saved levels:", [
+            str(item.parent.relative_to(ROOT)) for item in saved_worlds], flush=True)
+        matching = [p.parent for p in saved_worlds if p.parent.name == world_name]
+        if len(matching) != 1:
+            # CI 全新 checkout，正常只有一个世界；多份同名则明确拒绝混合。
+            if matching:
+                raise RuntimeError("ambiguous controlled world save")
+            if len(saved_worlds) != 1:
+                raise RuntimeError("cannot identify the actual offline world folder")
+            world = saved_worlds[0].parent
+        else:
+            world = matching[0]
+        region_files = sorted((world / "region").glob("*"))
+        print("[P29-REAL] world directory:", str(world.relative_to(ROOT)),
+              "region files:", [(p.name, p.stat().st_size) for p in region_files[:12]],
+              flush=True)
         starts, chunks = scan_structure_starts(world)
         fixture = {
             "game_version":mc, "known_seed":KNOWN_SEED,
