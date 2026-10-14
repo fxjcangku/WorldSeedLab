@@ -69,8 +69,8 @@ public final class P32ClientQuartEvidenceTest {
                 expectFail(() -> ClientQuartEvidenceArchive.decode(rows),
                         "恶意重复quart点必须拒绝");
                 String fake = encoded.replace(
-                        "512,18,1024,minecraft:plains,FIT",
-                        "512,18,1024,minecraft:plains,HOLDOUT");
+                        "-512,18,1024,minecraft:plains,FIT",
+                        "-512,18,1024,minecraft:plains,HOLDOUT");
                 expectFail(() -> ClientQuartEvidenceArchive.decode(fake),
                         "不可把训练/留出角色互换伪造独立验证");
                 Path symbolic = folder.resolve("symlink.csv");
