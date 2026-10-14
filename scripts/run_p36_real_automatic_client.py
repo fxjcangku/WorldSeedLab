@@ -353,7 +353,10 @@ def run(version: str, p38_materials: bool = False):
                     strata_vertical += len(vertical)
         if not strata_count:
             raise RuntimeError("P3.8一键自动取证未落盘任何STRATA区块")
-        structure_index = scoped_folder/"structure-scanned-v2.csv"
+        # v3在缺失客户端OCEAN_FLOOR时重扫旧v2区块；新鲜受控世界优先验收v3。
+        structure_index = scoped_folder/"structure-scanned-v3.csv"
+        if not structure_index.is_file():
+            structure_index = scoped_folder/"structure-scanned-v2.csv"
         completed_p26 = len(structure_index.read_text(encoding="utf-8").splitlines()) \
             if structure_index.is_file() else 0
         (out/"client-coupled-evidence-summary.json").write_text(

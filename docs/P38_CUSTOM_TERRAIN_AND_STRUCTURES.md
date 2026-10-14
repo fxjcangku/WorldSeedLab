@@ -29,6 +29,27 @@ WorldSeedLab 的研究重点是**普通 Fabric 客户端真实可见的自定义
 3. 前两处独立取样为 FIT，余下为 HOLDOUT；只有拟合匹配且留出也匹配才可标 `CONDITIONAL_MATCH_UNVERIFIED`，任一冲突立即 `REJECTED_BY_FIT` 或 `REJECTED_BY_HOLDOUT`。
 4. **不论候选数量是否剩一、输入是否自称“控制模型”**，此接口都只能输出带假设的兼容性报告；真实生成器、结构Salt、区块生成历史、自然来源与完整64位Seed状态仍未知。真正求解未知自定义NoiseRouter参数/世界Seed仍属于后续更严格的生成器建模与大量独立证据研究，不能承诺能破解任何服务器。
 
+## 实服反馈：不可用客户端海床高度图必须保留未知
+
+P3.9 第二轮26.2实服采样表明，已加载FULL区块也可能返回
+`OCEAN_FLOOR=minBuildY-1`（高度图不可用），原版调用
+`LevelChunk.getHeight(OCEAN_FLOOR)` 不足以保证获取真正海床。
+旧逻辑把这个值钳到世界底层，产生错误的“bedrock海床”，
+还会把普通陆地识别为深水区并耗尽稀疏结构扫描预算。
+
+现将无效海床高度**原样保留**，海床方块写作
+`worldseedlab:heightmap_unavailable`，而不是替换成计算结果。
+结构材料探测先用16个真实已接收方块的FluidState检验水面，
+预检计入原本64 BlockState/tick预算；水面确认后可以使用有限
+深度补偿带，但**这绝不是海床生成模型或结构起点证据**。
+完成索引升级到`structure-scanned-v3.csv`，旧v2数据只读保留、
+历史“未发现”允许新版本在同区域重新取证。
+`structure-candidates-v2.jsonl`继续沿用原有JSONL格式，
+单条`model_version=3`标识新采样语义；不更改天然来源认证门槛。
+
+旧地层原始记录不被篡改；历史无效海床信息不能加入
+Seed FIT/HOLDOUT。任何新采样中海床仍未知的列也不得补写假数值。
+
 ## 独立验收与剩余研究
 
 - 双版 clean build 必须执行 P2.6 / P3.8 新增多结构材料正反例、地形候选 2FIT+1HOLDOUT 正反例、所有历史 P2.7/P2.8/P2.9/P3.x 回归。
