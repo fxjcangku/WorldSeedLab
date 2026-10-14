@@ -514,3 +514,31 @@ tasks.register('p34ModifiedSaltWorldTest', JavaExec) {
             .orElse("build/p34-modified-salt/${targetMinecraft}").get(),
          targetMinecraft
 }
+
+
+// P3.5 普通客户端可见沙漠神殿三维栅格：有界读样、四侧可见轮廓、
+ // 结构模板接口和不可信自然来源正反例。真正 runClient 另行验收。
+tasks.register('p35ClientFootprintSmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Verify CLIENT_OBSERVED visible block raster, fail-closed perimeter and P2.9 geometry handoff.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P35ClientVisibleFootprintSmokeTest'
+}
+tasks.named('check') {
+    dependsOn tasks.named('p35ClientFootprintSmokeTest')
+}
+
+
+// P3.5 仅在受控真正Fabric GUI手动聊天命令取得4份栅格,
+// 且服务端已独立保存StructureStart后调用。普通check绝不代替真实游戏。
+tasks.register('p35RealFabricClientFootprintTest', JavaExec) {
+    group = 'research'
+    description = 'Cross-check actual client-visible perimeter raster against posthoc Anvil StructureStart and Z3.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P35RealFabricClientFootprintTest'
+    args providers.gradleProperty('p35ClientControlDir')
+            .orElse("build/p35-real-client-footprint/" + targetMinecraft).get(),
+         targetMinecraft
+}

@@ -131,6 +131,14 @@ P2.7 已确认的 Minecraft Legacy RandomSpread 数学模型现可转换成**可
 
 [查看 P3.0 的准确能力与后续高16位验证条件](docs/P30_FULL64_EVIDENCE_RESEARCH.md)
 
+## P3.5 / 普通客户端建筑轮廓真实取证（研发测试中）
+
+新增独立的手动沙漠神殿轮廓取证：**/wsl footprint first / second / export / clear**。按玩家授权的两角区域只读已经完整加载的实际方块，外侧一圈与四条可见边缘一起审计；一旦区块缺失、遮挡或取证中断，即拒绝把残缺轮廓升级为结构起点候选。原始证据在用户显式导出时只存本机 HMAC 世界与维度隔离目录，不会主动加载新区块或上传。
+
+完整的可见方块外沿可接入 P2.9 原有的**已校准、不同朝向离散起点并集**，不会复用服务端 StructureStart 当成客户端证据。天然生成来源始终 UNKNOWN，不能区分人工复制。**2026-10-14 受控真实 Minecraft 双版本已成功：** [Actions #38525522872](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38525522872)（提交f6a4ed8）对两版各4座实际联机可见神殿执行了12条真实聊天指令、4份独立CLIENT_OBSERVED栅格导出、每座30752方块、4/4完整21×21轮廓、独立受控NBT起点对照及 Z3/Java 2FIT+1HOLDOUT低48已知Seed=2731恢复。该次两版真实工作流均为success，但**最新更严格的FULL起点区块检查需要单独等待新提交CI**。正常用户目标服的自然来源、未知Salt和完整64位仍未知。
+
+[查看 P3.5 真正客户端可见轮廓取证和验收规范](docs/P35_CLIENT_VISIBLE_DESERT_FOOTPRINT.md)
+
 ## P3.4 / 自定义地形兼容性与结构证据防误报（受控实机双版本已验收）
 
 WorldSeedLab 已建立新的**只读、显式离线执行**的双轴研究流程。结构侧使用 P2.9 完整建筑轮廓推导的稀疏起点候选，调用原创 RandomSpread 数学复核；群系侧对独立真实 quart 观测使用**明示的原版 Overworld 模型假设**。结构匹配与群系匹配必须分别报告，不能互相替代。

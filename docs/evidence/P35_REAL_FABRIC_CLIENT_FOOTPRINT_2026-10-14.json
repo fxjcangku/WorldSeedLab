@@ -1,0 +1,60 @@
+{
+  "schema": 1,
+  "phase": "P3.5",
+  "date": "2026-10-14",
+  "repository": "fxjcangku/WorldSeedLab",
+  "source_commit": "f6a4ed8bb18e1af14f61e43d0e17a8d54f531179",
+  "run_id": 38525522872,
+  "run_url": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/38525522872",
+  "conclusion": "success",
+  "test_kind": "ACTUAL_FABRIC_GUI_CLIENT_CHAT_FOOTPRINT_POSTHOC_CONTROL_SERVER",
+  "public_controlled_world_seed_signed": 2731,
+  "generator": "custom flat desert with vanilla desert pyramid structure set",
+  "versions": {
+    "26.1.2": {
+      "job_id": 115724851814,
+      "conclusion": "success",
+      "real_client_manual_commands": 12,
+      "client_footprint_archives": 4,
+      "client_blocks_per_archive": 30752,
+      "unique_21x21_perimeters": 4,
+      "edge_columns_valid_per_side": "21/21",
+      "actual_saved_structure_starts_posthoc": 8,
+      "truth_start_inferred": 4,
+      "actual_saved_chunk_records_scanned_posthoc": 6882,
+      "fit_count": 2,
+      "holdout_count": 1,
+      "low48_candidate": 2731,
+      "wrong_salt_and_seed_rejected": true
+    },
+    "26.2": {
+      "job_id": 115724851495,
+      "conclusion": "success",
+      "real_client_manual_commands": 12,
+      "client_footprint_archives": 4,
+      "client_blocks_per_archive": 30752,
+      "unique_21x21_perimeters": 4,
+      "edge_columns_valid_per_side": "21/21",
+      "actual_saved_structure_starts_posthoc": 8,
+      "truth_start_inferred": 4,
+      "actual_saved_chunk_records_scanned_posthoc": 6969,
+      "fit_count": 2,
+      "holdout_count": 1,
+      "low48_candidate": 2731,
+      "wrong_salt_and_seed_rejected": true
+    }
+  },
+  "provenance": {
+    "client": "CLIENT_OBSERVED_BLOCK_STATES (real FULL chunks, actual Fabric GUI chat)",
+    "truth": "CONTROL_WORLD_POSTHOC_ACTUAL_SAVED_STRUCTURE_START_NBT",
+    "independent": "posthoc server-side truth is not client visible and never injected into sampling code",
+    "natural_origin": "UNKNOWN"
+  },
+  "pre_strict_limitations": [
+    "This run preceded strict per-start FULL-chunk verification and 21/21 enforcement; new separate CI must verify both",
+    "Navigation uses RCON only in publicly controlled loopback server, not ordinary client privileges",
+    "No proof that an observed structure was naturally generated on an unknown custom server",
+    "Legacy RandomSpread low48 alone cannot identify upper16 world seed bits"
+  ],
+  "privacy": "No private server coordinates, usernames, addresses, credentials or identity keys."
+}

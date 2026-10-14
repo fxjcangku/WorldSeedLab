@@ -3,6 +3,7 @@ package io.github.fxjcangku.worldseedlab.client;
 import com.mojang.blaze3d.platform.InputConstants;
 import io.github.fxjcangku.worldseedlab.client.probe.WorldProbeController;
 import io.github.fxjcangku.worldseedlab.client.probe.ClientQuartCaptureController;
+import io.github.fxjcangku.worldseedlab.client.probe.ClientDesertFootprintCaptureController;
 import io.github.fxjcangku.worldseedlab.core.BootstrapCheck;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -25,6 +26,7 @@ public final class WorldSeedLabClient implements ClientModInitializer {
     private static final Logger LOGGER = LoggerFactory.getLogger("WorldSeedLab");
     private WorldProbeController probe;
     private ClientQuartCaptureController quart;
+    private ClientDesertFootprintCaptureController footprint;
 
     @Override
     public void onInitializeClient() {
@@ -39,6 +41,7 @@ public final class WorldSeedLabClient implements ClientModInitializer {
         probe = new WorldProbeController(FabricLoader.getInstance()
                 .getConfigDir().resolve("worldseedlab"), gameVersion, LOGGER);
         quart = new ClientQuartCaptureController(probe, gameVersion);
+        footprint = new ClientDesertFootprintCaptureController(probe, gameVersion);
         KeyMapping.Category category = KeyMapping.Category.register(
                 Identifier.fromNamespaceAndPath("worldseedlab", "general"));
         KeyMapping panelKey = KeyMappingHelper.registerKeyMapping(
@@ -53,11 +56,13 @@ public final class WorldSeedLabClient implements ClientModInitializer {
             }
             probe.tick(minecraft);
             quart.tick(minecraft);
+            footprint.tick(minecraft);
         });
 
         // 客户端退出时有限等待落盘，不阻塞正常运行中的 UI。
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
             quart.clear("客户端退出，未导出的手动群系样本已丢弃");
+            footprint.clear("客户端退出，未导出的建筑轮廓已丢弃");
             probe.onClientStopping();
         });
 
@@ -90,6 +95,32 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                     .then(ClientCommands.literal("clear").executes(context -> {
                         quart.clear("用户手动清空 P3.2 群系样本");
                         context.getSource().sendFeedback(Component.literal(quart.status()));
+                        return 1;
+                    }));
+            // P3.5 独立的双角手动取证，与后台P2.6稀疏材料扫描完全隔离。
+            var footprintCommand = ClientCommands.literal("footprint")
+                    .executes(context -> {
+                        context.getSource().sendFeedback(Component.literal(footprint.status()));
+                        return 1;
+                    })
+                    .then(ClientCommands.literal("first").executes(context -> {
+                        context.getSource().sendFeedback(Component.literal(
+                                footprint.first(Minecraft.getInstance())));
+                        return 1;
+                    }))
+                    .then(ClientCommands.literal("second").executes(context -> {
+                        context.getSource().sendFeedback(Component.literal(
+                                footprint.second(Minecraft.getInstance())));
+                        return 1;
+                    }))
+                    .then(ClientCommands.literal("export").executes(context -> {
+                        context.getSource().sendFeedback(Component.literal(
+                                footprint.export(Minecraft.getInstance())));
+                        return 1;
+                    }))
+                    .then(ClientCommands.literal("clear").executes(context -> {
+                        footprint.clear("用户取消P3.5客户端建筑轮廓取证");
+                        context.getSource().sendFeedback(Component.literal(footprint.status()));
                         return 1;
                     }));
             dispatcher.register(ClientCommands.literal("wsl")
@@ -138,6 +169,7 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                     }))
                     .then(mark)
                     .then(quartCmd)
+                    .then(footprintCommand)
                     .then(ClientCommands.literal("marks").executes(context -> {
                         context.getSource().sendFeedback(Component.literal(
                                 "可手动标记的结构: " + String.join(", ",
