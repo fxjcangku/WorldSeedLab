@@ -486,3 +486,17 @@ tasks.register('p34RealCustomWorldTest', JavaExec) {
             .orElse("build/p34-controlled/${targetMinecraft}").get(),
          targetMinecraft
 }
+
+
+// P3.4 真实GUI联机自定义地形，仅在隔离的受控Minecraft客户端已手动导出CSV
+// 且相同地点独立保存FULL Anvil后运行。常规check绝不伪造客户端来源。
+tasks.register('p34RealFabricCustomClientTest', JavaExec) {
+    group = 'research'
+    description = 'Replay actual Fabric client chat quart samples against independent saved custom FULL chunks.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P34RealFabricCustomClientTest'
+    args providers.gradleProperty('p34ClientControlDir')
+            .orElse("build/p34-real-custom-client/${targetMinecraft}").get(),
+         targetMinecraft
+}
