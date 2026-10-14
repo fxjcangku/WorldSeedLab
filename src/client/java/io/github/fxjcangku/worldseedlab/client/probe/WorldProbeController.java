@@ -77,6 +77,7 @@ public final class WorldProbeController {
     private ProbeSettings settings;
     /** 结构指纹扫描是独立手动授权，重启/换维度/退出后始终关闭。 */
     private boolean structureScanEnabled;
+    private boolean structureIndexLoaded;
     private LoadedStructureScanCursor structureCursor;
     private final Set<Long> structureScanned = new HashSet<>();
     private CandidateClusterIndex structureClusters = new CandidateClusterIndex();
@@ -141,6 +142,21 @@ public final class WorldProbeController {
         if (!active()) {
             status = "请先手动启动世界采集，随后才可开启结构候选扫描";
             return status;
+        }
+        if (enabled && !structureIndexLoaded) {
+            try {
+                // 结构识别是可选功能：只有主动开启时才加载它自己的历史索引。
+                // 索引损坏只拒绝结构侦测，不得阻断原有 P1/P2 采集工作。
+                Set<Long> saved = store.loadStructureScanned(fingerprint, dimension);
+                structureScanned.addAll(saved);
+                structureScanCompletedAtStart = saved.size();
+                structureIndexLoaded = true;
+            } catch (IOException | RuntimeException failure) {
+                structureScanEnabled = false;
+                status = "结构索引损坏，已拒绝结构侦测；原有群系采集继续运行";
+                logger.warn("P2.6 index rejected without disabling biome probe", failure);
+                return status;
+            }
         }
         structureScanEnabled = enabled;
         if (!enabled) structureCursor = null;
@@ -261,7 +277,10 @@ public final class WorldProbeController {
     private String structureResearchAppendix() {
         StringBuilder out = new StringBuilder("\n【P2.6 自动结构材料候选】\n");
         out.append("扫描模式: ").append(structureScanEnabled ? "启用" : "关闭").append('\n');
-        out.append("历史及本次已完成稀疏扫描区块: ")
+        if (!structureIndexLoaded) {
+            out.append("历史结构索引: 尚未加载（没有主动开启结构扫描）\n");
+        }
+        out.append("本次启用侦测时恢复的历史索引 + 已落盘扫描区块: ")
                 .append(persistedStructureScans()).append('\n');
         out.append("本次提交写盘的扫描区块: ").append(acceptedStructureScans).append('\n');
         out.append("本次已写入候选记录: ").append(structureCandidateRecordsWritten()).append('\n');
@@ -436,7 +455,6 @@ public final class WorldProbeController {
             Set<ChunkKey> resume = nextStore.loadCompleted(f, d);
             Set<TerrainChunkKey> terrainResume = nextStore.loadTerrainCompleted(f, d);
             Set<TerrainDetailKey> detailsResume = nextStore.loadDetailCompleted(f, d);
-            Set<Long> structureResume = nextStore.loadStructureScanned(f, d);
             DimensionProfile nextProfile =
                     TerrainObserver.dimensionProfile(client.level, f, gameVersion);
             AdvertisedDimensions registry = inspectAvailableDimensions(client, f, d);
@@ -453,10 +471,10 @@ public final class WorldProbeController {
             structureScanEnabled = false;
             structureCursor = null;
             structureScanned.clear();
-            structureScanned.addAll(structureResume);
+            structureIndexLoaded = false;
             structureClusters = new CandidateClusterIndex();
             detectedSignatureKinds.clear();
-            structureScanCompletedAtStart = structureResume.size();
+            structureScanCompletedAtStart = 0;
             acceptedStructureScans = 0;
             structureScanInterrupted = 0;
             structureQueueBackpressure = 0;

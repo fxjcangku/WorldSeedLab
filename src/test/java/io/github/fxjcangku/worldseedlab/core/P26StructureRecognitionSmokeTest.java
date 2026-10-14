@@ -139,6 +139,25 @@ public final class P26StructureRecognitionSmokeTest {
                     "dimension-scoped candidate journal");
             require(store.loadStructureScanned(other, "minecraft:overworld").isEmpty(),
                     "world-scoped candidate journal");
+
+            // 结构候选索引损坏时应只影响可选结构子系统：
+            // P1 已完成区块索引的独立读取不能受到该错误污染。
+            Path corrupted = directory.resolve("corrupted");
+            var optionalStore = new CompletedChunkStore(corrupted);
+            Path damagedJournal = optionalStore.scopedFolder(world, "minecraft:overworld")
+                    .resolve("structure-scanned-v1.csv");
+            Files.createDirectories(damagedJournal.getParent());
+            Files.writeString(damagedJournal, "broken-coordinate\n", StandardCharsets.UTF_8);
+            boolean structureIndexRejected = false;
+            try {
+                optionalStore.loadStructureScanned(world, "minecraft:overworld");
+            } catch (java.io.IOException expected) {
+                structureIndexRejected = true;
+            }
+            require(structureIndexRejected, "corrupt optional index must be detected");
+            require(optionalStore.loadCompleted(world, "minecraft:overworld").isEmpty(),
+                    "base P1 chunk index remains independently usable");
+
         } finally {
             try (var walk = Files.walk(directory)) {
                 for (Path file : walk.sorted(Comparator.reverseOrder()).toList()) {
