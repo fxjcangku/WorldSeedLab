@@ -85,15 +85,23 @@ public final class ClientQuartCaptureController {
 
         int chunkX = Math.floorDiv(current.x(), 16);
         int chunkZ = Math.floorDiv(current.z(), 16);
-        if (client.level.getChunkSource().getChunk(
-                chunkX, chunkZ, ChunkStatus.FULL, false) == null) {
-            return lastStatus = "当前区块未完整加载；不请求新区块";
+        final int blockX, blockY, blockZ;
+        final String biome;
+        try {
+            if (client.level.getChunkSource().getChunk(
+                    chunkX, chunkZ, ChunkStatus.FULL, false) == null) {
+                return lastStatus = "当前区块未完整加载；不请求新区块";
+            }
+            blockX = Math.addExact(Math.multiplyExact(chunkX, 16), 8);
+            blockZ = Math.addExact(Math.multiplyExact(chunkZ, 16), 8);
+            blockY = Math.max(current.minY(), Math.min(current.y(),
+                    current.maxYExclusive() - 1));
+            biome = client.level.getBiome(new BlockPos(blockX, blockY, blockZ))
+                    .unwrapKey().map(k -> k.identifier().toString()).orElse(null);
+        } catch (RuntimeException invalid) {
+            clear("客户端区块/群系状态异常，未导出的证据已清空");
+            return lastStatus;
         }
-        int blockX = Math.addExact(Math.multiplyExact(chunkX, 16), 8);
-        int blockZ = Math.addExact(Math.multiplyExact(chunkZ, 16), 8);
-        int blockY = Math.max(current.minY(), Math.min(current.y(), current.maxYExclusive()-1));
-        String biome = client.level.getBiome(new BlockPos(blockX, blockY, blockZ))
-                .unwrapKey().map(k -> k.identifier().toString()).orElse(null);
         if (biome == null) return lastStatus = "群系注册键未知，不记为证据";
 
         if (session == null) {
