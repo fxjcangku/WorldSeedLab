@@ -1,0 +1,62 @@
+{
+  "schema": 1,
+  "project": "WorldSeedLab",
+  "phase": "P3.2",
+  "date": "2026-10-14",
+  "repository": "https://github.com/fxjcangku/WorldSeedLab",
+  "verifiedRuns": {
+    "dualVersionBuild": {
+      "url": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/38510813619",
+      "head": "fdaaba45e5a495060118d93a76ca94a61b493cf6",
+      "versions": {
+        "26.1.2": "success",
+        "26.2": "success"
+      }
+    },
+    "signedNegativeFull64Minecraft": {
+      "url": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/38510194467",
+      "knownFull64Hex": "beef000000000aab",
+      "signedDecimal": "-4688528687069394261",
+      "low48Decimal": 2731,
+      "actualStructureStartsPerVersion": 5,
+      "realFullChunkBiomeSamplesPerVersion": 5,
+      "biomeFIT": 3,
+      "biomeHOLDOUT": 2,
+      "high16True": "BEEF",
+      "rejectedHigh16": [
+        "0000",
+        "BEEE",
+        "BEF0"
+      ],
+      "versions": {
+        "26.1.2": "success",
+        "26.2": "success"
+      }
+    },
+    "fabricClientStartup": {
+      "url": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/38510514412",
+      "versions": {
+        "26.1.2": "client_entrypoint_initialized",
+        "26.2": "client_entrypoint_initialized"
+      },
+      "note": "Xvfb headless runClient startup, not interactive in-world sampling; CI narrator/sound warnings are not mod init failures"
+    },
+    "baselineFullHigh16": {
+      "url": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/38508647473",
+      "versions": {
+        "26.1.2": "success",
+        "26.2": "success"
+      },
+      "seed": 2731,
+      "high16CheckedPerVersion": 65536
+    }
+  },
+  "verifiedBoundaries": [
+    "Client manual-snapshot data format and negative provenance checks passed both Minecraft versions",
+    "Structure actual world control samples and simulated client transport pipeline passed both versions",
+    "Negative high16 signed full64 real world completed in bounded candidate window, not all 65536 for negative seed",
+    "Real Fabric runClient started to mod initialization only; no automated or manual /wsl quart sample in loaded GUI world",
+    "Unknown worldgen Salt, terrain edits, fake ore cannot be determined by these proofs",
+    "No third-party server access or private yiyiaddon code"
+  ]
+}

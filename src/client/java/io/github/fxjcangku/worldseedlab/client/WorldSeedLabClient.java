@@ -2,6 +2,7 @@ package io.github.fxjcangku.worldseedlab.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import io.github.fxjcangku.worldseedlab.client.probe.WorldProbeController;
+import io.github.fxjcangku.worldseedlab.client.probe.ClientQuartCaptureController;
 import io.github.fxjcangku.worldseedlab.core.BootstrapCheck;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -23,6 +24,7 @@ import org.slf4j.LoggerFactory;
 public final class WorldSeedLabClient implements ClientModInitializer {
     private static final Logger LOGGER = LoggerFactory.getLogger("WorldSeedLab");
     private WorldProbeController probe;
+    private ClientQuartCaptureController quart;
 
     @Override
     public void onInitializeClient() {
@@ -36,6 +38,7 @@ public final class WorldSeedLabClient implements ClientModInitializer {
 
         probe = new WorldProbeController(FabricLoader.getInstance()
                 .getConfigDir().resolve("worldseedlab"), gameVersion, LOGGER);
+        quart = new ClientQuartCaptureController(probe, gameVersion);
         KeyMapping.Category category = KeyMapping.Category.register(
                 Identifier.fromNamespaceAndPath("worldseedlab", "general"));
         KeyMapping panelKey = KeyMappingHelper.registerKeyMapping(
@@ -49,10 +52,14 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                 }
             }
             probe.tick(minecraft);
+            quart.tick(minecraft);
         });
 
         // 客户端退出时有限等待落盘，不阻塞正常运行中的 UI。
-        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> probe.onClientStopping());
+        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+            quart.clear("客户端退出，未导出的手动群系样本已丢弃");
+            probe.onClientStopping();
+        });
 
         ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
             // 全部为用户主动标记，绝不以观察坐标冒充结构生成起始区块。
@@ -65,6 +72,26 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                     return 1;
                 }));
             }
+            var quartCmd = ClientCommands.literal("quart")
+                    .executes(context -> {
+                        context.getSource().sendFeedback(Component.literal(quart.status()));
+                        return 1;
+                    })
+                    .then(ClientCommands.literal("sample").executes(context -> {
+                        context.getSource().sendFeedback(Component.literal(
+                                quart.sample(Minecraft.getInstance())));
+                        return 1;
+                    }))
+                    .then(ClientCommands.literal("export").executes(context -> {
+                        context.getSource().sendFeedback(Component.literal(
+                                quart.export(Minecraft.getInstance())));
+                        return 1;
+                    }))
+                    .then(ClientCommands.literal("clear").executes(context -> {
+                        quart.clear("用户手动清空 P3.2 群系样本");
+                        context.getSource().sendFeedback(Component.literal(quart.status()));
+                        return 1;
+                    }));
             dispatcher.register(ClientCommands.literal("wsl")
                     .executes(context -> {
                         PlatformScreens.open(Minecraft.getInstance(), probe);
@@ -110,6 +137,7 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                         return 1;
                     }))
                     .then(mark)
+                    .then(quartCmd)
                     .then(ClientCommands.literal("marks").executes(context -> {
                         context.getSource().sendFeedback(Component.literal(
                                 "可手动标记的结构: " + String.join(", ",

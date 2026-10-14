@@ -1,0 +1,57 @@
+name: P3.2 Real Negative Signed Full64 Control World
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/run_known_seed_server.py'
+      - 'src/test/java/io/github/fxjcangku/worldseedlab/core/P32NegativeRealWorldTest.java'
+      - '.github/workflows/p32-negative-full64.yml'
+      - 'build.gradle'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  actual-negative-seed-world:
+    name: Actual Minecraft ${{ matrix.minecraft }} signed negative full64
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    strategy:
+      fail-fast: false
+      matrix:
+        minecraft: ['26.1.2','26.2']
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Install Gradle 9.6.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.1'
+
+      - name: Run isolated true Minecraft negative signed full64 seed and serialize FULL chunks
+        run: |
+          python3 -u scripts/run_known_seed_server.py \
+            --minecraft=${{ matrix.minecraft }} --seed=-4688528687069394261
+
+      - name: Recompute real world structures and saved quart biomes with full64 Mojmap RNG
+        run: |
+          gradle --no-daemon --console=plain \
+            -PmcVersion=${{ matrix.minecraft }} \
+            -Pp32RealStarts=build/p32-negative-realworld/${{ matrix.minecraft }}/real_structure_starts.csv \
+            -Pp32RealBiomes=build/p32-negative-realworld/${{ matrix.minecraft }}/real_biome_quart_samples.csv \
+            p32NegativeRealWorldTest
+
+      - name: Upload public controlled negative-seed evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: P32-NegativeFull64-${{ matrix.minecraft }}
+          path: build/p32-negative-realworld/${{ matrix.minecraft }}/
+          if-no-files-found: warn
+          retention-days: 7

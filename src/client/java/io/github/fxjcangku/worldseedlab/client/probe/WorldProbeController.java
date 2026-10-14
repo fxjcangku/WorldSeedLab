@@ -220,8 +220,9 @@ public final class WorldProbeController {
             String dim = client.level.dimension().identifier().toString();
             Path scope = new CompletedChunkStore(dataRoot()).scopedFolder(localWorld, dim);
             var location = client.player.blockPosition();
-            return Optional.of(new MapAccess(scope, dim, location.getX(), location.getZ(),
-                    location.getY(), client.level.getMinY(), client.level.getMaxY()));
+            return Optional.of(new MapAccess(scope, localWorld, dim,
+                    location.getX(), location.getZ(), location.getY(),
+                    client.level.getMinY(), client.level.getMaxY()));
         } catch (IOException | RuntimeException problem) {
             status = "本地地图作用域读取失败：" + problem.getMessage();
             logger.error("Cannot open observed map scope", problem);
@@ -230,7 +231,8 @@ public final class WorldProbeController {
     }
 
     /** 保留精确世界坐标仅用于本机地图窗口，绝不写入公开摘要。 */
-    public record MapAccess(Path folder, String dimension, int x, int z, int y,
+    public record MapAccess(Path folder, String worldFingerprint,
+                            String dimension, int x, int z, int y,
                             int minY, int maxYExclusive) { }
 
     public String exportReport() {
