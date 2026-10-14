@@ -131,6 +131,17 @@ P2.7 已确认的 Minecraft Legacy RandomSpread 数学模型现可转换成**可
 
 [查看 P3.0 的准确能力与后续高16位验证条件](docs/P30_FULL64_EVIDENCE_RESEARCH.md)
 
+## P3.4 / 自定义地形兼容性与结构证据防误报（研发测试中）
+
+WorldSeedLab 已建立新的**只读、显式离线执行**的双轴研究流程。结构侧使用 P2.9 完整建筑轮廓推导的稀疏起点候选，调用原创 RandomSpread 数学复核；群系侧对独立真实 quart 观测使用**明示的原版 Overworld 模型假设**。结构匹配与群系匹配必须分别报告，不能互相替代。
+
+- 新增 `MODEL_CONSISTENT`（仅模型一致）、`INSUFFICIENT_EVIDENCE`（证据不足）、`MODEL_CONFLICT`（指定模型冲突）、`GENERATOR_UNKNOWN`（生成器身份/生成历史未知）的明确状态。
+- 对未知 Salt、旧区块或预生成区块、人工建筑、跨世界/维度/版本、重复 Region 和不可信轮廓严格降级或拒绝。
+- 自建 **26.1.2 / 26.2** 自定义平坦地形服务器实验与原版模型对照正在研发验收，服务端 Anvil 真值与客户端可见群系分开记录。**本项目仍未验证未知自定义服务器完整64位 Seed 可恢复。**
+- 所有匿名审计摘要不输出私人坐标、世界指纹或 Seed；普通客户端不会自动访问新区块，也不会自动上传证据。
+
+[详细技术与测试边界](docs/P34_CUSTOM_WORLDGEN_COMPATIBILITY.md) · [P3.4 研发 PR #21](https://github.com/fxjcangku/WorldSeedLab/pull/21)
+
 ## 02 / 研究边界
 
 | 研究对象 | 我们希望回答的问题 |
