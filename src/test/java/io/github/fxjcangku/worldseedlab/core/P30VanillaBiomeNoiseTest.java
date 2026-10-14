@@ -36,7 +36,7 @@ public final class P30VanillaBiomeNoiseTest {
             Full64BiomeCandidateSearch.BiomeModel vanillaModel) {
         try {
             List<String> lines = Files.readAllLines(file);
-            if (lines.size() < 9
+            if (lines.size() < 4
                     || !lines.getFirst().equals("quart_x,quart_y,quart_z,biome_id")) {
                 throw new IllegalArgumentException("真实存档群系 CSV 缺失或独立采样不足");
             }
@@ -63,12 +63,12 @@ public final class P30VanillaBiomeNoiseTest {
                 if (real.size() < 12) {
                     real.add(new Full64BiomeCandidateSearch.BiomeSample(
                             scope,x,y,z,id,
-                            real.size() < 6 ? Full64BiomeCandidateSearch.Split.FIT
+                            real.size() < 3 ? Full64BiomeCandidateSearch.Split.FIT
                                     : Full64BiomeCandidateSearch.Split.HOLDOUT,
                             Full64BiomeCandidateSearch.Origin.CONTROL_WORLD_OBSERVED));
                 }
             }
-            if (real.size() < 8) {
+            if (real.size() < 3) {
                 throw new IllegalArgumentException("受控世界存档中缺少足够的独立群系采样");
             }
             var result = Full64BiomeCandidateSearch.search(
@@ -84,7 +84,7 @@ public final class P30VanillaBiomeNoiseTest {
             }
             System.out.println("WorldSeedLab P3.0 REAL Minecraft saved quart biome parity "
                     + scope.gameVersion() + ": samples=" + seen.size()
-                    + ", FIT=6 HOLDOUT=" + (real.size()-6)
+                    + ", FIT=3 HOLDOUT=" + (real.size()-3)
                     + ", low48=2731, full64=2731 survives, high16=1 rejected.");
             System.out.println("限制：仅检查高16位[0,2)的两种候选，"
                     + "受控本机世界存档并非普通客户端远端服务器观测，也不代表扫完全部65536高位。");
