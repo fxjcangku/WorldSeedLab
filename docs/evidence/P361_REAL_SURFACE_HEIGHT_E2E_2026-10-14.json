@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "project": "WorldSeedLab",
+  "phase": "P3.6.1",
+  "date": "2026-10-14",
+  "repository": "fxjcangku/WorldSeedLab",
+  "tested_commit": "b9f678c4a6c6263b28cdbba7a1064a9f8dbfb6af",
+  "merged_pr": 28,
+  "merged_main_commit": "e8d2c03d1614b307562663c28e284404de8b9dc2",
+  "compile": {
+    "run_id": 38549576956,
+    "conclusion": "success",
+    "targets": [
+      "26.1.2",
+      "26.2"
+    ]
+  },
+  "actual_client_e2e": {
+    "run_id": 38549576931,
+    "conclusion": "success",
+    "ui_authorization_verified_in_client_log": true,
+    "posthoc_not_client_observation": true
+  },
+  "regression": {
+    "p32_startup_run_id": 38549576903,
+    "p33_real_client_run_id": 38549576896,
+    "conclusion": "success"
+  },
+  "main_build": {
+    "run_id": 38550264672,
+    "conclusion": "success"
+  },
+  "controlled_world": {
+    "public_signed_seed": "2731",
+    "custom_terrain": "Minecraft controlled custom flat desert",
+    "salt_status": "CONTROLLED_KNOWN_SPEC_ONLY",
+    "posthoc_full_structure_starts_total_per_version": 8,
+    "source": "CONTROL_WORLD_POSTHOC_FULL_ANVIL_STRUCTURE_START"
+  },
+  "versions": {
+    "26.1.2": {
+      "job_id": 115803959204,
+      "artifact_id": 11885898172,
+      "gui_auto_on_success_count": 1,
+      "manual_per_structure_corner_count": 0,
+      "manual_per_structure_export_count": 0,
+      "client_visible_footprints": 4,
+      "observed_blockstates_per_site": 30752,
+      "complete_21x21_perimeters": 4,
+      "client_persisted_biome_records": 109056,
+      "client_persisted_terrain_chunks": 148,
+      "p26_completed_material_chunks": 105,
+      "posthoc_full_structure_starts": 4,
+      "calibration_sites": 1,
+      "fit_sites": 2,
+      "holdout_sites": 1,
+      "controlled_low48": "2731",
+      "wrong_seed_salt_rejected": true
+    },
+    "26.2": {
+      "job_id": 115803958906,
+      "artifact_id": 11886695110,
+      "gui_auto_on_success_count": 1,
+      "manual_per_structure_corner_count": 0,
+      "manual_per_structure_export_count": 0,
+      "client_visible_footprints": 4,
+      "observed_blockstates_per_site": 30752,
+      "complete_21x21_perimeters": 4,
+      "client_persisted_biome_records": 109824,
+      "client_persisted_terrain_chunks": 148,
+      "p26_completed_material_chunks": 107,
+      "posthoc_full_structure_starts": 4,
+      "calibration_sites": 1,
+      "fit_sites": 2,
+      "holdout_sites": 1,
+      "controlled_low48": "2731",
+      "wrong_seed_salt_rejected": true
+    }
+  },
+  "safeguards": {
+    "loaded_full_chunks_only": true,
+    "forced_client_chunk_requests": false,
+    "extra_blockstates_per_tick_max": 256,
+    "blocks_per_heightmap_column": 32,
+    "player_y_independent": true,
+    "unload_count_separated": true,
+    "session_footprint_dedup": true,
+    "world_dimension_hmac_isolation": true,
+    "unknown_generator_status": "UNKNOWN",
+    "natural_origin_status": "UNKNOWN",
+    "external_z3_in_client": false
+  },
+  "caveats": [
+    "No unknown private-server seed recovered",
+    "Target-server P3.6.1 rerecording has not been done after this fix",
+    "Surface-height 32-block search may miss deep underground or floating custom structures",
+    "No population-wide sensitivity/specificity for automated building recognition",
+    "Natural origin, salt, generator parameters and full64 high16 remain unverified",
+    "Cross-session dedup and mixed historical worlds are not authenticated"
+  ],
+  "privacy": "Public known-seed control aggregate only; no private server name, address, coordinates, evidence logs or HMAC secret"
+}

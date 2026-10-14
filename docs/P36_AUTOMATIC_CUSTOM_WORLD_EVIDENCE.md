@@ -31,7 +31,30 @@ P3.6 解决 P3.5 还要求玩家手动框选两个角的问题：在正常已经
 
 - 首次目标服日志显示：自动授权正常、蓝陶瓦线索0、完整轮廓0、区块扫描多次遭卸载；此前状态把区块卸载错误混进“不完整/歧义”，导致用户误认为3座建筑出错。
 - 源码复核发现：旧蓝陶瓦搜索基于玩家 `Y-20` 的单个32格高度带，鞘翅高空经过地表建筑时可能漏检且同一会话无自动换高度重扫。现在改为每列独立地表高度图规划，仍限制每Tick额外256个BlockState；并将扫描中断独立计数，增加每60秒匿名进度INFO与同座轮廓去重。
-- 本轮没有服务端真值输入或后台Seed读取，也没有把低48位结构约束冒充完整64位。以下旧版P3.6成功实验仍为历史基线；**新改动需两版clean build与真正Fabric GUI E2E复验成功后才能合并**。所有私人世界坐标、地址与原始日志不入公开仓库。
+- 本轮普通客户端仍没有服务端真值输入或后台 Seed 读取，低48位结构约束不冒充完整64位。**本修正已完成真实双版本复验，并通过PR #28合并进main**，详细数据见后面的 P3.6.1 最新验收记录。所有私人世界坐标、地址与原始日志未进入公开仓库。
+
+## P3.6.1 · 最终双版本实际验收（2026-10-14）
+
+- 功能和 CI GUI 修正提交：`b9f678c4a6c6263b28cdbba7a1064a9f8dbfb6af`；[PR #28](https://github.com/fxjcangku/WorldSeedLab/pull/28) 已合并，main 合并提交 `e8d2c03d1614b307562663c28e284404de8b9dc2`。
+- [双版 Java25/Gradle9.6.1 clean build #38549576956](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576956)、[真实 P3.6 自动取证 #38549576931](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576931)、[P3.2 真 runClient #38549576903](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576903)、[P3.3 实际联机 #38549576896](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576896) 均成功。合并后 main 的 [双版 clean build #38550264672](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38550264672) 再次成功。
+- 验证场景是**公开已知 Seed=2731 的受控自定义平坦沙漠**。CI 仅为导航/准备可见区块使用受控服务端 RCON；普通 Fabric 客户端自身只执行一次真正成功的 `/wsl auto on`，无需逐座选择角点或导出。先保存客户端原始方块证据，后验独立读取 FULL Anvil 与 StructureStart，严格不混合证据来源。
+- 两版最初曾因 GUI 的 Friends List / Advancements 首次弹窗挡住聊天而失败，修复了测试脚本的界面处理，新增真实客户端启动日志硬校验；**不是用伪造客户端证据绕过失败**。
+- 两版本都成功自动存4份 `CLIENT_OBSERVED_BLOCK_STATES`，每份30752个实际方块，4/4独立完整21×21外缘；后验4/4 FULL StructureStart、1校准+2 FIT+1 HOLDOUT、真实 Z3+Java low48=2731及错误Seed/Salt拒绝均通过。
+
+| 最后一轮真实CI证据 | Minecraft 26.1.2 | Minecraft 26.2 |
+| --- | ---: | ---: |
+| 自动完整可见沙漠神殿 | 4/4 | 4/4 |
+| 真正通过GUI的自动授权 | 1次 | 1次 |
+| 逐座手动选角、导出命令 | 0 | 0 |
+| 客户端已保存群系记录 | 109,056 | 109,824 |
+| 客户端已保存地形区块 | 148 | 148 |
+| P2.6已完成材料扫描区块 | 105 | 107 |
+| 服务端后验 FULL StructureStart | 4/4 | 4/4 |
+| 真正 Z3 / Java 2FIT+1HOLDOUT | 通过 | 通过 |
+
+**适用边界：** 32格是“逐列地表邻近高度带”，不是全Y扫描；复杂 Terralith/自定义浮岛、深埋结构及高速移动仍可能漏采。当前并没有证明未知目标服务器的真实建筑自然来源、Salt、生成器映射、高16或完整64位 Seed。用户仍需在未知服重新进行真实覆盖与性能采样，不能拿受控世界4/4当全服检出率。
+
+[本轮匿名结构化实证](evidence/P361_REAL_SURFACE_HEIGHT_E2E_2026-10-14.json)。
 
 ## 实验必须怎么验收
 

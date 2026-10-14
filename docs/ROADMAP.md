@@ -1,6 +1,6 @@
 # WorldSeedLab / Research Roadmap
 
-> 更新时间：2026-10-14 · 当前阶段：P3.4 自定义地形兼容性研究（受控服务端和真实Fabric GUI双版本已通过；未知目标服与生成历史仍待验证）
+> 更新时间：2026-10-14 · 当前阶段：P3.6.1 实服诊断驱动的扫描覆盖修复已通过双版真实Fabric GUI验收；未知目标服生成器/Seed与长时性能仍待实测。
 >
 > 这是一份研究计划，不是功能完成列表。所有支持版本、算法和实验结论都以真实源码及可复现测试为准。
 
@@ -244,6 +244,16 @@
 **研究定位：** 自动结构取证是低48位的条件约束入口；自定义地形/群系生成器未知时，不能根据神殿材料直接宣称破解后台 Seed。
 
 [详细 P3.6 研发和实测规则](P36_AUTOMATIC_CUSTOM_WORLD_EVIDENCE.md)。
+
+## P3.6.1 / 实服扫描高度修复与重新验收（已合并）
+
+- [x] 用户首次目标服务器日志与本机证据显示蓝陶瓦线索0、完整轮廓0；确认旧实现依赖玩家Y的32格扫描带存在高空漏检风险，并将扫描中卸载错误地计入轮廓不完整。
+- [x] 已按客户端 `WORLD_SURFACE` 每列真实高度规划32格范围，不再依赖玩家Y；保持仅已加载FULL Chunk、最多256额外BlockState/Tick、世界/维度和写盘隔离。
+- [x] 单独统计区块卸载、真正轮廓不合格、同会话去重；异常日志不含原始私人服务器坐标；已增加有效世界高度边界正反例。
+- [x] [PR #28](https://github.com/fxjcangku/WorldSeedLab/pull/28) 最新功能提交 `b9f678c4` 的 [双版本 clean build #38549576956](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576956)、[真实Fabric GUI自动4座沙漠神殿E2E #38549576931](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576931)、[P3.2/P3.3客户端回归](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576896) 均成功；最终main合并提交 `e8d2c03d` 的 [双版本 clean build #38550264672](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38550264672) 也成功。
+- [ ] 未知真实服务器的高度覆盖率、长时鞘翅漏检率、跨会话去重/历史混合区块与自定义生成器模型可辨识性仍需独立观测；不得承诺仅靠沙漠神殿恢复完整64位Seed。
+
+[最新P3.6.1匿名双版实证](evidence/P361_REAL_SURFACE_HEIGHT_E2E_2026-10-14.json)。
 
 ## P3 / Solver Research — 种子候选
 
