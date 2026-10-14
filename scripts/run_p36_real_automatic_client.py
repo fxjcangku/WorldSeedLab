@@ -141,17 +141,17 @@ def run(version: str):
         print("[P36] ACTUAL Fabric GUI client joined 127.0.0.1; "
               "controlled custom desert, original client commands",flush=True)
 
-        # Minecraft 26.2 首次进入全新GUI环境偶发“Friends List / Turn ON /
-        # Turn OFF”社交引导弹窗。实机失败截图显示此弹窗拦截了聊天热键；
-        # 这里仅点击测试客户端可见的关闭按钮，不修改真实用户任何设置。
-        # 没有弹窗时玩家为spectator，点击此位置不会修改受控世界。
-        if version == "26.2":
-            time.sleep(3)
-            screenshot(out/"preflight-social-overlay.png",actual_env)
+        # 真GUI受控玩家为spectator。不同版本初次连服偶发遮挡聊天的
+        # Advancements / Friends List 弹窗：26.1.2 的真实失败截图出现
+        # Advancements(Done)；26.2出现 Friends List(Turn OFF)。
+        # 只在X11当前真实游戏窗口上点可见按钮，未出现弹窗则点击不会改世界。
+        def dismiss_intro_screens():
             xcmd("windowfocus","--sync",window,env=actual_env)
-            xcmd("mousemove","--window",window,"665","442",env=actual_env)
-            xcmd("click","1",env=actual_env)
-            time.sleep(0.8)
+            for local_x,local_y in ((512,665),(665,442),(512,665)):
+                xcmd("mousemove","--window",window,
+                     str(local_x),str(local_y),env=actual_env)
+                xcmd("click","1",env=actual_env)
+                time.sleep(0.25)
 
         # locate仅导航到受控已知世界的建筑附近，不把NBT结构起点传给客户端。
         located = []
@@ -173,14 +173,26 @@ def run(version: str):
 
         # 先且仅一次由真实游戏聊天框手动授权：此后无需两个角或逐个export。
         # 自动取证同时带起原有 P1/P2 群系、地貌观测；不会取得服务端Salt。
-        chat(window, "/wsl auto on", actual_env)
-        # 不靠“游戏已联机”推断命令真正生效；必须看到模组的启动日志。
-        # 若被社交/首次教程弹窗拦截，立即留真实截图并失败，绝不伪造取证。
-        if not client.saw("P3.6 started:"):
-            screenshot(out/"auto-opt-in-not-confirmed.png",actual_env)
-            wait_until(lambda: client.saw("P3.6 started:"),15,
-                       "真实Fabric GUI未执行一次/wsl auto on，请检查首次弹窗",
-                       client,server)
+        # “聊天尝试次数”和“实际被客户端执行的授权命令”必须区分：
+        # 若UI拦截导致首轮输入根本没有进入聊天框，先从真实截图排查并
+        # 关闭挡住的GUI，再重试键盘；只允许且硬验证一次真正成功的授权。
+        time.sleep(2)
+        for attempt in range(3):
+            screenshot(out/f"auto-intro-preflight-{attempt}.png",actual_env)
+            dismiss_intro_screens()
+            if client.saw("P3.6 started:"):
+                break
+            chat(window, "/wsl auto on", actual_env)
+            if client.saw("P3.6 started:"):
+                break
+            screenshot(out/f"auto-keyboard-blocked-{attempt}.png",actual_env)
+            time.sleep(0.9)
+        actual_starts = sum("P3.6 started:" in line for line in client.lines)
+        if actual_starts != 1:
+            raise RuntimeError("真实Fabric GUI必须恰好实际执行一次/wsl auto on，"
+                               f"而非被进度/社交界面拦截；启动日志次数={actual_starts}")
+        print("[P36] GUI opt-in verified: exactly one accepted /wsl auto on",
+              flush=True)
         time.sleep(3)
         for ordinal,(x,z) in enumerate(located):
             # RCON只负责带玩家到附近，真正的蓝陶瓦位置/29x29轮廓完全由
