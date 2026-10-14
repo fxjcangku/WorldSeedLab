@@ -34,6 +34,15 @@ public final class P32ClientQuartEvidenceTest {
             String encoded = ClientQuartEvidenceArchive.encode(captured);
             var reconstructed = ClientQuartEvidenceArchive.decode(encoded);
             check(reconstructed.equals(captured), "证据落盘/恢复必须保持无损");
+            // P3.9: 全自动P1已完成FULL区块来源必须独立于旧P3.2手动档案。
+            String automaticallySampled = encoded.replace(
+                    "sampling=MANUAL_ALREADY_LOADED_FULL",
+                    "sampling=AUTOMATIC_FULL_CHUNK_OBSERVATION");
+            check(ClientQuartEvidenceArchive.decode(automaticallySampled).equals(captured),
+                    "来自已完成FULL区块的自动P1真实观测应保持客户端来源和FIT/HOLDOUT");
+            expectFail(() -> ClientQuartEvidenceArchive.decode(encoded.replace(
+                    "sampling=MANUAL_ALREADY_LOADED_FULL", "sampling=REGISTRY_ONLY")),
+                    "只有真实手动或自动已完成区块采样可用于群系候选");
             check(encoded.contains("provenance=CLIENT_OBSERVED")
                             && encoded.contains("sampling=MANUAL_ALREADY_LOADED_FULL"),
                     "不能丢失采样来源和手动授权身份");

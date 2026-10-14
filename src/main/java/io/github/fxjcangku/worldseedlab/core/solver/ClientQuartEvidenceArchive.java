@@ -24,6 +24,7 @@ public final class ClientQuartEvidenceArchive {
     public static final int MIN_HORIZONTAL_QUART_DISTANCE = 256; // 1024方块
     private static final String MAGIC = "WSL_P32_CLIENT_QUART_V1";
     private static final String HEADER = "quart_x,quart_y,quart_z,biome_id,split";
+    // P3.9只读P1已完成FULL区块的自动证据转换，来源不能冒充用户手动quart。
     private static final long MAX_FILE_BYTES = 32 * 1024;
 
     private ClientQuartEvidenceArchive() {}
@@ -154,7 +155,8 @@ public final class ClientQuartEvidenceArchive {
                 || !lines[3].startsWith("dimension=")
                 || !lines[4].equals("generatorProfile=" + UNVERIFIED_PROFILE)
                 || !lines[5].equals("provenance=CLIENT_OBSERVED")
-                || !lines[6].equals("sampling=MANUAL_ALREADY_LOADED_FULL")
+                || !(lines[6].equals("sampling=MANUAL_ALREADY_LOADED_FULL")
+                        || lines[6].equals("sampling=AUTOMATIC_FULL_CHUNK_OBSERVATION"))
                 || !HEADER.equals(lines[7]) || !lines[lines.length - 1].isEmpty()) {
             throw new IllegalArgumentException("非法的P3.2 CLIENT_OBSERVED取证格式");
         }

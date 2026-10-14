@@ -1,0 +1,76 @@
+name: P3.9 Real Automatic Client Evidence to Z3 Seed Recovery
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/p39-real-seed-recovery.yml'
+      - 'src/main/java/io/github/fxjcangku/worldseedlab/core/solver/RealClientSeedRecoveryCli.java'
+      - 'src/test/java/io/github/fxjcangku/worldseedlab/core/P39RealSeedRecoverySmokeTest.java'
+      - 'scripts/recover_seed.py'
+      - 'scripts/test_recover_seed.py'
+      - 'src/main/java/io/github/fxjcangku/worldseedlab/core/geometry/**'
+      - 'src/main/java/io/github/fxjcangku/worldseedlab/core/solver/**'
+      - 'scripts/run_p36_real_automatic_client.py'
+      - 'src/client/java/io/github/fxjcangku/worldseedlab/client/probe/AutoDesertFootprintController.java'
+      - 'build.gradle'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-seed-recovery:
+    name: Real CLIENT_OBSERVED raster -> Z3 low48 ${{ matrix.minecraft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        minecraft: ['26.1.2', '26.2']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Gradle 9.6.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.1'
+      - name: Python P3.9 automatic quart provenance, source privacy and blocking tests
+        run: |
+          python3 -m py_compile scripts/recover_seed.py scripts/test_recover_seed.py
+          python3 -u scripts/test_recover_seed.py -v
+      - name: Install actual virtual GUI and local SMT solver
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+            xvfb xauth xdotool scrot x11-utils openbox libgl1-mesa-dri mesa-utils z3
+      - name: Real Minecraft server and one auto-on Fabric GUI evidence collection
+        run: |
+          timeout --signal=INT --kill-after=30s 1040s \
+            python3 -u scripts/run_p36_real_automatic_client.py --minecraft=${{ matrix.minecraft }}
+      - name: Verify automatic outlines and independent FULL StructureStart geometry
+        run: |
+          gradle --no-daemon --console=plain -PmcVersion=${{ matrix.minecraft }} \
+            p36RealFabricAutoEvidenceTest
+      - name: Run new real CLIENT raster importer and actual Z3 inversion
+        run: |
+          mkdir -p build/p39-recovery/${{ matrix.minecraft }}
+          gradle --no-daemon --console=plain \
+            -PmcVersion=${{ matrix.minecraft }} \
+            -PrecoveryEvidence=build/p36-real-client-footprint/${{ matrix.minecraft }} \
+            -PrecoverySalts=14357617 -PrecoveryEnd=4096 \
+            p39RealSeedRecovery | tee build/p39-recovery/${{ matrix.minecraft }}/recovery-log.txt
+          grep -E 'LOW48_MODEL_CANDIDATE=0x000000000aab([^0-9a-f]|$)' \
+            build/p39-recovery/${{ matrix.minecraft }}/recovery-log.txt
+          grep -F 'Z3低48状态=' build/p39-recovery/${{ matrix.minecraft }}/recovery-log.txt
+      - name: Upload only public controlled research result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: P39-RealControlledRecovery-${{ matrix.minecraft }}
+          path: build/p39-recovery/${{ matrix.minecraft }}/recovery-log.txt
+          if-no-files-found: warn
+          retention-days: 7
