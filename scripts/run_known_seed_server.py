@@ -124,7 +124,12 @@ def region_chunks(path: Path):
 def scan_structure_starts(world: Path):
     result = {}
     read_chunks = 0
-    for region in sorted((world / "region").glob("r.*.*.mca")):
+    # Minecraft Java 26.1+ 官方世界存档布局：全部维度位于 dimensions/<namespace>/<name>。
+    # 原版主世界不再位于 world/region；使用旧路径会伪报“没有结构”。
+    overworld_regions = world / "dimensions" / "minecraft" / "overworld" / "region"
+    if not overworld_regions.is_dir():
+        raise RuntimeError("Minecraft 26.1+/26.2 overworld region directory missing")
+    for region in sorted(overworld_regions.glob("r.*.*.mca")):
         for chunk in region_chunks(region):
             read_chunks += 1
             structures = chunk.get("structures", chunk.get("Structures", {}))
@@ -302,7 +307,9 @@ def main():
         print("[P29-REAL] world save file inventory:", [
             (str(p.relative_to(world)),p.stat().st_size)
             for p in inventory[:100]], flush=True)
-        region_files = sorted((world / "region").glob("*"))
+        region_files = sorted(
+            (world / "dimensions" / "minecraft" / "overworld" / "region").glob("*"))
+        print("[P29-REAL] Minecraft 26.1+ overworld dimension layout checked")
         print("[P29-REAL] world directory:", str(world.relative_to(ROOT)),
               "region files:", [(p.name, p.stat().st_size) for p in region_files[:12]],
               flush=True)
