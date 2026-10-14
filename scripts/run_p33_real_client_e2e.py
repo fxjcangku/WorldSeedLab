@@ -244,6 +244,16 @@ def run(version: str):
         print("[P33] Actual Fabric runClient X11 window is on "
               + input_env["DISPLAY"] + " (nested Loom display discovered)",flush=True)
 
+        # 全新Minecraft客户端先显示Accessibility首次启动欢迎屏幕。
+        # 真实用户必须按Continue才允许Quick Play继续；这里由X11模仿点击，
+        # 禁止通过服务器后台或模组测试钩子伪造客户端操作。
+        xcmd("windowfocus", "--sync", window, env=input_env)
+        xcmd("mousemove", "--window", window, "512", "636", env=input_env)
+        xcmd("click", "1", env=input_env)
+        time.sleep(3)
+        screenshot(out / "controlled-client-after-welcome.png", input_env)
+        print("[P33] Clicked actual Minecraft first-run accessibility Continue",flush=True)
+
         def player_name():
             try:
                 response = rcon("list", password)
