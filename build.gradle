@@ -209,3 +209,13 @@ tasks.named('check') {
     dependsOn tasks.named('p27SolverSmokeTest')
     dependsOn tasks.named('p27MinecraftParityTest')
 }
+
+// P2.7 离线研究入口：显式传入本机配置文件，不接入游戏 Tick/GUI。
+tasks.register('p27ResearchCli', JavaExec) {
+    group = 'research'
+    description = 'Run an explicit bounded low48 random-spread constraint experiment offline.'
+    dependsOn tasks.named('classes')
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.solver.SolverResearchCli'
+    args providers.gradleProperty('solverInput').orElse('NO_SOLVER_INPUT').get()
+}
