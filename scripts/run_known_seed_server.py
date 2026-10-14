@@ -96,6 +96,10 @@ class NbtReader:
 
 def region_chunks(path: Path):
     data = path.read_bytes()
+    # Mojang 的 region storage 可能先创建零字节占位文件；
+    # 尚未写入任何区块的空文件不等于损坏的已生成区块。
+    if not data:
+        return
     if len(data) < 8192:
         raise ValueError("short region header")
     for slot in range(1024):
@@ -306,7 +310,7 @@ def main():
         inventory = sorted(p for p in world.rglob("*") if p.is_file())
         print("[P29-REAL] world save file inventory:", [
             (str(p.relative_to(world)),p.stat().st_size)
-            for p in inventory[:100]], flush=True)
+            for p in inventory[:25]], flush=True)
         region_files = sorted(
             (world / "dimensions" / "minecraft" / "overworld" / "region").glob("*"))
         print("[P29-REAL] Minecraft 26.1+ overworld dimension layout checked")
