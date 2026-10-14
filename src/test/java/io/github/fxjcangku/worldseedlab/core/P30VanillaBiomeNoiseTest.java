@@ -2,14 +2,6 @@ package io.github.fxjcangku.worldseedlab.core;
 
 import io.github.fxjcangku.worldseedlab.core.solver.Full64BiomeCandidateSearch;
 import io.github.fxjcangku.worldseedlab.core.solver.LocalSmtSeedSolver;
-import net.minecraft.SharedConstants;
-import net.minecraft.server.Bootstrap;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.data.registries.VanillaRegistries;
-import net.minecraft.world.level.biome.MultiNoiseBiomeSource;
-import net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterLists;
-import net.minecraft.world.level.levelgen.RandomState;
-import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.HashSet;
@@ -96,31 +88,11 @@ public final class P30VanillaBiomeNoiseTest {
     private P30VanillaBiomeNoiseTest() {}
 
     public static void main(String[] args) {
-        SharedConstants.tryDetectVersion();
-        Bootstrap.bootStrap();
-        var provider = VanillaRegistries.createLookup();
-        var noiseParameters = provider.lookupOrThrow(Registries.NOISE);
-        var settings = provider.lookupOrThrow(Registries.NOISE_SETTINGS)
-                .getOrThrow(NoiseGeneratorSettings.OVERWORLD).value();
-        var parameters = provider.lookupOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
-                .getOrThrow(MultiNoiseBiomeSourceParameterLists.OVERWORLD);
-        MultiNoiseBiomeSource source = MultiNoiseBiomeSource.createFromPreset(parameters);
-
         Full64BiomeCandidateSearch.Scope scope = new Full64BiomeCandidateSearch.Scope(
                 "2".repeat(64), System.getProperty("mcVersion", "26.2"),
                 "minecraft:overworld", "minecraft:vanilla_overworld");
-        Full64BiomeCandidateSearch.BiomeModel model = new Full64BiomeCandidateSearch.BiomeModel() {
-            public Full64BiomeCandidateSearch.Scope scope() { return scope; }
-            public Full64BiomeCandidateSearch.ModelTrust trust() {
-                return Full64BiomeCandidateSearch.ModelTrust.CONTROLLED_EXPERIMENT_ONLY;
-            }
-            public Full64BiomeCandidateSearch.BiomeSampler prepare(long seed) {
-                RandomState state = RandomState.create(settings, noiseParameters, seed);
-                var sampler = state.sampler();
-                return (x,y,z) -> source.getNoiseBiome(x,y,z,sampler).unwrapKey()
-                        .orElseThrow().identifier().toString();
-            }
-        };
+        var model = io.github.fxjcangku.worldseedlab.core.solver
+                .VanillaOverworldBiomeModel.create(scope);
         var truth = model.prepare(CONTROL);
         var another = model.prepare(CONTROL ^ (1L << 48));
         int differences = 0;
