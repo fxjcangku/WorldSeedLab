@@ -455,3 +455,20 @@ tasks.register('p34CompatibilitySmokeTest', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('p34CompatibilitySmokeTest')
 }
+
+
+// 仅在用户明确提供私有CSV、结构约束、候选位图及生成器假设时运行。
+// 输出匿名结论，不自动读取任何游戏文件或在客户端后台计算。
+tasks.register('p34OfflineAudit', JavaExec) {
+    group = 'research'
+    description = 'Explicit offline conditional worldgen compatibility audit; never reveals coordinates.'
+    dependsOn tasks.named('classes')
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.compatibility.P34OfflineAuditCli'
+    args providers.gradleProperty('p34ClientCsv').orElse('NO_CLIENT_QUART_FILE').get(),
+         providers.gradleProperty('p34StructureInput').orElse('NO_STRUCTURAL_FILE').get(),
+         providers.gradleProperty('p34CandidateHex16').orElse('NOT_A_CANDIDATE').get(),
+         providers.gradleProperty('p34History').orElse('UNKNOWN').get(),
+         providers.gradleProperty('p34Salt').orElse('UNKNOWN').get(),
+         providers.gradleProperty('p34Biomes').orElse('UNKNOWN_OR_CUSTOM').get()
+}
