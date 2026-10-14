@@ -1,0 +1,94 @@
+name: P3.1 Exhaustive Vanilla Full64 High16
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/p31-full64-high16.yml'
+      - 'build.gradle'
+      - 'src/main/java/io/github/fxjcangku/worldseedlab/core/solver/Full64High16ShardPlan.java'
+      - 'src/main/java/io/github/fxjcangku/worldseedlab/core/solver/Full64BiomeCandidateSearch.java'
+      - 'src/main/java/io/github/fxjcangku/worldseedlab/core/solver/VanillaOverworldBiomeModel.java'
+      - 'src/test/java/io/github/fxjcangku/worldseedlab/core/P31Full64ShardRunner.java'
+      - 'src/test/java/io/github/fxjcangku/worldseedlab/core/P31Full64ShardSmokeTest.java'
+      - 'src/test/resources/p31/**'
+      - 'scripts/verify_p31_high16_shards.py'
+      - 'scripts/test_verify_p31_high16_shards.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-high16-shard:
+    name: Minecraft ${{ matrix.minecraft }} high16 ${{ matrix.shard }}/16
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    strategy:
+      fail-fast: false
+      max-parallel: 12
+      matrix:
+        minecraft: ['26.1.2', '26.2']
+        shard: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps:
+      - name: Checkout original WorldSeedLab source
+        uses: actions/checkout@v4
+
+      - name: JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Gradle 9.6.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.1'
+
+      - name: Evaluate actual vanilla Overworld biome model for exact high16 shard
+        run: |
+          gradle --no-daemon --console=plain \
+            -PmcVersion=${{ matrix.minecraft }} \
+            -Pp31ShardIndex=${{ matrix.shard }} \
+            -Pp31ShardCount=16 p31Full64Shard
+
+      - name: Upload one verified search shard (not the private world)
+        uses: actions/upload-artifact@v4
+        with:
+          name: P31-RealHigh16-${{ matrix.minecraft }}-${{ matrix.shard }}
+          path: build/p31-high16-shards/
+          if-no-files-found: error
+          retention-days: 7
+
+  aggregate:
+    name: Independently audit complete 65536 high16 search
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    needs: real-high16-shard
+    steps:
+      - name: Checkout manifest auditor
+        uses: actions/checkout@v4
+
+      - name: Download only completed P3.1 real model shard reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: P31-RealHigh16-*
+          merge-multiple: true
+          path: p31-reports
+
+      - name: Verify aggregator rejects incomplete and forged coverage reports
+        run: python3 scripts/test_verify_p31_high16_shards.py
+
+      - name: Reject missing, duplicated, partial or nonmatching high16 results
+        run: |
+          python3 scripts/verify_p31_high16_shards.py \
+            --root p31-reports \
+            --shards 16 \
+            --output build/p31-full64-summary.json
+
+      - name: Upload aggregate research proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: P31-FullHigh16-Complete-Controlled-Vanilla
+          path: build/p31-full64-summary.json
+          if-no-files-found: error
+          retention-days: 30

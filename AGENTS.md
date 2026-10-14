@@ -21,3 +21,5 @@ P2.8/P3 符号求解请阅读 [docs/P28_SYMBOLIC_SOLVER_AND_ORE_POLICY.md](docs/
 P2.9 结构几何逆推必须先阅读 [docs/P29_GEOMETRY_INVERSION.md](docs/P29_GEOMETRY_INVERSION.md)：材料指纹和玩家标记没有完整轮廓资格；受控校准来源须可追溯；不同朝向的离散起点并集不可被外包矩形代替，必须在 SMT、Java FIT 与 HOLDOUT 中使用完全相同的允许集合。
 
 P3.0 完整64位研究必须阅读 [docs/P30_FULL64_EVIDENCE_RESEARCH.md](docs/P30_FULL64_EVIDENCE_RESEARCH.md)：Legacy 结构仅含低48位信息；高16位需要独立、已验证的真实 Minecraft 世界生成证据。受控 Xoroshiro 随机数演示不能冒充客户端实际群系。即便64位候选唯一，也要在报告中保留生成器模型、候选集合、FIT/HOLDOUT 和尚未确认的服务端设置。
+
+P3.1 全高16位验收先读 [docs/P31_REAL_HIGH16_EXHAUSTIVE.md](docs/P31_REAL_HIGH16_EXHAUSTIVE.md)。必须用真实已生成 FULL 区块的 quart 群系证据与目标版本 Mojmap 的原版生成器模型，所有高16分片完整覆盖、无重叠、检查数量等于总域才允许写“全域完成”；已验证的控制世界不代表未知服务器真实 Seed。
