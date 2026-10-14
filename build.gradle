@@ -261,3 +261,29 @@ tasks.named('check') {
     dependsOn tasks.named('p28SymbolicSmokeTest')
     dependsOn tasks.named('p28Z3IntegrationTest')
 }
+
+
+
+// P2.9：完整结构轮廓 + 经已知世界校准的离散朝向假设。
+// 真实 Z3 正反例和 P2.8 精确 Java FIT/HOLDOUT 必须随两版 check 一起运行。
+tasks.register('p29GeometrySmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate calibrated footprint inversion, strict provenance, and sparse alternatives.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P29GeometrySmokeTest'
+}
+
+tasks.register('p29Z3GeometryIntegrationTest', JavaExec) {
+    group = 'verification'
+    description = 'Execute genuine Z3 for disjoint geometric start hypotheses.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P29Z3GeometryIntegrationTest'
+    systemProperty 'mcVersion', targetMinecraft
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('p29GeometrySmokeTest')
+    dependsOn tasks.named('p29Z3GeometryIntegrationTest')
+}
