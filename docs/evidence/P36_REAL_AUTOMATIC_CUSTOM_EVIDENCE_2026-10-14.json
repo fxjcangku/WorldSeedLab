@@ -25,7 +25,7 @@
   },
   "versions": {
     "26.1.2": {
-      "job_id": 115748000000,
+      "job_id": 115746939375,
       "conclusion": "success",
       "manual_auto_on_commands": 1,
       "per_structure_manual_corner_commands": 0,
@@ -43,10 +43,10 @@
       "holdout": 1,
       "controlled_low48_found": "2731",
       "wrong_seed_and_salt_rejected": true,
-      "first_real_artifact_id": 11878911423
+      "artifact_id": 11878911423
     },
     "26.2": {
-      "job_id": 115748000001,
+      "job_id": 115746938742,
       "conclusion": "success",
       "manual_auto_on_commands": 1,
       "per_structure_manual_corner_commands": 0,
@@ -64,7 +64,7 @@
       "holdout": 1,
       "controlled_low48_found": "2731",
       "wrong_seed_and_salt_rejected": true,
-      "first_real_artifact_id": 11879335743
+      "artifact_id": 11879335743
     }
   },
   "provenance": {
