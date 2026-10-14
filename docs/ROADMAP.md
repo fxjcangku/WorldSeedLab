@@ -215,16 +215,16 @@
 
 [详细 P3.4 研究及证据边界](P34_CUSTOM_WORLDGEN_COMPATIBILITY.md)
 
-## P3.5 / Client-visible Desert Temple Footprint（开发与实机验收中）
+## P3.5 / Client-visible Desert Temple Footprint（双版本受控实机已验收）
 
 - [x] 阅读并复用 P2.6 已加载区块 BlockState 识别与 P2.9 结构几何、Z3 离散候选并集。
 - [x] 新增玩家独立手动授权的双角完整三维方块栅格、FULL区块预检、256方块每Tick限额、跨服维度及区块卸载失败保护、显式本地导出。
 - [x] 实现保守外边缘/陶瓦指纹与自然来源 UNKNOWN，严格区分客户端真实方块与受控服务端 NBT。
 - [x] 新增合成正反例、离线 P2.9 几何接口和两版本实际 runClient/runServer/GitHub Actions 验收入口。
-- [ ] 实际检查 Java25 双版构建 + Z3 纯 Java 正反测试是否成功。
-- [x] 真实 Fabric GUI 两版连接受控服务器、每版4处不同 Region 完成轮廓客户端原始栅格取证，Actions #38525522872 成功（f6a4ed8，最新严格FULL确认需再次CI）。
+- [x] Java25双版构建、现有几何/Z3回归、单列轮廓损坏失败保护通过（最新 Actions #38527252088）。
+- [x] 真实 Fabric GUI 双版本各4处不同Region执行手动原始分类栅格取证；严格完整轮廓、服务端后验 FULL 验收均已于 Actions #38527252093 成功。
 - [x] 受控独立 StructureStart 后验真值 + 多朝向、错 Salt、2 FIT+1 HOLDOUT 在 #38525522872 真实双版通过，每版4/4完整神殿，无观察假阳（仅限受控四座，不代表总体准确率）。
-- [ ] 最新严格要求四边21/21闭合、人工单列缺损拒绝、每座StructureStart所在真实FULL区块与自定义地层后验检查：等待新提交双版本CI成功。
+- [x] 严格边界21/21、单列缺损拒绝、受控后验4/4 StructureStart 所在区块独立 FULL、实际自定义沙漠地层 FULL 验收；#38527252093双版成功（各1,226 / 1,260个自定义地层FULL区块）。
 - [ ] 完善更多朝向/遮挡/高度形态的校准体系，探索历史区块和未知 Salt 但不假称完整64位反演。
 
 [研究边界与当前测试状态](P35_CLIENT_VISIBLE_DESERT_FOOTPRINT.md)。合成测试及仅有客户端材料识别都不能代替实际正常玩家可见轮廓；未验证不得合并 main。

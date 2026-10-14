@@ -131,13 +131,13 @@ P2.7 已确认的 Minecraft Legacy RandomSpread 数学模型现可转换成**可
 
 [查看 P3.0 的准确能力与后续高16位验证条件](docs/P30_FULL64_EVIDENCE_RESEARCH.md)
 
-## P3.5 / 普通客户端建筑轮廓真实取证（研发测试中）
+## P3.5 / 普通客户端建筑轮廓真实取证（双版本受控实机已验收）
 
 新增独立的手动沙漠神殿轮廓取证：**/wsl footprint first / second / export / clear**。按玩家授权的两角区域只读已经完整加载的实际方块，外侧一圈与四条可见边缘一起审计；一旦区块缺失、遮挡或取证中断，即拒绝把残缺轮廓升级为结构起点候选。原始证据在用户显式导出时只存本机 HMAC 世界与维度隔离目录，不会主动加载新区块或上传。
 
-完整的可见方块外沿可接入 P2.9 原有的**已校准、不同朝向离散起点并集**，不会复用服务端 StructureStart 当成客户端证据。天然生成来源始终 UNKNOWN，不能区分人工复制。**2026-10-14 受控真实 Minecraft 双版本已成功：** [Actions #38525522872](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38525522872)（提交f6a4ed8）对两版各4座实际联机可见神殿执行了12条真实聊天指令、4份独立CLIENT_OBSERVED栅格导出、每座30752方块、4/4完整21×21轮廓、独立受控NBT起点对照及 Z3/Java 2FIT+1HOLDOUT低48已知Seed=2731恢复。该次两版真实工作流均为success，但**最新更严格的FULL起点区块检查需要单独等待新提交CI**。正常用户目标服的自然来源、未知Salt和完整64位仍未知。
+完整的可见方块外沿可接入 P2.9 原有的**已校准、不同朝向离散起点并集**，不会复用服务端 StructureStart 当成客户端证据。天然生成来源始终 UNKNOWN，不能区分人工复制。**2026-10-14 受控真实 Minecraft 双版本已成功：** [Actions #38525522872](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38525522872)（提交f6a4ed8）对两版各4座实际联机可见神殿执行了12条真实聊天指令、4份独立CLIENT_OBSERVED栅格导出、每座30752方块、4/4完整21×21轮廓、独立受控NBT起点对照及 Z3/Java 2FIT+1HOLDOUT低48已知Seed=2731恢复。更严格的最终版本 [Actions #38527252093](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38527252093) 已在 26.1.2 / 26.2 **再次全部 success**：每座四条可见边缘严格21/21，不允许一列缺失；服务端对所测4/4处 StructureStart 所在区块单独确认FULL；另确证自定义平坦沙漠 FULL 区块每版1,226 / 1,260。两版真 Z3 + Java 2FIT+1HOLDOUT 仍通过。正常用户目标服的自然来源、未知Salt和完整64位仍未知。
 
-[查看 P3.5 真正客户端可见轮廓取证和验收规范](docs/P35_CLIENT_VISIBLE_DESERT_FOOTPRINT.md)
+[查看 P3.5 真正客户端可见轮廓取证和验收规范](docs/P35_CLIENT_VISIBLE_DESERT_FOOTPRINT.md) · [P3.5 结构化双版本受控实验证据](docs/evidence/P35_REAL_FABRIC_CLIENT_FOOTPRINT_2026-10-14.json)
 
 ## P3.4 / 自定义地形兼容性与结构证据防误报（受控实机双版本已验收）
 
