@@ -38,6 +38,9 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq z3
           z3 --version
 
+      - name: P4.0 offline client evidence/model safety tests
+        run: python3 scripts/test_audit_custom_climate.py
+
       - name: Compile and verify
         run: gradle --no-daemon --stacktrace -PmcVersion=${{ matrix.minecraft }} clean build
 
