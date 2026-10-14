@@ -258,6 +258,78 @@ public final class P34WorldgenCompatibilityAudit {
                         : "受控世界群系模型与独立观测符合；不延伸到未知服务器");
     }
 
+    /**
+     * 受控世界专用：FULL Anvil 存档独立提取的群系使用 CONTROL_WORLD_OBSERVED，
+     * 严禁通过 ClientQuartEvidenceArchive.Session 伪装成真实客户端采样。
+     * 在未知多人服环境不得使用此入口或自称拥有服务端 NBT 权限。
+     */
+    public static AxisResult controlledWorldBiomes(
+            Scope scope, List<Full64BiomeCandidateSearch.BiomeSample> actualFullChunks,
+            Full64BiomeCandidateSearch.BiomeModel model, long candidateSeed,
+            BiomeKnowledge knowledge, ChunkHistory history) {
+        Objects.requireNonNull(scope);
+        Objects.requireNonNull(actualFullChunks);
+        Objects.requireNonNull(knowledge);
+        Objects.requireNonNull(history);
+        if (actualFullChunks.size() < 5 || actualFullChunks.size() > 64) {
+            throw new IllegalArgumentException("受控存档至少需5个独立FULL群系样本");
+        }
+        var expected = new Full64BiomeCandidateSearch.Scope(
+                scope.worldFingerprint(), scope.gameVersion(), scope.dimension(),
+                "minecraft:vanilla_overworld");
+        Set<String> locations = new HashSet<>();
+        for (int i = 0; i < actualFullChunks.size(); i++) {
+            var item = Objects.requireNonNull(actualFullChunks.get(i));
+            if (!expected.equals(item.scope())
+                    || item.origin() != Full64BiomeCandidateSearch.Origin.CONTROL_WORLD_OBSERVED
+                    || item.split() != (i < 3
+                    ? Full64BiomeCandidateSearch.Split.FIT
+                    : Full64BiomeCandidateSearch.Split.HOLDOUT)
+                    || !locations.add(item.quartX() + ":" + item.quartY() + ":" + item.quartZ())) {
+                throw new IllegalArgumentException("不能将非受控FULL观测当作真实存档群系");
+            }
+            for (int j = 0; j < i; j++) {
+                var previous = actualFullChunks.get(j);
+                long dx = (long) item.quartX() - previous.quartX();
+                long dz = (long) item.quartZ() - previous.quartZ();
+                if (dx * dx + dz * dz < (long) ClientQuartEvidenceArchive
+                        .MIN_HORIZONTAL_QUART_DISTANCE
+                        * ClientQuartEvidenceArchive.MIN_HORIZONTAL_QUART_DISTANCE) {
+                    throw new IllegalArgumentException("受控存档FIT/HOLDOUT空间距离不足");
+                }
+            }
+        }
+        if (history != ChunkHistory.CONFIRMED_SINGLE_EPOCH
+                || knowledge == BiomeKnowledge.UNKNOWN_OR_CUSTOM) {
+            return new AxisResult(Verdict.GENERATOR_UNKNOWN, 0, 0, 0,
+                    actualFullChunks.size(), "生成器模型或区块时期未知，不能引用原版模型复核");
+        }
+        if (!"minecraft:overworld".equals(scope.dimension()) || model == null
+                || model.trust() != Full64BiomeCandidateSearch.ModelTrust
+                .VERIFIED_TARGET_MINECRAFT_WORLDGEN || !expected.equals(model.scope())) {
+            throw new IllegalArgumentException("受控群系实验的真实目标Minecraft模型不匹配");
+        }
+        var sampler = Objects.requireNonNull(model.prepare(candidateSeed));
+        int fits = 0, holdouts = 0, conflicts = 0;
+        for (var item : actualFullChunks) {
+            String predicted = sampler.biomeAtQuart(
+                    item.quartX(), item.quartY(), item.quartZ());
+            if (!item.observedBiome().equals(predicted)) {
+                conflicts++;
+            } else if (item.split() == Full64BiomeCandidateSearch.Split.FIT) {
+                fits++;
+            } else {
+                holdouts++;
+            }
+        }
+        if (conflicts > 0) {
+            return new AxisResult(Verdict.MODEL_CONFLICT, fits, holdouts, conflicts, 0,
+                    "受控服务器真实FULL区块群系与指定原版模型冲突；该配置下不能以原版气候推高16");
+        }
+        return new AxisResult(Verdict.MODEL_CONSISTENT, fits, holdouts, 0, 0,
+                "受控服务端FULL Anvil群系与原版气候数学一致；不是CLIENT_OBSERVED");
+    }
+
     public static Report combine(AxisResult structures, AxisResult biomes) {
         Objects.requireNonNull(structures);
         Objects.requireNonNull(biomes);
