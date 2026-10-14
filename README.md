@@ -141,6 +141,8 @@ P2.7 已确认的 Minecraft Legacy RandomSpread 数学模型现可转换成**可
 
 新增**一次手动授权 /wsl auto on**：玩家无需逐座选择两个角。客户端只在已经加载 FULL 区块中有界识别真实蓝陶瓦，自动尝试29×29粗区域→唯一21×21完整可见沙漠神殿外缘，并异步保存本机CLIENT_OBSERVED。同时自动开启现有 P1/P2 真实群系与地形、P2.6 低成本材料候选。切服/维度更改或无法确认完整性即停止/拒绝，不会请求新区块、上传坐标、读取服务端StructureStart或自动求解Seed。
 
+**P3.6.1 正在进行双版本复验：** 实服日志暴露了旧版将玩家高度作为蓝陶瓦扫描中心、把区块卸载算作建筑轮廓不完整的问题。修正为每列已接收地表高度图驱动的32格材料探测带，增加卸载独立诊断和完整外缘去重；高速飞行和深埋建筑仍可能漏检，且不是自动Seed破解。具体合并状态以本次修复PR和CI为准。
+
 **2026-10-14 P3.6 最终合并验收：** [PR #25](https://github.com/fxjcangku/WorldSeedLab/pull/25) 已合并；最终源码 `fd481292` 的 [双版构建 #38534515840](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38534515840) 与 [真实双版 Fabric GUI 自动取证 #38534515870](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38534515870) 均 success，合并后 main `24e4fb34` 的 [双版 clean build #38535882551](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38535882551) 也 success。每版本对已知 Seed=2731 的受控自定义沙漠服务器只执行一次 `/wsl auto on`，自主保存4座完整21×21神殿轮廓，后验 FULL/StructureStart 4/4、真 Z3+Java RNG 2FIT+1HOLDOUT 通过；26.1.2 落盘 107,520 条群系/144 个地形区块/P2.6 扫描104区块，26.2 落盘 105,984 条群系/148 个地形区块/P2.6 扫描106区块。**P2.2 详细地下剖面默认 OFF；若要采集地层，须在 `/wsl auto on` 前选择 `STRATA`**。这只验证受控已知世界的取证链，不代表已破解未知自定义服务器或完整64位 Seed。
 
 [自动命令与模型限制](docs/P36_AUTOMATIC_CUSTOM_WORLD_EVIDENCE.md) · [P3.6双版受控实证JSON](docs/evidence/P36_REAL_AUTOMATIC_CUSTOM_EVIDENCE_2026-10-14.json)
