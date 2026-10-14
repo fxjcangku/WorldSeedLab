@@ -1,6 +1,6 @@
 # WorldSeedLab · 开发、构建与验收
 
-> 2026-10-14 状态：P3.6 已由 PR #25 合并 main；最终源码 `fd481292` 双版本真实 Fabric GUI 自动取证与后验 FULL/Z3 均成功，合并提交 `24e4fb34` 双版本构建成功。未知自定义服务器完整64位 Seed 尚未验证。
+> 2026-10-14 状态：P3.6 正式验收及 P3.6.1 实服漏检修复已合并 `main`，最新功能 PR #28 合并 `e8d2c03d`。26.1.2/26.2 同一最新功能提交的真实 Fabric GUI 自动取证、4座受控神殿、后验 FULL + Z3/Java 均成功；未知服务器 Seed 尚未确定。
 
 ## 项目环境
 
@@ -40,7 +40,7 @@ gradle -PmcVersion=26.2 runClient
 - 玩家进入目标服务器后主动输入 `/wsl auto on`，不再逐座手动 first/second/export；断线、切世界、维度变化默认停止。`/wsl auto status` 查看完成轮廓与**真正已落盘**数量，`/wsl auto off` 停止，`/wsl path` 定位原始私有证据目录。
 - 自动取证同时开启 P1 群系、P2 基础地形高度和 P2.6 材料扫描；目前完整结构轮廓只验证沙漠神殿21×21，蓝陶瓦缺失、Y 高度差、鞘翅高速移动、被改建或人工仿造都可能误检/漏检，天然来源与生成器未知。
 - P2.2 **地下稀疏分层首次默认为 OFF**；要分析自定义地下地层，先用 F8/`/wsl detail` 选 `STRATA`，再开启 `/wsl auto on`。详情档位不能在采集中途更改。
-- 最终真实双版本取证 [Actions #38534515870](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38534515870)，合并后双版本构建 [#38535882551](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38535882551)。仅受控已知 Seed=2731，自定义生成器/未知 Salt/高16及完整64位尚待独立证据。详情见 [P3.6报告](P36_AUTOMATIC_CUSTOM_WORLD_EVIDENCE.md)。
+- 早期 P3.6 真实联机验收 [#38534515870](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38534515870) 已通过；后续 P3.6.1 修复高空扫描漏检、区块卸载诊断、同座去重，最新双版本 [真实 Fabric GUI #38549576931](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576931) 与 [clean build #38549576956](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576956) 全成功。所有研究仅来自受控已知 Seed=2731，未知 Salt/自定义生成器/完整64位仍待独立研究。详情见 [P3.6报告](P36_AUTOMATIC_CUSTOM_WORLD_EVIDENCE.md)。
 
 ## P1 真实群系采集
 
