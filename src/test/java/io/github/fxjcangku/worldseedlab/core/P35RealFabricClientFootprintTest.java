@@ -60,8 +60,9 @@ public final class P35RealFabricClientFootprintTest {
                 throw new AssertionError("第"+i+"处真实可见建筑并未形成可证明完整边界："
                         +audit.reason());
             }
-            int width=c.bounds().maxX()-c.bounds().minX()+1;
-            int depth=c.bounds().maxZ()-c.bounds().minZ()+1;
+            var discovered = c.discoveredFootprint();
+            int width=discovered.maxX()-discovered.minX()+1;
+            int depth=discovered.maxZ()-discovered.minZ()+1;
             if(width!=21 || depth!=21) {
                 throw new AssertionError("实际受控原版沙漠神殿轮廓应当实测为21x21");
             }
@@ -87,8 +88,9 @@ public final class P35RealFabricClientFootprintTest {
         }
         var observedStarts=new ArrayList<TrueStart>();
         for(var c:captured) {
-            int x=Math.floorDiv(c.bounds().minX(),16);
-            int z=Math.floorDiv(c.bounds().minZ(),16);
+            var discovered = c.discoveredFootprint();
+            int x=Math.floorDiv(discovered.minX(),16);
+            int z=Math.floorDiv(discovered.minZ(),16);
             var truth=starts.get(x+":"+z);
             if(truth==null) {
                 throw new AssertionError("CLIENT轮廓未涵盖任何独立保存的真实结构NBT起点");
@@ -125,7 +127,7 @@ public final class P35RealFabricClientFootprintTest {
         var calibrated=StructureFootprintInverter.Calibration.fromControlled(
                 "p35_posthoc_control_"+version.replace(".","_"),
                 version,DIM,SET,TYPE,"controlled_reference",
-                captured.getFirst().bounds(),reference.x(),reference.z(),0);
+                captured.getFirst().discoveredFootprint(),reference.x(),reference.z(),0);
         var constraints=new ArrayList<StartPlacementConstraint>();
         for(int i=1;i<4;i++) {
             var c=captured.get(i);
@@ -137,7 +139,7 @@ public final class P35RealFabricClientFootprintTest {
                         + "样本 "+i+" candidates="+geometry.possibleChunkCount());
             }
             var observed=new StructureFootprintInverter.ObservedFootprint(
-                    c.scope().worldFingerprint(),version,DIM,SET,TYPE,c.bounds(),
+                    c.scope().worldFingerprint(),version,DIM,SET,TYPE,c.discoveredFootprint(),
                     StructureFootprintInverter.FootprintQuality.COMPLETE_PERIMETER);
             constraints.add(geometry.toConstraint(observed,
                     i<3?StartPlacementConstraint.Split.FIT
@@ -162,7 +164,7 @@ public final class P35RealFabricClientFootprintTest {
         }
         System.out.println("P3.5 TRUE Fabric GUI "+version
                 + " CLIENT_OBSERVED four real structure perimeters: "
-                + "4/4 valid, multiple orientations, true NBT start inside each "
+                + "4/4 independently discovered 21x21 footprints, multiple orientations, true NBT start inside each "
                 + "exact sparse candidate, 1 calibration + 2 FIT + 1 HOLDOUT; "
                 + "Z3+Java low48=2731, wrong seed/salt rejected.");
         System.out.println("限定：客户端取证只证明可见外缘；实验的RCON仅用于导航，"
