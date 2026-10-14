@@ -106,7 +106,8 @@ public final class LocalSmtSeedSolver {
 
                 Process process;
                 try {
-                    process = new ProcessBuilder(z3Executable, "-smt2", script.toString())
+                    process = new ProcessBuilder(z3Executable, "-smt2", "-memory:512",
+                            script.toString())
                             .redirectErrorStream(true)
                             .redirectOutput(answer.toFile())
                             .start();

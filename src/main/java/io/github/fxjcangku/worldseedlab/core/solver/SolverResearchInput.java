@@ -1,6 +1,7 @@
 package io.github.fxjcangku.worldseedlab.core.solver;
 
 import io.github.fxjcangku.worldseedlab.core.compatibility.StructureObservation.ChunkBounds;
+import io.github.fxjcangku.worldseedlab.core.geometry.StructureFootprintInverter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -67,15 +68,70 @@ public record SolverResearchInput(
         List<StartPlacementConstraint> constraints = new ArrayList<>();
         for (int i = 0; i < constraintCount; i++) {
             String prefix = "constraint." + i + ".";
-            constraints.add(new StartPlacementConstraint(
-                    world, version, dimension,
-                    required(p, prefix + "structureSet"),
-                    new ChunkBounds(integer(p, prefix + "minChunkX"),
-                            integer(p, prefix + "minChunkZ"),
-                            integer(p, prefix + "maxChunkX"),
-                            integer(p, prefix + "maxChunkZ")),
-                    StartPlacementConstraint.Origin.valueOf(required(p, prefix + "origin")),
-                    StartPlacementConstraint.Split.valueOf(required(p, prefix + "split"))));
+            String setId = required(p, prefix + "structureSet");
+            StartPlacementConstraint.Origin origin =
+                    StartPlacementConstraint.Origin.valueOf(required(p, prefix + "origin"));
+            StartPlacementConstraint.Split split =
+                    StartPlacementConstraint.Split.valueOf(required(p, prefix + "split"));
+            String geometry = prefix + "geometry.";
+            boolean hasGeometryFields = p.stringPropertyNames().stream()
+                    .anyMatch(key -> key.startsWith(geometry));
+            if (!hasGeometryFields) {
+                // P2.7/P2.8 旧格式保持原样，单矩形仍是唯一有效起点范围。
+                constraints.add(new StartPlacementConstraint(
+                        world, version, dimension, setId,
+                        new ChunkBounds(integer(p, prefix + "minChunkX"),
+                                integer(p, prefix + "minChunkZ"),
+                                integer(p, prefix + "maxChunkX"),
+                                integer(p, prefix + "maxChunkZ")),
+                        origin, split));
+                continue;
+            }
+            if (origin != StartPlacementConstraint.Origin.GEOMETRY_ESTIMATE
+                    || p.stringPropertyNames().stream().anyMatch(key ->
+                        key.startsWith(prefix + "minChunk") || key.startsWith(prefix + "maxChunk"))) {
+                throw new IllegalArgumentException(
+                        "geometry evidence cannot masquerade as controlled exact starts "
+                        + "or mix with manually entered chunk bounds");
+            }
+            var observed = new StructureFootprintInverter.ObservedFootprint(
+                    world, version, dimension, setId, required(p, geometry + "structureId"),
+                    new StructureFootprintInverter.BlockBounds(
+                            integer(p, geometry + "minBlockX"),
+                            integer(p, geometry + "minBlockZ"),
+                            integer(p, geometry + "maxBlockX"),
+                            integer(p, geometry + "maxBlockZ")),
+                    StructureFootprintInverter.FootprintQuality.valueOf(
+                            required(p, geometry + "quality")));
+            int calibrationCount = integer(p, geometry + "calibrations.count");
+            if (calibrationCount < 1 || calibrationCount > 8) {
+                throw new IllegalArgumentException("geometry calibration count must be 1..8");
+            }
+            List<StructureFootprintInverter.Calibration> calibrations = new ArrayList<>();
+            for (int j = 0; j < calibrationCount; j++) {
+                String c = geometry + "calibration." + j + ".";
+                if (!"CONTROLLED_TRUE_STRUCTURE_START".equals(required(p, c + "referenceKind"))) {
+                    throw new IllegalArgumentException(
+                            "structure geometry calibration needs an independently checked control start");
+                }
+                calibrations.add(StructureFootprintInverter.Calibration.fromControlled(
+                        required(p, c + "referenceId"),
+                        required(p, c + "gameVersion"),
+                        required(p, c + "dimension"),
+                        required(p, c + "structureSet"),
+                        required(p, c + "structureId"),
+                        required(p, c + "variant"),
+                        new StructureFootprintInverter.BlockBounds(
+                                integer(p, c + "control.minBlockX"),
+                                integer(p, c + "control.minBlockZ"),
+                                integer(p, c + "control.maxBlockX"),
+                                integer(p, c + "control.maxBlockZ")),
+                        integer(p, c + "control.trueStartChunkX"),
+                        integer(p, c + "control.trueStartChunkZ"),
+                        integer(p, c + "toleranceBlocks")));
+            }
+            var inferred = StructureFootprintInverter.infer(observed, calibrations);
+            constraints.add(inferred.toConstraint(observed, split));
         }
 
         CandidateSeedSearch.SearchWindow window = new CandidateSeedSearch.SearchWindow(
