@@ -80,6 +80,20 @@ public final class P36RealFabricAutoEvidenceTest {
         if (evidenceCounts!=2) {
             throw new AssertionError("无法独立证实P1群系+P2地貌均已在客户端落盘");
         }
+        var strataCounts=java.util.regex.Pattern.compile(
+                "\"p38_actual_strata_(?:chunks|vertical_cells)\"\\s*:\\s*(\\d+)")
+                .matcher(coupled);
+        int strataMetrics=0;
+        while (strataCounts.find()) {
+            if (Long.parseLong(strataCounts.group(1)) < 1) {
+                throw new AssertionError("自动地下STRATA样本为空");
+            }
+            strataMetrics++;
+        }
+        if (strataMetrics != 2
+                || !coupled.contains("\"p38_detail_mode\": \"STRATA_AUTO_EPHEMERAL\"")) {
+            throw new AssertionError("P3.8一次授权没有实测自动地层采集");
+        }
         var control=Files.readString(root.resolve("posthoc-control-summary.json"));
         if (!control.contains("\"not_client_observed\": true")
                 || !control.contains("\"selected_true_starts_with_full_chunks\": 4")

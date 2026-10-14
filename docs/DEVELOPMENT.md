@@ -35,11 +35,18 @@ gradle -PmcVersion=26.2 runClient
 
 **CI 产物仅供受控实验，当前不自动发布 GitHub Release。**
 
+## P3.8 · 一键自定义地层与多建筑材料取证（新版本待CI）
+
+- 进入服务器后按F8点击「一键联合取证」，或输入 `/wsl auto on`。本次授权同时临时开启P2.2 `STRATA`，不用再先手动切档；关闭后恢复 `probe.properties` 中原有详情模式，不覆盖偏好。
+- `/wsl help` 提供分组中文指令；`/wsl auto status` 和 `/wsl status` 使用不同颜色、加粗与换行的模块播报。旧 `/wsl mark` 是人工目击、P2.6 v2 是自动材料候选、P3.6是沙漠神殿完整可见轮廓，可信度不可混用。
+- 结构指纹索引升级为 `structure-candidates-v2.jsonl` 和 `structure-scanned-v2.csv`；旧v1资料保留、不覆盖。新水下结构候选必须坚持人工复制风险，不把弱候选自动升级为自然StructureStart。
+- 目前 P3.8 真正离线生成器接口 `P38TerrainCandidateAudit` 需要显式提供前向地形模型；只做有限候选的条件 FIT/HOLDOUT 检查，未知Salt/生成器/完整64位仍为UNKNOWN。详见 [P3.8报告](P38_CUSTOM_TERRAIN_AND_STRUCTURES.md)。
+
 ## P3.6 一键联合取证（真正 GUI 双版本验收通过）
 
 - 玩家进入目标服务器后主动输入 `/wsl auto on`，不再逐座手动 first/second/export；断线、切世界、维度变化默认停止。`/wsl auto status` 查看完成轮廓与**真正已落盘**数量，`/wsl auto off` 停止，`/wsl path` 定位原始私有证据目录。
 - 自动取证同时开启 P1 群系、P2 基础地形高度和 P2.6 材料扫描；目前完整结构轮廓只验证沙漠神殿21×21，蓝陶瓦缺失、Y 高度差、鞘翅高速移动、被改建或人工仿造都可能误检/漏检，天然来源与生成器未知。
-- P2.2 **地下稀疏分层首次默认为 OFF**；要分析自定义地下地层，先用 F8/`/wsl detail` 选 `STRATA`，再开启 `/wsl auto on`。详情档位不能在采集中途更改。
+- P2.2 首次安装时**手动采集详细档位仍默认为 OFF**；P3.8 `/wsl auto on` 则代表用户明确授权自动联合采集，临时启用 `STRATA`，无需提前切档；关闭后恢复原有个人偏好。
 - 早期 P3.6 真实联机验收 [#38534515870](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38534515870) 已通过；后续 P3.6.1 修复高空扫描漏检、区块卸载诊断、同座去重，最新双版本 [真实 Fabric GUI #38549576931](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576931) 与 [clean build #38549576956](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576956) 全成功。所有研究仅来自受控已知 Seed=2731，未知 Salt/自定义生成器/完整64位仍待独立研究。详情见 [P3.6报告](P36_AUTOMATIC_CUSTOM_WORLD_EVIDENCE.md)。
 
 ## P3.7 · 对已有真实自定义地形证据做离线审计
@@ -100,7 +107,7 @@ python scripts/research_p37_custom_worldgen.py --input "D:\取证\observations.z
 
 确认服务器允许后：F8 开启普通群系采集，再用 `/wsl structures on` 或液态玻璃顶部“结构侦测”按钮开启可选扫描。`/wsl structures` 查看统计；`/wsl structures off` 停止。扫描只读取地表/海床周围的客户端已加载方块，假矿不参与计算。首次/再次登录，结构扫描自动保持关闭。
 
-结构候选文件 `structure-candidates-v1.jsonl` 含精确区块坐标，`structure-scanned-v1.csv` 是此版稀疏扫描的完成记录。无命中不代表该区块没有自然结构。材料指纹既不是起始区块，也不是 Seed 求解结果。
+P3.8结构候选 `structure-candidates-v2.jsonl` 含精确区块坐标，`structure-scanned-v2.csv` 是新密度/分类模型完成记录；此前 `v1` 文件保留作为历史，升级后不阻断再次扫描。无命中不代表该区块没有自然结构。材料指纹既不是起始区块，也不是 Seed 求解结果。
 
 [查看详细限制、操作和日志](P26_STRUCTURE_RECOGNITION.md)。
 

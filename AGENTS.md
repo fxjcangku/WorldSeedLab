@@ -36,3 +36,5 @@ P3.6 自动世界生成证据研发必须先阅读 [docs/P36_AUTOMATIC_CUSTOM_WO
 
 P3.7 新增离线证据兼容性分析，必须先阅读 [docs/P37_CUSTOM_WORLDGEN_IDENTIFIABILITY.md](docs/P37_CUSTOM_WORLDGEN_IDENTIFIABILITY.md)。只能在用户显式操作下只读已保存的真实客户端 P1/P2/STRATA；不得混合同一压缩包中的不同世界/维度，不能上传或记录原始服务器地址、坐标、HMAC私钥。非原版群系ID仅说明原样原版注册表模型不能直接解释，不等于已识别自定义生成器。没有可验证模型和独立FIT/HOLDOUT时，Salt、自然结构起点、完整64位Seed保持UNKNOWN。P3.7 的纯Python正反例与 Fabric 双版本真实GUI验收分开执行。
 P3.8 自动多结构和中文界面变更必须阅读 [docs/P38_AUTOMATIC_MULTISTRUCTURE_EVIDENCE.md](docs/P38_AUTOMATIC_MULTISTRUCTURE_EVIDENCE.md)。新结构只从已加载FULL BlockState取得材料/局部候选，自动写入HMAC作用域v2索引，保留v1归档；海洋神殿、冷暖海底遗迹、沉船、废弃传送门等没有独立几何真值时不得标自然起点或接入low48。UI命令、F8与地图返回必须复用同一AutoController，中文分行彩色不刷屏。CI必须包含双版真正Fabric GUI与明确标为CONTROLLED_ARTIFICIAL的海底材料布景负自然来源验收；不得以人工材料假造天然结构Seed。
+
+P3.8地形核心研究在自动多结构候选基础上还须阅读 [docs/P38_CUSTOM_TERRAIN_AND_STRUCTURES.md](docs/P38_CUSTOM_TERRAIN_AND_STRUCTURES.md)。一次auto on应暂时启用STRATA真实已加载方块，退出后恢复玩家配置；必须在真实双版本Fabric GUI明确核查地下详情已落盘。离线候选模型不得只靠3个合成高度猜后台生成器，需独立真实前向实现与同一HMAC/维度/版本的2FIT+1HOLDOUT，任何一致只可叫CONDITIONAL_MATCH_UNVERIFIED，未知Seed/Salt仍未知。禁止覆盖本轮多结构材料识别和中文UI分支已有改动。

@@ -333,6 +333,26 @@ def run(version: str, p38_materials: bool = False):
         terrain_count = len(terrain_evidence.read_text(encoding="utf-8").splitlines())
         if biome_count < 1 or terrain_count < 1:
             raise RuntimeError("一键自动模式未产生真实非空客户端群系或地貌记录")
+        # P3.8 terrain: one auto on also grants temporary STRATA in memory,
+        # genuinely captured from FULL client chunks without user preset changes.
+        details = scoped_folder/"terrain-detail.jsonl"
+        if not details.is_file():
+            raise RuntimeError("P3.8一次自动授权没有保存地下STRATA文件")
+        strata_count = 0
+        strata_vertical = 0
+        with details.open(encoding="utf-8") as evidence_stream:
+            for raw in evidence_stream:
+                sample = json.loads(raw)
+                if sample.get("type") == "terrain_detail" and sample.get("mode") == "STRATA":
+                    vertical = sample.get("vertical")
+                    if not isinstance(vertical, list) or not vertical:
+                        raise RuntimeError("地下STRATA必须包含真正BlockState剖面")
+                    if sample.get("provenance") != "client_loaded_block_states":
+                        raise RuntimeError("地下详情来源不属于客户端已加载方块")
+                    strata_count += 1
+                    strata_vertical += len(vertical)
+        if not strata_count:
+            raise RuntimeError("P3.8一键自动取证未落盘任何STRATA区块")
         structure_index = scoped_folder/"structure-scanned-v2.csv"
         completed_p26 = len(structure_index.read_text(encoding="utf-8").splitlines()) \
             if structure_index.is_file() else 0
@@ -347,13 +367,17 @@ def run(version: str, p38_materials: bool = False):
                 "persisted_real_client_biome_records":biome_count,
                 "persisted_real_client_terrain_chunks":terrain_count,
                 "completed_p26_material_scans":completed_p26,
+                "p38_actual_strata_chunks":strata_count,
+                "p38_actual_strata_vertical_cells":strata_vertical,
+                "p38_detail_mode":"STRATA_AUTO_EPHEMERAL",
                 "generator_identity":"UNKNOWN",
                 "natural_structure_origin":"UNKNOWN",
                 "raw_private_coordinates_uploaded":False
             },ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
         print("[P36] REAL CLIENT JOINED P1/P2: "
               f"biome records={biome_count}, terrain chunks={terrain_count}, "
-              f"P2.6 completed={completed_p26}; no raw world records exported",flush=True)
+              f"P2.6 v2 completed={completed_p26}, "
+              f"STRATA chunks={strata_count}, vertical cells={strata_vertical}; no raw world records exported",flush=True)
         (out/"navigation.csv").write_text(
             "order,locate_x,locate_z,controlled_nearby_x,controlled_nearby_z\n"
             +"".join(f"{i},{x},{z},{near_x},{near_z}\n"
