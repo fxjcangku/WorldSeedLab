@@ -173,6 +173,17 @@
 
 [P3.1 高16完整域验收与证据边界](P31_REAL_HIGH16_EXHAUSTIVE.md)
 
+## P3.3 / 真实 Fabric 图形客户端协议取证闭环（受控原版世界已验收）
+
+- [x] 启动两版真正的 Fabric GUI 客户端并通过 Quick Play 连到隔离原版专用服务器，在线列表独立确认真实客户端连服。
+- [x] 真实游戏聊天框分别执行五次 `/wsl quart sample` 与一次 `/wsl quart export`；两版均取得真实客户端 HMAC 作用域 CSV，绝不采用模拟客户端证据代替。
+- [x] 两版各五条 CLIENT_OBSERVED quart 位置/群系逐点匹配先前真实生成的 FULL 区块存档真值；群系3 FIT + 2 HOLDOUT，原版模型在高16 `[0,8)` 保留完整 Seed `2731`、拒绝1..7。
+- [x] 真实两版 E2E CI #38515523790、双版本构建 #38515523807 全部成功，保留失败历史及其X11/首启欢迎页修复。
+- [ ] 更多**非零高16**已知世界的真实客户端端到端样本与完整65536高位筛选。
+- [ ] 自定义地形服务器的兼容性/历史区块/未知Salt和完整结构轮廓的严谨正反样本，用户授权的私人服务器手工验证。
+
+[真实图形联机客户端端到端测试](P33_REAL_FABRIC_CLIENT_E2E.md)
+
 ## P3.2 / Client Quart Evidence and Signed Full64 Controls（研发中）
 
 - [x] 为普通 Fabric 客户端接入明确的 `/wsl quart sample/export/clear`，只从已接收 FULL 区块获取真实quart群系，按HMAC世界/维度/世界纪元隔离，用户显式导出本地坐标CSV。
