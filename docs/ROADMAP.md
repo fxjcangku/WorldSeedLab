@@ -232,13 +232,13 @@
 ## P3.6 / 一次授权的自动结构+自定义地形联合取证（真实双版控制世界已验收）
 
 - [x] P3.5 双版真实客户端已证明可以从真实 BlockState 形成完整的沙漠神殿可见轮廓，并以真实受控 StructureStart 独立验证。
-- [x] P3.6 研发分支新增自动蓝陶瓦材料锚点→29×29粗ROI→P3.5严格唯一21×21轮廓的客户端流程，无须手动选两角。
+- [x] P3.6 已合并到 main 的自动蓝陶瓦材料锚点→29×29粗ROI→P3.5严格唯一21×21轮廓的客户端流程，无须手动选两角。
 - [x] 接入一键 `/wsl auto on/off/status`，默认不运行；一次授权还接入现有 P1/P2 群系/地形取证与 P2.6 指纹候选。
 - [x] 有界 FULL 区块检查、延迟候选、临时缺片失败保护、异步写盘和 HMAC 作用域隔离；保存时不证明自然来源与Seed。
 - [x] 新增自动ROI正反例及真实双版GUI受控服务器一键启动 E2E 测试入口。
-- [x] 两版Java25/Gradle9.6.1 `clean build`、P2.7/P2.8/P2.9/Z3与P3.6正反测试实际通过：Actions #38532347569；修复了26.2静态Blocks常量差异。
-- [x] 26.1.2与26.2真正Fabric GUI分别仅一次 /wsl auto on，自动采集4份CLIENT_OBSERVED结构栅格；独立FULL+StructureStart、2FIT+1HOLDOUT及错Salt/Seed对照成功（Actions #38532347680）。
-- [x] 两版客户端真正同步落盘群系与地形：26.1.2=105,984条群系/144区块地形/101个P2.6已扫区块；26.2=107,520条群系/146区块地形/104个P2.6已扫区块；生成器/Salt/自然来源均保留UNKNOWN。
+- [x] 最终源码 `fd481292` 两版Java25/Gradle9.6.1 `clean build`、P2.7/P2.8/P2.9/Z3/P3.6正反例均通过：[Actions #38534515840](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38534515840)；合并后 main `24e4fb34` 双版再次成功：[Actions #38535882551](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38535882551)。
+- [x] 26.1.2与26.2真正Fabric GUI分别仅一次 `/wsl auto on`，自动采集4份CLIENT_OBSERVED结构栅格；独立FULL+StructureStart、2FIT+1HOLDOUT及错Salt/Seed对照成功：[最新 Actions #38534515870](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38534515870)。P3.1–P3.5 相关 PR 必需回归亦通过，PR #25 已合并。
+- [x] 最终 PR E2E 日志核实：26.1.2=107,520条群系/144地形区块/104个P2.6已扫区块；26.2=105,984条群系/148地形区块/106个P2.6已扫区块；生成器/Salt/自然来源均保留UNKNOWN。地下分层档位 `STRATA` 须用户先行显式设置，自动取证不会改变初装 OFF。
 - [ ] 更广泛的自定义地形模型辨识、未知 Salt/历史混合区块真实对照、非零高16负数64位全域搜索；不把结构 low48 冒充完整世界Seed。
 
 **研究定位：** 自动结构取证是低48位的条件约束入口；自定义地形/群系生成器未知时，不能根据神殿材料直接宣称破解后台 Seed。

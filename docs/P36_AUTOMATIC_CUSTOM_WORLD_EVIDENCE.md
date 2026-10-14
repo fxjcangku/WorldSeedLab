@@ -1,6 +1,6 @@
 # P3.6 · 自动客户端建筑轮廓与自定义地形联合取证
 
-> 当前状态：Java25/Gradle9.6.1 双版本构建与真实Fabric GUI一键自动结构+群系+地形联合受控E2E均已 success；目标服务器真实Seed尚未研究完成。
+> 最终状态：P3.6 PR #25 已于2026-10-14合并到 `main`（merge `24e4fb3477585d87484fe14e0661cc515b391412`）；最终功能提交 `fd4812922b171f90ebb945581756a65d7cd2ac82` 的双版本构建、真实 Fabric GUI 自动联合取证及相关 P3.1–P3.5 回归全部 success。合并后 main 双版本构建再次通过。未知目标服务器尚待实测，不能据此宣称已恢复其 Seed。
 
 ## 目标和真实边界
 
@@ -10,7 +10,8 @@ P3.6 解决 P3.5 还要求玩家手动框选两个角的问题：在正常已经
 
 ## 玩家怎么使用
 
-- 进入世界后在游戏聊天输入 `/wsl auto on`。一次授权自动开始，重连、切服、退出后默认关闭。它会一并开启 P1/P2 已加载群系/地貌采样与 P2.6 材料候选，不需要先去设置两个角。
+- 进入世界后在游戏聊天输入 `/wsl auto on`。一次授权自动开始，重连、切服、退出后默认关闭。它会一并开启 P1/P2 已加载群系/基础地貌采样与 P2.6 材料候选，不需要先去设置两个角。
+- **地下分层注意**：P2.2 `DetailMode` 初装默认 `OFF`；`/wsl auto on` 不会自动将其改为 `STRATA`。若希望记录地下稀疏剖面，请在开启自动取证**之前**用 F8 或 `/wsl detail` 选择 `STRATA`（`OFF → SURFACE → STRATA`），然后再 `/wsl auto on`。采集期间无法改档位；`STRATA` 与自动建筑扫描各有读取预算，快速跑图仍可能漏采短暂加载区块。
 - 正常移动并靠近可见沙漠神殿。P3.6 在玩家附近半径2区块内**只读已接收的 FULL chunk**，最多每Tick 256次额外BlockState，逐列寻找真实蓝色陶瓦，自动构造其周围29×29×32粗观测范围。
 - 扫描实际完整三维方块后调用 P3.5 **四条边21/21、唯一21×21完整外形**的严格审核。颜色或材料本身不足以认证自然来源；不完整、遮挡、损坏、边界歧义、未加载区块直接拒绝。缺少 FULL 区块会有有限待补全队列，只能等待玩家正常接收，绝不请求新区块。
 - 通过后异步写入本机原世界指纹/维度目录内 `p36-automatic-footprint/client-auto-desert-*.properties`，继承 P3.5 原始坐标和 CLIENT_OBSERVED；附带 `captureMode=P36_AUTOMATIC_EXPLICIT_OPT_IN`、`naturalOrigin=UNKNOWN`、`generatorProfile=UNKNOWN`、`structureStartKnown=false`。数据并不自动公开。
@@ -20,7 +21,8 @@ P3.6 解决 P3.5 还要求玩家手动框选两个角的问题：在正常已经
 
 ## 性能/隐私/错误保护
 
-- 每 Tick 自动建筑取证至多256次额外读取（独立于既有 P1/P2和P2.6预算）；最多扫描4,096个候选已加载区块、单会话最多64份完整可见轮廓、同时写盘等待队列8条、待 FULL 区块线索24条并设限时。扫描完成数量不是全地图覆盖率。
+- 每 Tick 自动建筑取证至多256次额外读取（独立于既有 P1/P2和P2.6预算）；最多扫描4,096个候选已加载区块、单会话最多64份完整可见轮廓、不同蓝陶瓦坐标线索上限256、同时写盘等待队列8条、待 FULL 区块线索24条并设限时。扫描完成数量不是全地图覆盖率。
+- **已知覆盖限制**：蓝陶瓦查找从首次扫描时玩家的垂直位置选32格高度带；同一区块在本会话完成该带扫描后不会自动以新高度重扫。多个蓝陶瓦锚点可能指向同座建筑；当前尚未对跨重启或所有同座轮廓作持久化去重认证。因此不能把自动存档份数直接解释成独立自然建筑数。
 - 扫描期间客户端原始 FULL chunk 对象发生卸载/替换，就拒绝此次结构证据。不允许把从不同世代/不同维度的材料拼接成完整建筑。真正的生成时代仍不可由同服指纹证明。
 - 写盘采用后台单线程、原子移动与临时文件，无法保存则停止本轮并提示；不把“队列已接收”当“已落盘成功”。
 - 不启动已知/未知后台Seed破解，不猜Salt，不上传私人坐标，且保留独立世界纪元隔离。
@@ -39,7 +41,7 @@ P3.6 解决 P3.5 还要求玩家手动框选两个角的问题：在正常已经
 
 ## 2026-10-14 实际受控 Minecraft 双版本验收
 
-- 验收版本源码：`7daa7c40645df15d498492bc0375be5ea8fd1719`，最后执行实际双版本构建 [Actions #38532347569](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38532347569) 与 [真实Fabric GUI+受控自定义沙漠+独立FULL/Z3 #38532347680](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38532347680)。两版均 success。
+- **最终验收源码**：`fd4812922b171f90ebb945581756a65d7cd2ac82`。最新 PR 双版 `clean build` [#38534515840](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38534515840)、实际 Fabric GUI 自定义沙漠 + P1/P2/P2.6 + 独立 FULL/Z3 [#38534515870](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38534515870)，以及 P3.1–P3.5 相关必需回归均 success；合并提交 `24e4fb3477585d87484fe14e0661cc515b391412` 的 main 双版 `clean build` [#38535882551](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38535882551) 再次 success。此前 `7daa7c4` 的成功结果为历史基线，不应代替最后一次验收。
 - 客户端在进入世界后使用游戏原生聊天输入一次 `/wsl auto on`，后续每一座神殿只有受控服务器用于**导航**的 RCON/tp/forceload，普通客户端不再输入first、second或逐座export。实际客户端自主识别中央蓝陶瓦、29×29×32粗ROI、唯一21×21紧致外缘，原始证据带P36自动授权标志。
 - 服务端结构NBT和真实FULL区块只在全部客户端原始数据**已写盘后**独立读取；每版本4/4被观察结构的真起点落入离散几何允许集合，结构由多种朝向组成，2FIT+1HOLDOUT经实际 Z3 与 Java RNG 找回公开已知Seed2731的低48位，错误Salt/Seed拒绝。
 - 同一 HMAC 世界/维度目录中的客户端 `evidence.jsonl`（群系）、`terrain.jsonl`（地形）是由一键模式实际创建并落盘的。CI只保存匿名记录数汇总，不把原始用户服务器坐标公开。
@@ -50,14 +52,14 @@ P3.6 解决 P3.5 还要求玩家手动框选两个角的问题：在正常已经
 | 一次启用后逐座手动点位/导出命令 | 0 | 0 |
 | 每座实际完整方块读取 | 30,752 | 30,752 |
 | 独立 FULL StructureStart 实际对应 | 4/4 | 4/4 |
-| P1 实际持久化的群系观测记录 | 105,984 | 107,520 |
-| P2 实际持久化的地形区块记录 | 144 | 146 |
-| P2.6 已完成材料索引区块 | 101 | 104 |
+| P1 实际持久化的群系观测记录 | 107,520 | 105,984 |
+| P2 实际持久化的地形区块记录 | 144 | 148 |
+| P2.6 已完成材料索引区块 | 104 | 106 |
 | 受控结构校准+FIT+HOLDOUT | 1+2+1 | 1+2+1 |
 | 真 Z3+Java low48受控2731、错Seed/Salt拒绝 | 通过 | 通过 |
 | 客户端生成器/自然来源/未知Salt | UNKNOWN | UNKNOWN |
 
-早期 [Actions #38531279854](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38531279854) 的26.2失败源于 `Blocks.BLUE_TERRACOTTA` 常量与26.2实际 API 不匹配；已经按项目P2.6成熟的Registry-ID代码修复。首次双版本自动结构E2E [#38531476993](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38531476993) 成功，随后再次加入实机P1/P2落盘校验并通过最新双版本[#38532347680](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38532347680)。历史失败与修复原因保持可审计。
+早期 [Actions #38531279854](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38531279854) 的26.2失败源于 `Blocks.BLUE_TERRACOTTA` 常量与26.2实际 API 不匹配；已经按项目P2.6成熟的Registry-ID代码修复。首次双版本自动结构E2E [#38531476993](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38531476993) 成功，后续 P1/P2 落盘校验 [#38532347680](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38532347680) 成功，最后蓝陶瓦线索内存封顶与异步排空重启保护对应 [#38534515870](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38534515870) 双版再次成功。历史失败与修复原因保持可审计。
 
 **必要限制：** 控制世界 Seed 已知、神殿目标区域由受控服务器辅助导航；这还不是未知服没有导航辅助的自动跑图成功率研究。即使未来获得全部建筑，后台自定义地形噪声和群系生成器未知时高16位仍不能合法推断。矿物、真矿、人工复制建筑和混合历史也不能由本轮实验证明。
 
