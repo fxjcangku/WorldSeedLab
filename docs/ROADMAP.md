@@ -147,6 +147,20 @@
 
 [详细 P2.9 技术与证据边界](P29_GEOMETRY_INVERSION.md) · [真实 Minecraft 已知 Seed 验收](P29_REAL_WORLD_KNOWN_SEED.md)
 
+## P3.0 / Full64 Candidate & Independent High16 Evidence（研发中）
+
+- [x] 完整64位 Seed 的二进制位拼接、高16位有界枚举与 Java signed/unsigned 表示。
+- [x] 受控 Mojang Xoroshiro 实验：用不同于 Legacy RandomSpread 的独立64位敏感模型，验证高16枚举、取消/续跑、证据隔离和反例。
+- [x] 低48位必须先通过结构 FIT + HOLDOUT，高16位必须另外提供独立三维 quart 群系证据及正确版本/维度/生成器指纹；未知模型失败关闭。
+- [ ] 26.1.2 与 26.2 双版本 P3.0 独立 CI 的实际验收。
+- [ ] 利用对应版本 Mojmap 原版 `RandomState` / `MultiNoiseBiomeSource` 精确复播自然生成群系，与**真实受控世界中的已加载区块**进行对照。
+- [ ] 使用真实观测而非控制 RNG 分类，从已知低48候选正确筛选高16位，并在留出样本独立验证。
+- [ ] 不兼容的自定义群系/地形生成器、安全性能上限、不可辨识条件与完整64位可信度分级。
+
+注意：P3.0 **不是已实现真实服务器64位 Seed 破解**；高16位仅在实际64位敏感世界生成模型被确认后才能有意义地筛选。
+
+[详细 P3.0 64位研究验收标准](P30_FULL64_EVIDENCE_RESEARCH.md)
+
 ## P3 / Solver Research — 种子候选
 
 - [ ] 从已验证的结构生成模型研究约束与候选搜索。
