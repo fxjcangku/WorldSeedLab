@@ -60,7 +60,9 @@ placement(seed) == placement(seed + k * 2^48)
 ## 可审核源码
 
 - `src/main/java/io/github/fxjcangku/worldseedlab/core/solver/Full64BiomeCandidateSearch.java`
-- `src/main/java/io/github/fxjcangku/worldseedlab/core/solver/VanillaOverworldBiomeModel.java`\n- `src/test/java/io/github/fxjcangku/worldseedlab/core/P30Full64SmokeTest.java`\n- `src/test/java/io/github/fxjcangku/worldseedlab/core/P30VanillaBiomeNoiseTest.java`\n- `scripts/run_known_seed_server.py` 与双版本实际世界生成工作流
+- `src/main/java/io/github/fxjcangku/worldseedlab/core/solver/VanillaOverworldBiomeModel.java`
+- `src/test/java/io/github/fxjcangku/worldseedlab/core/P30Full64SmokeTest.java`
+- `src/test/java/io/github/fxjcangku/worldseedlab/core/P30VanillaBiomeNoiseTest.java`\n- `scripts/run_known_seed_server.py` 与双版本实际世界生成工作流
 - `gradle -PmcVersion=26.1.2 clean build`
 - `gradle -PmcVersion=26.2 clean build`
 
