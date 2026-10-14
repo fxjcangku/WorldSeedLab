@@ -17,7 +17,7 @@ public record StructureScanEvidence(
         List<StructureCandidate> candidates,
         Instant scannedAt
 ) {
-    public static final int MODEL_VERSION = 1;
+    public static final int MODEL_VERSION = 2;
     private static final Pattern HASH = Pattern.compile("[a-f0-9]{64}");
     private static final Pattern ID = Pattern.compile("[a-z0-9_.-]+:[a-z0-9_./-]+");
 
@@ -33,7 +33,7 @@ public record StructureScanEvidence(
             throw new IllegalArgumentException("invalid or incomplete structure probe coverage");
         }
         candidates = List.copyOf(Objects.requireNonNull(candidates));
-        if (candidates.size() > 6) throw new IllegalArgumentException("too many candidates");
+        if (candidates.size() > 16) throw new IllegalArgumentException("too many candidates");
         Objects.requireNonNull(scannedAt);
     }
 

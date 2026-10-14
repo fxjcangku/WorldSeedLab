@@ -75,6 +75,58 @@ public final class P26StructureRecognitionSmokeTest {
         require(weakShip.get(0).evidenceBlocks().keySet().stream()
                 .noneMatch(x -> x.contains("_ore")), "ores may not enter material witness list");
 
+        // P3.8：稀疏材料只能得出候选，海洋神殿/沉船/海底遗迹不自动成为结构起点。
+        var warm = StructureSignatureDetector.classify(Map.of(
+                "minecraft:sandstone", 24, "minecraft:sandstone_stairs", 8,
+                "minecraft:sandstone_slab", 6, "minecraft:water", 36), 1600);
+        require(warm.size() == 1
+                && warm.getFirst().structureId().equals("minecraft:ocean_ruin_warm")
+                && warm.getFirst().grade() == StructureCandidate.Grade.WEAK,
+                "暖水海底遗迹材料组合仅应产生弱候选");
+        var cold = StructureSignatureDetector.classify(Map.of(
+                "minecraft:stone_bricks", 22, "minecraft:mossy_stone_bricks", 11,
+                "minecraft:cracked_stone_bricks", 8, "minecraft:gravel", 19,
+                "minecraft:water", 55), 1600);
+        require(cold.size() == 1
+                && cold.getFirst().structureId().equals("minecraft:ocean_ruin_cold"),
+                "冷水海底遗迹必须依赖风化石砖+海床碎砾+水");
+        require(StructureSignatureDetector.classify(Map.of(
+                "minecraft:stone_bricks", 24, "minecraft:gravel", 20,
+                "minecraft:water", 70), 1600).isEmpty(),
+                "普通海底石砖/碎砾不能当作冷水遗迹");
+
+        var portal = StructureSignatureDetector.classify(Map.of(
+                "minecraft:obsidian", 11, "minecraft:crying_obsidian", 3,
+                "minecraft:magma_block", 5, "minecraft:water", 20), 1600);
+        require(portal.stream().anyMatch(c ->
+                        c.structureId().equals("minecraft:ruined_portal")
+                                && c.grade() == StructureCandidate.Grade.WEAK),
+                "水下废弃传送门只属于弱材料线索");
+        require(StructureSignatureDetector.classify(Map.of(
+                "minecraft:tuff_bricks", 26, "minecraft:polished_tuff", 15,
+                "minecraft:copper_grate", 11, "minecraft:trial_spawner", 2), 1600)
+                .stream().anyMatch(c -> c.structureId().equals("minecraft:trial_chambers")),
+                "试炼密室多材料候选");
+        require(StructureSignatureDetector.classify(Map.of(
+                "minecraft:sculk", 29, "minecraft:sculk_catalyst", 6,
+                "minecraft:reinforced_deepslate", 4), 1600)
+                .stream().anyMatch(c -> c.structureId().equals("minecraft:ancient_city")),
+                "远古城市特殊材料候选");
+        require(StructureSignatureDetector.classify(Map.of(
+                "minecraft:purpur_block", 30, "minecraft:purpur_pillar", 5,
+                "minecraft:end_rod", 5), 1600)
+                .stream().anyMatch(c -> c.structureId().equals("minecraft:end_city")),
+                "末地城特殊材料候选");
+        require(StructureSignatureDetector.classify(Map.of(
+                "minecraft:nether_bricks", 30, "minecraft:nether_brick_fence", 9), 1600)
+                .stream().anyMatch(c -> c.structureId().equals("minecraft:fortress")),
+                "下界要塞候选");
+        require(StructureSignatureDetector.classify(Map.of(
+                "minecraft:polished_blackstone_bricks", 31,
+                "minecraft:gilded_blackstone", 5), 1600)
+                .stream().anyMatch(c -> c.structureId().equals("minecraft:bastion_remnant")),
+                "堡垒遗迹候选");
+
         expectFail(() -> new StructureCandidate("minecraft:monument",
                 StructureCandidate.Grade.WEAK, fakeOres, 700,
                 "forbidden ore-based confidence"), "ore evidence rejected in data layer");
@@ -95,6 +147,8 @@ public final class P26StructureRecognitionSmokeTest {
         var absence = new StructureScanEvidence(world, "minecraft:overworld", "26.2",
                 -19, 5, 416, 29, 91, List.of(), now);
         String row = StructureEvidenceJson.line(candidate);
+        require(row.contains("\"schema\":2") && row.contains("\"model_version\":2"),
+                "P3.8升级后的材料索引须使用新版本，旧阴性不得阻断重扫");
         require(row.contains("\"natural_origin_verified\":false")
                         && row.contains("\"structure_start_known\":false")
                         && row.contains("\"uses_ore_seed_evidence\":false"),
@@ -109,13 +163,17 @@ public final class P26StructureRecognitionSmokeTest {
         Path directory = Files.createTempDirectory("worldseedlab-p26-");
         try {
             var store = new CompletedChunkStore(directory);
+            Path v1Journal = store.scopedFolder(world, "minecraft:overworld")
+                    .resolve("structure-scanned-v1.csv");
+            Files.createDirectories(v1Journal.getParent());
+            Files.writeString(v1Journal, "-19,5\n", StandardCharsets.UTF_8);
             require(store.loadStructureScanned(world, "minecraft:overworld").isEmpty(),
-                    "no scan journal on new world");
+                    "旧v1扫描阴性索引不应阻止新模型重新扫描");
             store.appendStructureScan(absence);
             require(store.loadStructureScanned(world, "minecraft:overworld")
                     .contains(chunk(-19, 5)), "empty candidate chunk still has scan journal");
             require(!Files.exists(store.scopedFolder(world, "minecraft:overworld")
-                    .resolve("structure-candidates-v1.jsonl")),
+                    .resolve("structure-candidates-v2.jsonl")),
                     "empty scan does not produce a misleading candidate");
 
             var writer = new AsyncEvidenceWriter(store, world, "minecraft:overworld");
@@ -132,7 +190,7 @@ public final class P26StructureRecognitionSmokeTest {
             require(store.loadStructureScanned(world, "minecraft:overworld")
                     .contains(chunk(-20, 5)), "candidate journal is durable");
             var candidateFile = store.scopedFolder(world, "minecraft:overworld")
-                    .resolve("structure-candidates-v1.jsonl");
+                    .resolve("structure-candidates-v2.jsonl");
             require(Files.readAllLines(candidateFile, StandardCharsets.UTF_8).size() == 1,
                     "one scoped candidate JSONL row");
             require(store.loadStructureScanned(world, "minecraft:the_nether").isEmpty(),
@@ -145,7 +203,7 @@ public final class P26StructureRecognitionSmokeTest {
             Path corrupted = directory.resolve("corrupted");
             var optionalStore = new CompletedChunkStore(corrupted);
             Path damagedJournal = optionalStore.scopedFolder(world, "minecraft:overworld")
-                    .resolve("structure-scanned-v1.csv");
+                    .resolve("structure-scanned-v2.csv");
             Files.createDirectories(damagedJournal.getParent());
             Files.writeString(damagedJournal, "broken-coordinate\n", StandardCharsets.UTF_8);
             boolean structureIndexRejected = false;

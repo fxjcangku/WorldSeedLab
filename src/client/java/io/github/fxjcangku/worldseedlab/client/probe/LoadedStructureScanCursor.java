@@ -19,16 +19,20 @@ import net.minecraft.world.level.levelgen.Heightmap;
 /**
  * 在已加载区块对地表和海床附近进行稀疏方块扫描，单 Tick 有界读取。
  *
- * <p>16 个水平列 x 两个地形锚点 x 13 个间隔 2 方块的高度位置；
- * 同一实际方块只取一次。无法检测全部建筑，尤其地下地牢和被地形覆盖的建筑。
+ * <p>P3.8 根据已接收高度图自适应采样密度：普通地形16列，
+ * 水面与海底存在显著高差的区块64列，分别围绕WORLD_SURFACE及OCEAN_FLOOR
+ * 逐Tick有界读取。水下建筑的发现率可能改善，但不代表全高度或天然生成认证；
+ * 同一实际方块只取一次，区块卸载时直接丢弃不完整取证。
  * 采样中区块卸载时不保存“无结构”结论。
  */
 public final class LoadedStructureScanCursor {
-    private static final int[] COLUMNS = {2, 6, 10, 14};
-    private static final int[] OFFSETS = {-12, -10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10, 12};
+    private static final int[] LAND_COLUMNS = {2, 6, 10, 14};
+    private static final int[] WATER_COLUMNS = {1, 3, 5, 7, 9, 11, 13, 15};
+    private static final int[] OFFSETS = {-16, -12, -10, -8, -6, -4, -2, 0, 2, 4, 6, 8, 10, 12, 16};
     private final LevelChunk originalChunk;
     private final int chunkX, chunkZ;
-    private final List<BlockPos> points = new ArrayList<>(416);
+    private final List<BlockPos> points = new ArrayList<>(2048);
+    private final boolean aquaticDetail;
     private final Map<String, Integer> blocks = new HashMap<>();
     private final String fingerprint, dimension, gameVersion;
     private int next;
@@ -46,12 +50,25 @@ public final class LoadedStructureScanCursor {
         if (originalChunk == null) {
             throw new IllegalArgumentException("chunk is not already loaded");
         }
-        Set<Long> seen = new HashSet<>(512);
+        int aquaticColumns = 0;
+        for (int localX : LAND_COLUMNS) {
+            for (int localZ : LAND_COLUMNS) {
+                int surface = originalChunk.getHeight(
+                        Heightmap.Types.WORLD_SURFACE, localX, localZ);
+                int floor = originalChunk.getHeight(
+                        Heightmap.Types.OCEAN_FLOOR, localX, localZ);
+                if (surface - floor >= 5) aquaticColumns++;
+            }
+        }
+        // 较深的水域才提高密度；河海或特殊客户端高度图都只作取证提示。
+        aquaticDetail = aquaticColumns >= 4;
+        int[] columns = aquaticDetail ? WATER_COLUMNS : LAND_COLUMNS;
+        Set<Long> seen = new HashSet<>(2048);
         int min = level.getMinY();
         int max = level.getMaxY() - 1;
         if (max <= min) throw new IllegalArgumentException("invalid build height");
-        for (int localX : COLUMNS) {
-            for (int localZ : COLUMNS) {
+        for (int localX : columns) {
+            for (int localZ : columns) {
                 int top = originalChunk.getHeight(Heightmap.Types.WORLD_SURFACE, localX, localZ) - 1;
                 int oceanFloor = originalChunk.getHeight(
                         Heightmap.Types.OCEAN_FLOOR, localX, localZ) - 1;
@@ -80,6 +97,8 @@ public final class LoadedStructureScanCursor {
 
     public int chunkX() { return chunkX; }
     public int chunkZ() { return chunkZ; }
+    public boolean aquaticDetail() { return aquaticDetail; }
+    public int plannedCells() { return points.size(); }
 
     public void advance(ClientLevel level, int budget) {
         if (budget < 1 || budget > 96) {

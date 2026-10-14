@@ -248,7 +248,7 @@ def run(version: str):
         terrain_count = len(terrain_evidence.read_text(encoding="utf-8").splitlines())
         if biome_count < 1 or terrain_count < 1:
             raise RuntimeError("一键自动模式未产生真实非空客户端群系或地貌记录")
-        structure_index = scoped_folder/"structure-scanned-v1.csv"
+        structure_index = scoped_folder/"structure-scanned-v2.csv"
         completed_p26 = len(structure_index.read_text(encoding="utf-8").splitlines()) \
             if structure_index.is_file() else 0
         (out/"client-coupled-evidence-summary.json").write_text(

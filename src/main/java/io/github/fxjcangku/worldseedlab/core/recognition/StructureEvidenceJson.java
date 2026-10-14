@@ -11,7 +11,7 @@ public final class StructureEvidenceJson {
 
     public static String line(StructureScanEvidence sample) {
         StringBuilder s = new StringBuilder(500);
-        s.append("{\"schema\":1,\"kind\":\"AUTOMATED_MATERIAL_CANDIDATES\",")
+        s.append("{\"schema\":2,\"kind\":\"AUTOMATED_MATERIAL_CANDIDATES\",")
                 .append("\"model_version\":").append(StructureScanEvidence.MODEL_VERSION)
                 .append(",\"world_fingerprint\":").append(q(sample.worldFingerprint()))
                 .append(",\"dimension\":").append(q(sample.dimension()))
