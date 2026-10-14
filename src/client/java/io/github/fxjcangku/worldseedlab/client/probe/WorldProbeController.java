@@ -39,6 +39,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import net.minecraft.client.Minecraft;
@@ -144,6 +145,37 @@ public final class WorldProbeController {
     public long terrainChunksWritten() {
         return terrainCompletedAtStart + (writer == null ? 0 : writer.writtenTerrainChunks());
     }
+
+    /**
+     * 仅用户打开地图时解析当前本机世界身份和维度。
+     * 停止采集后仍可读取历史地图；同服地图重置纪元必须保持独立。
+     */
+    public Optional<MapAccess> mapAccess(Minecraft client) {
+        String source = WorldScopeResolver.discriminator(client);
+        if (source == null || client.level == null || client.player == null) {
+            status = "请先进入可识别的世界再打开观测地图";
+            return Optional.empty();
+        }
+        try {
+            byte[] secret = LocalSecret.loadOrCreate(configRoot);
+            String base = WorldFingerprint.fromLocalSecret(secret, source);
+            String epoch = WorldEpochStore.load(configRoot, base);
+            String localWorld = WorldEpochStore.effectiveFingerprint(secret, source, epoch);
+            String dim = client.level.dimension().identifier().toString();
+            Path scope = new CompletedChunkStore(dataRoot()).scopedFolder(localWorld, dim);
+            var location = client.player.blockPosition();
+            return Optional.of(new MapAccess(scope, dim, location.getX(), location.getZ(),
+                    location.getY(), client.level.getMinY(), client.level.getMaxY()));
+        } catch (IOException | RuntimeException problem) {
+            status = "本地地图作用域读取失败：" + problem.getMessage();
+            logger.error("Cannot open observed map scope", problem);
+            return Optional.empty();
+        }
+    }
+
+    /** 保留精确世界坐标仅用于本机地图窗口，绝不写入公开摘要。 */
+    public record MapAccess(Path folder, String dimension, int x, int z, int y,
+                            int minY, int maxYExclusive) { }
 
     public String exportReport() {
         if (dimensionProfile == null || generationDiagnostics == null) {

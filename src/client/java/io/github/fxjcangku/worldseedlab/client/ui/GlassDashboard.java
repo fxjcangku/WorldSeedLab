@@ -1,6 +1,8 @@
 package io.github.fxjcangku.worldseedlab.client.ui;
 
 import io.github.fxjcangku.worldseedlab.client.probe.WorldProbeController;
+import io.github.fxjcangku.worldseedlab.client.PlatformScreens;
+import io.github.fxjcangku.worldseedlab.client.PlatformScreens;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -71,11 +73,21 @@ public final class GlassDashboard extends Screen {
                 () -> "地形详情: " + controller.settings().detailMode().chineseLabel(),
                 () -> controller.changeSettings(controller.settings().nextDetailMode()), false);
 
+        // 从现有控制台进入已探索地图，切层/缩放不触发区块加载。
+        if (bh >= 435) {
+            button(bx + 18, by + bh - 107, side - 33, 28,
+                    () -> "真实群系地图",
+                    () -> PlatformScreens.openMap(Minecraft.getInstance(), controller), true);
+        }
+
         // 窄画面避免额外按钮与主导航重叠；所有版本仍能使用 /wsl report。
         if (bh >= 450) {
             button(bx + 18, by + bh - 71, side - 33, 28,
                     () -> "导出研究日志", controller::exportReport, false);
         }
+        button(bx + bw - 186, by + 18, 84, 22,
+                () -> "真实地图",
+                () -> PlatformScreens.openMap(Minecraft.getInstance(), controller), true);
         button(bx + bw - 92, by + 18, 70, 22, () -> "关闭", this::onClose, false);
     }
 
