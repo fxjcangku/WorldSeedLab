@@ -42,15 +42,15 @@ public final class ObservedMapScreen extends Screen {
 
     @Override
     protected void init() {
-        bw = Math.min(1080, Math.max(360, width - 20));
-        bh = Math.min(660, Math.max(300, height - 20));
+        bw = Math.min(1080, Math.max(240, width - 20));
+        bh = Math.min(660, Math.max(230, height - 20));
         bx = (width - bw) / 2;
         by = (height - bh) / 2;
         int sidebar = bw >= 700 ? 180 : 118;
         mapX = bx + 16;
         mapY = by + 74;
         mapW = Math.max(100, bw - sidebar - 44);
-        mapH = Math.max(115, bh - 140);
+        mapH = Math.max(75, bh - 140);
         controlX = mapX + mapW + 14;
         controlW = Math.max(78, bx + bw - 14 - controlX);
 
@@ -95,23 +95,28 @@ public final class ObservedMapScreen extends Screen {
         // 使用按钮而非版本相关的 mouseScrolled/mouseDragged，兼容两套 Mojmap API。
         int arrowW = Math.min(44, controlW / 3);
         int middle = controlX + (controlW - arrowW) / 2;
-        action(middle, by + 200, arrowW, 24, () -> "↑",
-                () -> pan(0, -1), false);
-        action(controlX, by + 230, arrowW, 24, () -> "←",
-                () -> pan(-1, 0), false);
-        action(controlX + controlW - arrowW, by + 230, arrowW, 24, () -> "→",
-                () -> pan(1, 0), false);
-        action(middle, by + 260, arrowW, 24, () -> "↓",
-                () -> pan(0, 1), false);
-        action(controlX, by + 302, controlW, 25, () -> "回到玩家",
-                () -> {
-                    centerX = access.x();
-                    centerZ = access.z();
-                    selectedY = access.y();
-                    request();
-                }, false);
-        action(controlX, by + 338, controlW, 25, () -> "刷新已保存地图",
-                this::request, false);
+        // 窄屏或较大 GUI 缩放时，按钮不能落到可用页面外。
+        if (bh >= 380) {
+            action(middle, by + 200, arrowW, 24, () -> "↑",
+                    () -> pan(0, -1), false);
+            action(controlX, by + 230, arrowW, 24, () -> "←",
+                    () -> pan(-1, 0), false);
+            action(controlX + controlW - arrowW, by + 230, arrowW, 24, () -> "→",
+                    () -> pan(1, 0), false);
+            action(middle, by + 260, arrowW, 24, () -> "↓",
+                    () -> pan(0, 1), false);
+        }
+        if (bh >= 460) {
+            action(controlX, by + 302, controlW, 25, () -> "回到玩家",
+                    () -> {
+                        centerX = access.x();
+                        centerZ = access.z();
+                        selectedY = access.y();
+                        request();
+                    }, false);
+            action(controlX, by + 338, controlW, 25, () -> "刷新已保存地图",
+                    this::request, false);
+        }
         request();
     }
 
@@ -240,12 +245,15 @@ public final class ObservedMapScreen extends Screen {
             }
 
             g.text(uiFont, "地图模式", controlX + 10, by + 76, GlassUi.MUTED, false);
-            g.text(uiFont, "Y = " + selectedY, controlX + 7, by + 379,
-                    GlassUi.TEXT, true);
-            g.text(uiFont, "每格 4 × 4 方块", controlX + 7, by + 400,
-                    GlassUi.MUTED, false);
-            g.text(uiFont, "自定义群系按 ID 固定配色", controlX + 7, by + 419,
-                    GlassUi.MUTED, false);
+            if (bh >= 495) {
+                g.text(uiFont, "Y = " + selectedY, controlX + 7, by + 379,
+                        GlassUi.TEXT, true);
+                g.text(uiFont, "每格 4 × 4 方块", controlX + 7, by + 400,
+                        GlassUi.MUTED, false);
+                g.text(uiFont, GlassUi.compact("自定义群系按 ID 固定配色",
+                                Math.max(9, controlW / 7)),
+                        controlX + 7, by + 419, GlassUi.MUTED, false);
+            }
 
             String footer = data.message();
             if (view != null) {
