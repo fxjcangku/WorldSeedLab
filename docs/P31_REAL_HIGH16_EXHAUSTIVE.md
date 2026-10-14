@@ -3,7 +3,7 @@
 > 基线：Minecraft Java 26.1.2 / 26.2，Java25，原生 Fabric / Mojmap。  
 > 本轮目标：对 **P2.9 已证实的一个低48位候选**及**原版 Overworld 生成器假设**，在实际 Minecraft 保存的群系证据下逐项审计高16位 `0..65535`。
 >
-> **结果口径：** 只有本次 32 个分片全部完成、独立汇总器验证从 0 到 65,536 的连续覆盖，并且真实模型候选未超限，才算该受控实验“全域已检查”。未看到汇总器成功结果之前不允许宣称已经完成。
+> **验证状态：** 2026-10-14 的实际 GitHub Actions **32个真实世界生成器搜索分片和1个独立汇总任务全部成功**；对目标 26.1.2 与 26.2 各自严格检查了 **65,536/65,536 种高16位**，两版均唯一剩余已知完整 Seed `2731`。**这个唯一性仅对明确的原版生成模型、一个已知 low48 和这五个真实群系样本成立，不代表任意服务器完整Seed可恢复。**
 
 ## 为什么不是 P3.0 的控制随机数演示
 
@@ -47,6 +47,25 @@ gradle --no-daemon -PmcVersion=26.2 -Pp31ShardIndex=0 -Pp31ShardCount=16 p31Full
 运行一个片**不等于**验证完高16全域。完整运行使用 GitHub Actions 新增的工作流，成功后得到 `P31-FullHigh16-Complete-Controlled-Vanilla` 的 `p31-full64-summary.json`；只有这个文件加上全部真实成功工作日志才构成全域覆盖的工程验收证据。
 
 普通双版本 `gradle -PmcVersion=<version> clean build` 只运行 P3.1 的分片无缺口算法测试和使用真实群系的窄窗口正反例，不会因为正常构建自动产生大规模世界或试图破解服务器。
+
+## 真实执行结果与留存证据
+
+最终 [GitHub Actions #38508647473](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38508647473) 在原始提交 `3c6c8fa4d56d8e9e037f0e1031ea372122fea80d` 上通过。两个游戏版本各有16片，每片实际计算4096个高16值；共计33个CI job均为success。
+
+| 项目 | 26.1.2 | 26.2 |
+|---|---:|---:|
+| 总高16位检查 | 65,536 / 65,536 | 65,536 / 65,536 |
+| 成功分片 | 16 / 16 | 16 / 16 |
+| 输入独立 FULL 存档 quart 样本 | 5（3 FIT + 2 HOLDOUT） | 5（3 FIT + 2 HOLDOUT） |
+| 剩余模型一致完整64位候选 | 1 | 1 |
+| 十六进制完整64位位型 | `0000000000000aab` | `0000000000000aab` |
+| Java long 十进制 | `2731` | `2731` |
+| 候选空间状态 | `FULL_HIGH16_DOMAIN_CHECKED` | `FULL_HIGH16_DOMAIN_CHECKED` |
+| 汇总器7项正反例 | 全部通过 | 全部通过 |
+
+可审计的汇总报告已放入 [`docs/evidence/P31_REAL_FULL64_HIGH16_2026-10-14.json`](evidence/P31_REAL_FULL64_HIGH16_2026-10-14.json)，源自 Actions 产物 `P31-FullHigh16-Complete-Controlled-Vanilla`；核心求解日志与32份分片产物均可从上述 Actions 查阅。
+
+**统计释义：** 完整枚举指的是固定 `low48=2731` 条件下的65,536种高位，而不是遍历 `2^64` 个世界种子，也没有从服务端后门读取64位Seed。
 
 ## 64位 Seed 的解释边界
 
