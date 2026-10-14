@@ -300,3 +300,17 @@ tasks.register('p29RealWorldStructureTest', JavaExec) {
     args providers.gradleProperty('knownSeedCsv').orElse('NO_CONTROL_WORLD_INPUT').get(),
          targetMinecraft
 }
+
+
+// P3.0 / 64位候选研究：只验证高16位组合、独立证据门控和全域有限枚举。
+// 真实 Mojang Xoroshiro 控制实验不得冒充原版群系世界生成器。
+tasks.register('p30Full64SmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Check complete high16 domain, signed full64 bits and fail-closed biome evidence.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P30Full64SmokeTest'
+}
+tasks.named('check') {
+    dependsOn tasks.named('p30Full64SmokeTest')
+}
