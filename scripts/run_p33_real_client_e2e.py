@@ -190,6 +190,15 @@ def run(version: str):
     (server_dir / "server.properties").write_text(
         "".join(k + "=" + v + "\n" for k, v in properties.items()), encoding="utf-8")
     (server_dir / "eula.txt").write_text("eula=true\n", encoding="utf-8")
+    # Minecraft 自带首启偏好；全新 CI 必须跳过 Narrator/Accessibility 欢迎弹窗。
+    # 这不会更改完整世界 Seed、生成器、客户端可见群系或取证数据。
+    # 用户正式使用模组时不改变其已有游戏设置。
+    client_options = server_dir / "options.txt"
+    if client_options.exists():
+        raise RuntimeError("new controlled P3.3 CI must not reuse old client options")
+    client_options.write_text(
+        "onboardAccessibility:false\nnarrator:0\npauseOnLostFocus:false\n",
+        encoding="utf-8")
     env = os.environ.copy()
     env["DISPLAY"] = ":97"
     env["XDG_SESSION_TYPE"] = "x11"
