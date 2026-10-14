@@ -35,8 +35,17 @@ jobs:
         with:
           gradle-version: '9.6.1'
 
+      - name: Install local Z3 for exact controlled-world inverse checks
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq z3
+          z3 --version
+
       - name: Build real known-seed world and read authoritative structure NBT
         run: python3 -u scripts/run_known_seed_server.py --minecraft=${{ matrix.minecraft }}
+
+      - name: Invert low48 from actual serialized StructureStart
+        run: gradle --no-daemon --console=plain -PmcVersion=${{ matrix.minecraft }} -PknownSeedCsv=build/p29-realworld/${{ matrix.minecraft }}/real_structure_starts.csv p29RealWorldStructureTest
 
       - name: Upload controlled-world audit (without complete world save)
         if: always()
