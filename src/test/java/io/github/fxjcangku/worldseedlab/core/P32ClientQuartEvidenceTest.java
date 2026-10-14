@@ -58,9 +58,10 @@ public final class P32ClientQuartEvidenceTest {
                         "generatorProfile=worldseedlab:unknown_worldgen",
                         "generatorProfile=minecraft:vanilla_overworld")),
                         "客户端不能自行声明已验证原版生成器");
-                expectFail(() -> ClientQuartEvidenceArchive.decode(encoded.replace(
-                        "dimension=minecraft:overworld", "dimension=minecraft:the_nether")),
-                        "重新导入也不能隐式改变世界作用域");
+                expectFail(() -> ClientQuartEvidenceArchive.decodeForScope(encoded.replace(
+                        "dimension=minecraft:overworld", "dimension=minecraft:the_nether"),
+                        captured.scope()),
+                        "不能把修改维度后的文件误绑定到当前受信世界作用域");
                 expectFail(() -> ClientQuartEvidenceArchive.decode(encoded.replace(
                         "a".repeat(64), "not_a_fingerprint")), "HMAC 世界指纹非法应拒绝");
                 String rows = encoded.replace("quart_x,quart_y,quart_z,biome_id,split\n",
