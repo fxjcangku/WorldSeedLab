@@ -4,6 +4,7 @@ import io.github.fxjcangku.worldseedlab.core.solver.RandomSpreadMath;
 import io.github.fxjcangku.worldseedlab.core.solver.RandomSpreadSpec;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType;
+import net.minecraft.server.Bootstrap;
 
 /**
  * 直接使用 CI 对应版本 Minecraft 本体作规则预言机，不依赖其它破解工具。
@@ -16,6 +17,9 @@ public final class P27MinecraftParityTest {
     }
 
     public static void main(String[] args) {
+        // Minecraft 的结构类型和 Registry Codec 必须在游戏 Bootstrap 之后使用。
+        // 这里只初始化离线测试的原版注册表，不连接服务器，也不会加载世界。
+        Bootstrap.bootStrap();
         int inspected = 0;
         for (RandomSpreadSpec spec : new RandomSpreadSpec[] {
                 new RandomSpreadSpec("minecraft:research_linear", 32, 8,
