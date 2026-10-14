@@ -121,6 +121,26 @@ public record StartPlacementConstraint(
         if (!structureSetId.equals(spec.structureSetId())) {
             throw new IllegalArgumentException("structure set ID mismatch");
         }
+        // P2.7/P2.8 绝大多数约束只有一个矩形：保持零集合分配的快路径。
+        // 否则百万级 Java 窗口搜索会因每个 Seed 新建 HashSet 显著退化。
+        if (alternativeStartChunks.size() == 1) {
+            ChunkBounds b = alternativeStartChunks.getFirst();
+            long fromX = Math.floorDiv(b.minX(), spec.spacing());
+            long toX = Math.floorDiv(b.maxX(), spec.spacing());
+            long fromZ = Math.floorDiv(b.minZ(), spec.spacing());
+            long toZ = Math.floorDiv(b.maxZ(), spec.spacing());
+            if ((toX - fromX + 1) * (toZ - fromZ + 1) > 64) {
+                throw new IllegalArgumentException("candidate region too broad");
+            }
+            for (long rx = fromX; rx <= toX; rx++) {
+                for (long rz = fromZ; rz <= toZ; rz++) {
+                    RandomSpreadMath.Chunk predicted =
+                            RandomSpreadMath.potentialChunk(low48Seed, (int) rx, (int) rz, spec);
+                    if (b.contains(predicted.x(), predicted.z())) return true;
+                }
+            }
+            return false;
+        }
         Set<Long> seenRegions = new HashSet<>();
         for (ChunkBounds b : alternativeStartChunks) {
             long fromX = Math.floorDiv(b.minX(), spec.spacing());
