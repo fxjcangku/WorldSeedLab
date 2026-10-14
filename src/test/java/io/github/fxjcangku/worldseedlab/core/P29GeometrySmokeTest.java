@@ -117,15 +117,34 @@ public final class P29GeometrySmokeTest {
                 "gap must exist inside the display-only envelope");
         check(first.alternativeStartChunks().stream().noneMatch(b -> b.contains(gapX, trueZ)),
                 "gap must not be represented by any hypothesis");
+        boolean witnessedEnvelopeFalsePositive = false;
         for (long probe = 0; probe < 80_000; probe++) {
             var placement = RandomSpreadMath.potentialChunk(probe,
                     REGIONS[0][0], REGIONS[0][1], SPEC);
             if (placement.x() == gapX && placement.z() == trueZ) {
                 check(!first.matchesPlacement(probe, SPEC),
                         "Java candidate validation must reject an envelope-only false positive");
+                witnessedEnvelopeFalsePositive = true;
                 break;
             }
         }
+
+        check(witnessedEnvelopeFalsePositive,
+                "fixture must actually contain a negative seed landing in the display-only gap");
+
+        // 非二幂 nextInt 的接受条件应保护选中的 Region，而非强制所有候选朝向。
+        var nonPower = new RandomSpreadSpec(SET_ID, 32, 8,
+                RandomSpreadSpec.Distribution.TRIANGULAR, -91);
+        var symbolicNonPower = SymbolicRandomSpread.generate(
+                new SolverResearchInput(Map.of(SET_ID, nonPower),
+                        parse(syntheticManifest("26.2", 4096)).constraints(),
+                        CandidateSeedSearch.SearchWindow.bounded(0, 4096)),
+                new SymbolicRandomSpread.Options(3, 20_000, 96), List.of());
+        check(symbolicNonPower.smtLib2().contains("_accept"),
+                "bounded rejection guard should appear in non-power-of-two SMT");
+        check(symbolicNonPower.smtLib2().lines().noneMatch(line ->
+                        line.startsWith("(assert (or fit_")),
+                "unselected region rejection guards must not become unconditional assertions");
 
         checkFailureForUnsupportedScope();
         System.out.println("WorldSeedLab P2.9 geometry alternatives and offline parsing passed.");
