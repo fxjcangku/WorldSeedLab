@@ -100,7 +100,20 @@
 
 **P2.6 不能破解世界 Seed**：自动材料候选不能冒充原版结构生成起始坐标。
 
-## P2.7 / Structure Placement（数学模型）
+## P2.7 / Structure Placement & Bounded Seed Search（数学内核）
+
+- [x] 独立 48bit Legacy RNG、Java 拒绝采样、LINEAR/TRIANGULAR 分布及 RandomSpread 潜在区块计算。
+- [x] 真实 26.1.2 与 26.2 两版本类对照验证（每版 162 组不同 Salt/负 region/种子输入）。
+- [x] 有界低48候选搜索：FIT/HOLDOUT、跨世界隔离、重复 Region 拒绝、超时/取消/精确续跑。
+- [x] 本地显式输入的研究 CLI 及属性文件大小/格式校验。
+- [ ] 多结构候选起点几何逆推与受控已知 Seed 真正生成起点的实机对照。
+- [ ] 高效搜索未知低48全空间的约束反演算法及 P3 后续完整64位 Seed 验证。
+- [ ] 目标服务器真实结构放置配置（含 Salt/spacing）的可靠来源与兼容性验证。
+- [ ] runClient 与真实服务器验证；当前只有离线数学和 CI 测试。
+
+**注意：当前 bounded 枚举不是高效解完整 48 位全空间的算法，也不是完整世界 Seed。**
+
+## P2.7 / 原始兼容性研究余项
 
 - [ ] 查验 26.1.2、26.2 真实 Mojmap 结构放置实现并原创复现。
 - [ ] 从精确或有边界的建筑起点证据建立 Region / salt / RNG 约束。

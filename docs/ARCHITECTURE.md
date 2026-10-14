@@ -64,3 +64,29 @@ client/ui/*   ← 只读取 Controller 当前会话快照，绝不自己取世�
 ## 研究结论的边界
 
 普通玩家无法直接得知服务器完整生成器配置和原始 Seed。P2 的地形/维度特征只能提供**观测证据**；是否符合某套原版世界生成规则，需要独立实现该规则并使用结构起始坐标与留出样本验证。P2 在没有确证模型时必须报告 `UNKNOWN`。
+
+## P2.7 结构放置与求解（离线）
+
+```text
+已验证的结构集合参数 + 起始区块几何约束
+                │
+                ▼
+core/solver/RandomSpreadSpec + StartPlacementConstraint
+                │
+                ▼
+core/solver/LegacyLcg48 + RandomSpreadMath
+                │
+                ├─ 目标 Minecraft 26.1.2 / 26.2 本体对照
+                ▼
+core/solver/CandidateSeedSearch
+     FIT 搜索 → HOLDOUT 检验 → LOW48 候选
+                │
+                ▼
+core/solver/SolverResearchCli（显式离线输入）
+```
+
+- `core/solver` 为纯 Java，**不依赖 Fabric、客户端世界对象或网络**。
+- 求解器只提供有界、可恢复的低 48 位枚举；真实 Seed 的完整逆向仍为 P3 研究。
+- P2.6 材料候选没有精确结构起始坐标，不能自动提升为 P2.7 输入。
+- 未公开或自定义的结构 Salt、频率/排除规则等会影响结论，模型无从自动得知。
+- CI 对照的是**潜在结构放置区块**，不代表所有 Minecraft 结构实际自然生成。

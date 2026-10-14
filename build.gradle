@@ -188,3 +188,44 @@ tasks.register('p26StructureSmokeTest', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('p26StructureSmokeTest')
 }
+
+
+// P2.7：纯 Java 有界候选求解器 + 对实际目标 Minecraft 本体的结构随机放置对照。
+tasks.register('p27SolverSmokeTest', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P27SolverSmokeTest'
+}
+
+tasks.register('p27MinecraftParityTest', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P27MinecraftParityTest'
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('p27SolverSmokeTest')
+    dependsOn tasks.named('p27MinecraftParityTest')
+}
+
+// P2.7 离线研究入口：显式传入本机配置文件，不接入游戏 Tick/GUI。
+tasks.register('p27ResearchCli', JavaExec) {
+    group = 'research'
+    description = 'Run an explicit bounded low48 random-spread constraint experiment offline.'
+    dependsOn tasks.named('classes')
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.solver.SolverResearchCli'
+    args providers.gradleProperty('solverInput').orElse('NO_SOLVER_INPUT').get()
+}
+
+tasks.register('p27InputSmokeTest', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P27ResearchInputSmokeTest'
+}
+tasks.named('check') {
+    dependsOn tasks.named('p27InputSmokeTest')
+}
