@@ -250,9 +250,13 @@ def run(version: str):
         xcmd("windowfocus", "--sync", window, env=input_env)
         xcmd("mousemove", "--window", window, "512", "636", env=input_env)
         xcmd("click", "1", env=input_env)
-        time.sleep(3)
+        # X11中第一次鼠标操作可能只完成窗口聚焦，鼠标悬停不能视作已点按钮。
+        # Welcome 页面底部 Continue 由 Enter 键真正确认，随后真实 Quick Play 开始连服。
+        time.sleep(0.9)
+        xcmd("key", "--clearmodifiers", "Return", env=input_env)
+        time.sleep(4)
         screenshot(out / "controlled-client-after-welcome.png", input_env)
-        print("[P33] Clicked actual Minecraft first-run accessibility Continue",flush=True)
+        print("[P33] Clicked then pressed Enter on actual Minecraft accessibility Continue",flush=True)
 
         def player_name():
             try:
