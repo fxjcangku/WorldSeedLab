@@ -90,13 +90,49 @@ def xcmd(*args, env):
                                    text=True, timeout=15).strip()
 
 
-def visible_minecraft_window(env):
-    # 不把Xvfb根窗口当作游戏；适配目标版本的窗口标题/WM_CLASS。
-    for mode in (("--name", "Minecraft"), ("--class", "minecraft")):
-        found = subprocess.run(["xdotool","search","--onlyvisible",*mode],
-                               env=env,text=True,capture_output=True,timeout=10)
-        if found.returncode == 0 and found.stdout.strip():
-            return found.stdout.strip().splitlines()[-1]
+def client_display_environments(base_env):
+    """Fabric Loom's runClient uses nested xvfb-run, potentially DISPLAY=:99.
+
+    The actual game JVM's DISPLAY/XAUTHORITY are authoritative; the outer Gradle
+    task and our script can be on a different virtual desktop. Never choose
+    a window on the wrong display to fake a successful client interaction.
+    """
+    yield base_env
+    found = {(base_env.get("DISPLAY"), base_env.get("XAUTHORITY"))}
+    for item in Path("/proc").glob("[0-9]*/cmdline"):
+        try:
+            command = item.read_bytes().replace(b"\\x00", b" ").decode("utf-8", "replace")
+            if not any(part in command for part in (
+                    "net.fabricmc.devlaunchinjector", "net.fabricmc.loader.impl.launch",
+                    "net.minecraft.client.main.Main")):
+                continue
+            values = dict(field.split("=", 1)
+                for field in (chunk.decode("utf-8", "replace")
+                    for chunk in (item.parent / "environ").read_bytes().split(b"\\x00"))
+                if "=" in field and field.split("=",1)[0] in
+                    ("DISPLAY", "XAUTHORITY", "XDG_SESSION_TYPE"))
+            display = values.get("DISPLAY")
+            if not display:
+                continue
+            marker = (display, values.get("XAUTHORITY"))
+            if marker in found:
+                continue
+            found.add(marker)
+            local = dict(base_env)
+            local.update(values)
+            yield local
+        except (OSError, PermissionError, UnicodeError, ValueError):
+            continue
+
+
+def visible_minecraft_window(base_env):
+    # 只选择当前实际游戏JVM X11 display上的已映射窗口。
+    for env in client_display_environments(base_env):
+        for mode in (("--name", "Minecraft"), ("--class", "minecraft")):
+            found = subprocess.run(["xdotool","search","--onlyvisible",*mode],
+                                   env=env,text=True,capture_output=True,timeout=10)
+            if found.returncode == 0 and found.stdout.strip():
+                return found.stdout.strip().splitlines()[-1], env
     return None
 
 
@@ -167,6 +203,8 @@ def run(version: str):
     server = None
     client = None
     wm = None
+    game_wm = None
+    input_env = env
     try:
         time.sleep(2)
         if display.poll() is not None:
@@ -195,8 +233,16 @@ def run(version: str):
         # 必须等待游戏映射实际窗口，不能用仅有Mod初始化日志替代成功。
         wait_until(lambda:visible_minecraft_window(env) is not None,
                    140, "Minecraft window not created", server, client)
-        print("[P33] Actual Fabric runClient initialized + X11 game window exists",
-              flush=True)
+        window, input_env = visible_minecraft_window(env)
+        if input_env["DISPLAY"] != env["DISPLAY"]:
+            # Loom devLauncher is wrapped in its own Xvfb. Use its XAUTHORITY,
+            # not the script's empty outer display where xdotool finds nothing.
+            game_wm = subprocess.Popen(["openbox", "--sm-disable"],cwd=ROOT,
+                       env=input_env,stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL,start_new_session=True)
+            time.sleep(2)
+        print("[P33] Actual Fabric runClient X11 window is on "
+              + input_env["DISPLAY"] + " (nested Loom display discovered)",flush=True)
 
         def player_name():
             try:
@@ -211,9 +257,10 @@ def run(version: str):
                    server,client)
         player = player_name()
         print("[P33] Actual Minecraft client connected over server protocol", flush=True)
-        window = visible_minecraft_window(env)
-        if not window:
+        match = visible_minecraft_window(env)
+        if not match:
             raise RuntimeError("Minecraft game window vanished after login")
+        window, input_env = match
 
         for i, (qx,qy,qz) in enumerate(POSITIONS):
             for ex,_,ez in POSITIONS[:i]:
@@ -228,11 +275,11 @@ def run(version: str):
             if "No entity was found" in teleported:
                 raise RuntimeError("Player teleport failed")
             time.sleep(9)
-            chat(window,"/wsl quart sample",env)
+            chat(window,"/wsl quart sample",input_env)
             print(f"[P33] Typed real CLIENT command {i+1}/5, "
                   f"at controlled block quart ({qx},{qy},{qz})",flush=True)
 
-        chat(window,"/wsl quart export",env)
+        chat(window,"/wsl quart export",input_env)
         try:
             match = []
             until = time.monotonic() + 18
@@ -252,7 +299,7 @@ def run(version: str):
             print("[P33] Real /wsl quart export generated 1 HMAC-scoped CSV; "
                   "copying only PUBLIC controlled fixture for CI validation",flush=True)
         finally:
-            screenshot(out/"controlled-client-final.png",env)
+            screenshot(out/"controlled-client-final.png",input_env)
     except Exception as e:
         if client:
             print("[P33] CLIENT LOG TAIL\n"+client.tail(),flush=True)
@@ -291,7 +338,7 @@ def run(version: str):
                           + "\n".join(dump[index:index+13]),flush=True)
             except (OSError,PermissionError,ValueError,subprocess.TimeoutExpired):
                 pass
-        screenshot(out/"controlled-client-failure.png",env)
+        screenshot(out/"controlled-client-failure.png",input_env)
         raise
     finally:
         if client:
@@ -302,6 +349,13 @@ def run(version: str):
             except (OSError,RuntimeError,TimeoutError):
                 pass
             server.stop()
+        if game_wm is not None and game_wm.poll() is None:
+            os.killpg(game_wm.pid, signal.SIGTERM)
+            try:
+                game_wm.wait(timeout=4)
+            except subprocess.TimeoutExpired:
+                os.killpg(game_wm.pid, signal.SIGKILL)
+                game_wm.wait(timeout=4)
         if wm is not None and wm.poll() is None:
             os.killpg(wm.pid, signal.SIGTERM)
             try:
