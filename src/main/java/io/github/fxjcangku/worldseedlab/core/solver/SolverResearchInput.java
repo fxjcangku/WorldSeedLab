@@ -95,7 +95,7 @@ public record SolverResearchInput(
                         + "or mix with manually entered chunk bounds");
             }
             var observed = new StructureFootprintInverter.ObservedFootprint(
-                    world, version, dimension, setId,
+                    world, version, dimension, setId, required(p, geometry + "structureId"),
                     new StructureFootprintInverter.BlockBounds(
                             integer(p, geometry + "minBlockX"),
                             integer(p, geometry + "minBlockZ"),
@@ -119,6 +119,7 @@ public record SolverResearchInput(
                         required(p, c + "gameVersion"),
                         required(p, c + "dimension"),
                         required(p, c + "structureSet"),
+                        required(p, c + "structureId"),
                         required(p, c + "variant"),
                         new StructureFootprintInverter.BlockBounds(
                                 integer(p, c + "control.minBlockX"),
