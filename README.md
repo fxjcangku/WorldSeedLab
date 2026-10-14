@@ -135,6 +135,18 @@ P2.7 已确认的 Minecraft Legacy RandomSpread 数学模型现可转换成**可
 
 [查看 P3.0 的准确能力与后续高16位验证条件](docs/P30_FULL64_EVIDENCE_RESEARCH.md)
 
+## P3.9 / 真实客户端证据直接进行种子反演（本机Z3，不再手工填写起点）
+
+本轮新增 **真正的反演执行入口**，输入 `observations.zip` / 本机 HMAC 世界原始取证目录即可。自动读取完整21×21的 P3.6/P3.5 真实方块轮廓，按受控真世界几何校准建立独立 RandomSpread FIT/HOLDOUT，实际调用 Z3 求低48位候选，再由精确 Java RNG 复核；可选真实quart+显式原版生成器假设进行高16条件筛选。**这并不证明未知自定义服务器生成器/建筑自然来源/Salt。**
+
+```powershell
+python scripts/recover_seed.py --input "D:\WorldSeedLabData\observations.zip" --minecraft 26.2
+```
+
+**首次真实源码 E2E：** [P3.9 两版本真实Minecraft客户端→Z3求解](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38567833619) 已在26.1.2公开受控世界用四份实际客户端轮廓计算回 `LOW48_MODEL_CANDIDATE=0x000000000aab`（十进制2731，3FIT+1HOLDOUT）。CI采用受控窗口0～4096，真正目标服运行默认全低48模型域，但有严格计算上限，超时/截断不可误报已穷举。最终版本成功状态以PR #34最新CI为准。
+
+**针对你上传的首批真实 `observations.zip`：完整神殿轮廓文件为0**，因此会安全报告 `RESULT=INSUFFICIENT_GEOMETRY_EVIDENCE`，不能凭大量Terralith群系和高度图直接编造世界Seed。自定义世界高16位仍需可复算的真实生成器算法，而不是再增加更多花哨UI。详见 [P3.9直接求解说明](docs/P39_REAL_CLIENT_SEED_RECOVERY.md)。
+
 ## P3.8 / 全中文多结构自动取证与自定义地形联合研究（研发验收中）
 
 **P3.8 地形核心增强（叠加研发 PR #33）**：`/wsl auto on` 不再仅收集P1群系/P2高度，而是临时开启P2.2真实地下STRATA与海床多高度图，停止后恢复用户此前的详细取证设置、不修改配置文件。新增 `P38TerrainCandidateAudit` 纯离线前向地形模型接口，对同一世界与版本的真实16列高度图、空间间隔≥1024格的2 FIT + 1 HOLDOUT进行有限候选Seed排除；任何未独立验证的生成器/未知Salt均保留UNKNOWN。**现阶段不具备未知自定义生成器的可靠逆函数，也没有证明已破解完整64位Seed**。此项必须通过真实双版本GUI的一次授权、实际STRATA落盘与独立负例后方可标为正式支持。[实现边界](docs/P38_CUSTOM_TERRAIN_AND_STRUCTURES.md)。

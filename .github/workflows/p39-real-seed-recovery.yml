@@ -6,6 +6,8 @@ on:
       - '.github/workflows/p39-real-seed-recovery.yml'
       - 'src/main/java/io/github/fxjcangku/worldseedlab/core/solver/RealClientSeedRecoveryCli.java'
       - 'src/test/java/io/github/fxjcangku/worldseedlab/core/P39RealSeedRecoverySmokeTest.java'
+      - 'scripts/recover_seed.py'
+      - 'scripts/test_recover_seed.py'
       - 'src/main/java/io/github/fxjcangku/worldseedlab/core/geometry/**'
       - 'src/main/java/io/github/fxjcangku/worldseedlab/core/solver/**'
       - 'scripts/run_p35_real_client_footprint.py'
@@ -35,6 +37,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.6.1'
+      - name: Python P3.9 automatic quart provenance, source privacy and blocking tests
+        run: |
+          python3 -m py_compile scripts/recover_seed.py scripts/test_recover_seed.py
+          python3 -u scripts/test_recover_seed.py -v
       - name: Install actual virtual GUI and local SMT solver
         run: |
           sudo apt-get update -qq

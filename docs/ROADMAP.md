@@ -229,6 +229,13 @@
 
 [研究边界与当前测试状态](P35_CLIENT_VISIBLE_DESERT_FOOTPRINT.md)。合成测试及仅有客户端材料识别都不能代替实际正常玩家可见轮廓；未验证不得合并 main。
 
+## P3.9 / 客户端证据自动导入并真正运行种子反演
+
+- [ ] 源码已实现：实际P3.6/P3.5完整轮廓ZIP/目录直接读取、严格21×21栅格审计、同HMAC/版本/维度与独立Region约束、受控两版本真实校准、真正本机Z3低48搜索与精确Java FIT/HOLDOUT、可选显式原版模型的高16位搜索。最新CI全部通过后才标为正式可用。
+- [ ] 真正Minecraft双版服务端+Fabric GUI产出4份客户端轮廓，**无需手填StructureStart**；新CLI单独在本机Z3中反演已知世界Seed2731，并保留与服务端FULL NBT的后验独立性。
+- [ ] 未知自定义服务器只有 P1/P2/Terralith 注册ID没有完整可信轮廓时严格返回`INSUFFICIENT_GEOMETRY_EVIDENCE`，不得谎称破解；自定义生成器前向模型、未知Salt、多代混合与高16全域验证仍需真正算法研究而非建筑列表。
+- [P3.9 真实求解器实现与数学门槛](P39_REAL_CLIENT_SEED_RECOVERY.md)
+
 ## P3.8 / 多结构自动材料识别 + 中文研究控制台（当前研发分支）
 
 - [ ] **P3.8地形研究主线**：一次 `/wsl auto on` 临时启用P2.2 STRATA（不改变玩家持久偏好），随P1三维群系、P2多高度图、P2.6多建筑材料一并采集。强制双版本真实runClient测出非空 `terrain-detail.jsonl` 及真实地下BlockState。
