@@ -135,6 +135,16 @@ P2.7 已确认的 Minecraft Legacy RandomSpread 数学模型现可转换成**可
 
 [查看 P3.0 的准确能力与后续高16位验证条件](docs/P30_FULL64_EVIDENCE_RESEARCH.md)
 
+## P3.7 / 自定义地形生成器与完整64位可辨识性（离线研究首阶段，待验收）
+
+**不再只分析沙漠神殿。** P3.7 新增本机只读 `scripts/research_p37_custom_worldgen.py`，可对 P1 真实 quart 群系、P2 真实 WORLD_SURFACE 高度和显式开启的 STRATA 地层进行分源审计：统计独立宏区域、检测非原版群系注册ID、识别同一块重复高度的可疑变化，区分“未修改原版群系模型不适用”“生成器未知”“完整64位无法辨识”。输出匿名中文摘要或JSON，不泄露私人坐标、世界HMAC或地址。
+
+```powershell
+python scripts/research_p37_custom_worldgen.py --input "D:\取证\observations.zip" --json-out "D:\取证\p37-anonymous-summary.json"
+```
+
+当前只是P3.7.0离线证据资格/模型兼容性门控，**没有实现未知自定义生成器的前向逆函数，也没有从你的未知服务器恢复64位Seed**。详见 [P3.7研究方法](docs/P37_CUSTOM_WORLDGEN_IDENTIFIABILITY.md)。
+
 ## P3.6 / 自定义地形与建筑自动联合取证（双版本受控实机已通过）
 
 **P3.6.2 长期跑图加强正在验收：** 已扫描区块不再到4096就终止自动模式，改为4096条上限的滚动近期缓存，旧区块再次经过可能被重扫（批次≠唯一覆盖）。仍保留单Tick256次额外方块读取、64份轮廓与256材料线索等安全上限；同时为P3.7增加只读离线自定义地形分析，不在客户端声称破解未知Salt或64位Seed。待新CI验收后更新完成状态。

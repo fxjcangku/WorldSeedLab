@@ -42,6 +42,16 @@ gradle -PmcVersion=26.2 runClient
 - P2.2 **地下稀疏分层首次默认为 OFF**；要分析自定义地下地层，先用 F8/`/wsl detail` 选 `STRATA`，再开启 `/wsl auto on`。详情档位不能在采集中途更改。
 - 早期 P3.6 真实联机验收 [#38534515870](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38534515870) 已通过；后续 P3.6.1 修复高空扫描漏检、区块卸载诊断、同座去重，最新双版本 [真实 Fabric GUI #38549576931](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576931) 与 [clean build #38549576956](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38549576956) 全成功。所有研究仅来自受控已知 Seed=2731，未知 Salt/自定义生成器/完整64位仍待独立研究。详情见 [P3.6报告](P36_AUTOMATIC_CUSTOM_WORLD_EVIDENCE.md)。
 
+## P3.7 · 对已有真实自定义地形证据做离线审计
+
+只需 Python 3.12 标准库。可以离线处理已保存的单一 `observations.zip`，**不会重新加入服务器，也不会自动运行未知Salt或完整64位逆推**：
+
+```powershell
+python scripts/research_p37_custom_worldgen.py --input "D:\取证\observations.zip" --json-out "D:\取证\p37-anonymous-summary.json"
+```
+
+结果是匿名群系/高度/地层统计与严格的生成器 `UNKNOWN` 门控。真实ZIP中包含多世界、来源伪造、截断JSONL或作用域不一致时拒绝混合。离线Python脚本测试走独立 `p37-evidence-audit.yml`，不改变普通Java25/Fabric用户的Gradle构建依赖。参阅 [P3.7研究边界](P37_CUSTOM_WORLDGEN_IDENTIFIABILITY.md)。
+
 ## P1 真实群系采集
 
 进入世界后按 **F8**，或输入 `/wsl gui`。初次启动采集开关关闭。确认服务器规则后手动点击启动，可以在后台正常跑图。已加载区块的群系通过 `ClientLevel.getBiome` 读取；停止、断线或换维度后安全停机。

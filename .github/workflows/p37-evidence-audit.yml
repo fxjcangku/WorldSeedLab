@@ -1,0 +1,31 @@
+name: P3.7 Custom Worldgen Offline Evidence Research
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/p37-evidence-audit.yml'
+      - 'scripts/research_p37_custom_worldgen.py'
+      - 'scripts/test_p37_custom_worldgen.py'
+      - 'docs/P37_CUSTOM_WORLDGEN_IDENTIFIABILITY.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Bounded private-evidence model gate and negatives
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python 3.12 standard library only
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Syntax and isolated compatibility/negative regression
+        run: |
+          python3 -m py_compile scripts/research_p37_custom_worldgen.py scripts/test_p37_custom_worldgen.py
+          python3 -u scripts/test_p37_custom_worldgen.py -v
+      - name: Confirm research CLI help and safe boundaries
+        run: python3 scripts/research_p37_custom_worldgen.py --help
