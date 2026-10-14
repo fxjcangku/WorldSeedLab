@@ -8,6 +8,7 @@ import io.github.fxjcangku.worldseedlab.core.map.MapLayer;
 import io.github.fxjcangku.worldseedlab.core.map.MapPalette;
 import io.github.fxjcangku.worldseedlab.core.map.MapQuery;
 import io.github.fxjcangku.worldseedlab.core.map.MapView;
+import io.github.fxjcangku.worldseedlab.core.map.MapTileArchive;
 import io.github.fxjcangku.worldseedlab.core.map.ObservedMapRepository;
 import io.github.fxjcangku.worldseedlab.core.probe.ChunkKey;
 import io.github.fxjcangku.worldseedlab.core.probe.CompletedChunkStore;
@@ -86,6 +87,22 @@ public final class P25MapSmokeTest {
                     MapLayer.ALTITUDE_BIOME, 60), "unbounded viewport must fail");
             expectFail(() -> new MapQuery(0, 0, 20, 20,
                     MapLayer.ALTITUDE_BIOME, 9000), "invalid Y must fail");
+
+            // 本地地图瓦片损坏时必须显式拒绝，不能用错误数据渲染假群系。
+            String damagedWorld = "c".repeat(64);
+            Path damagedScope = store.scopedFolder(damagedWorld, dim);
+            Path damagedTile = MapTileArchive.root(damagedScope)
+                    .resolve("biomes/r.-1.0/b.-2.3.8.wsl.gz");
+            Files.createDirectories(damagedTile.getParent());
+            Files.writeString(damagedTile, "not a gzip encoded biome observation");
+            boolean corruptedRejected = false;
+            try {
+                new ObservedMapRepository(damagedScope).query(
+                        new MapQuery(-30, 50, 40, 28, MapLayer.ALTITUDE_BIOME, 66));
+            } catch (java.io.IOException expected) {
+                corruptedRejected = true;
+            }
+            check(corruptedRejected, "corrupted map tile must fail rather than invent data");
 
             // 旧版 JSONL 仍存在时，若没有新地图索引，界面明确说明需补采。
             Path legacy = store.scopedFolder(world, "minecraft:the_end");
