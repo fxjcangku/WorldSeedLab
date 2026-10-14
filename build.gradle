@@ -386,6 +386,20 @@ tasks.named('check') {
     dependsOn tasks.named('p32ClientQuartEvidenceTest')
 }
 
+// 独立受控真实结构 NBT/真实FULL群系的P3.2传输闭环。
+// 客户端数据来源由测试模拟，必须在文档中与真正runClient采样区分。
+tasks.register('p32OfflinePipelineIntegrationTest', JavaExec) {
+    group = 'verification'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P32OfflinePipelineIntegrationTest'
+    systemProperty 'mcVersion', targetMinecraft
+}
+tasks.named('check') {
+    dependsOn tasks.named('p32OfflinePipelineIntegrationTest')
+}
+
+
 // 64位研究离线入口：用户必须同时给出真实结构约束及手动导出群系证据；
 // 显式确认假设原版生成器，不允许在 Fabric Tick/GUI 中自动运行。
 tasks.register('p32OfflineClientQuartResearch', JavaExec) {
