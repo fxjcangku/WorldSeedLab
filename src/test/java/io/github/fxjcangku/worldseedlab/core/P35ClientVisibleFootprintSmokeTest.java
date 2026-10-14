@@ -117,6 +117,17 @@ public final class P35ClientVisibleFootprintSmokeTest {
             check(partlySand.audit().completeVisiblePerimeter()
                             && partlySand.audit().westEdge()==21,
                     "真实沙地同高度遮住建筑地基不能误判完整露天轮廓缺失");
+            // 受控完整外轮廓不能容忍缺少一列；即使20/21仍必须失败关闭。
+            byte[] singleBrokenCell = cells.clone();
+            singleBrokenCell[ClientVisibleDesertPyramidRaster.index(
+                    footprint.minX(),Y,footprint.minZ()+2,footprint,Y,Y+31)]
+                    = ClientVisibleDesertPyramidRaster.AIR;
+            var oneBroken = new ClientVisibleDesertPyramidRaster(
+                    scope,footprint,Y,Y+31,singleBrokenCell);
+            check(!oneBroken.audit().completeVisiblePerimeter(),
+                    "单列边沿缺损20/21不满足完整轮廓，必须失败关闭");
+            expectReject(() -> oneBroken.inferCalibratedHypotheses(List.of(calibration)),
+                    "单列损坏不得产生低48几何约束");
             byte[] missingEast = cells.clone();
             for (int z=footprint.minZ(); z<=footprint.maxZ();z++) {
                 for (int y=Y;y<=Y+31;y++) {

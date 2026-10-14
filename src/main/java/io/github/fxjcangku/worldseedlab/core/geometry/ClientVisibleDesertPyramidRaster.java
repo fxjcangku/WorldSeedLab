@@ -202,9 +202,9 @@ public final class ClientVisibleDesertPyramidRaster {
         int south = edge(proposed.maxZ(), proposed.minX(), proposed.maxX(), 0, 1, false);
         int w = proposed.maxX() - proposed.minX() + 1;
         int d = proposed.maxZ() - proposed.minZ() + 1;
-        // 允许模板正常凹角，但任何大面积遮挡都直接失败。
-        boolean edges = west >= Math.ceil(d * 0.8) && east >= Math.ceil(d * 0.8)
-                && north >= Math.ceil(w * 0.8) && south >= Math.ceil(w * 0.8);
+        // P3.5 受控21x21模板的完整外侧边界必须逐列闭合；
+        // 缺失哪怕一列也不得悄悄把破损形态提升为“完整”。
+        boolean edges = west == d && east == d && north == w && south == w;
         boolean decoration = orange >= 4 && blue >= 1 && carved >= 3;
         return new Audit(edges && decoration,
                 !decoration ? "缺少受控神殿装饰指纹"

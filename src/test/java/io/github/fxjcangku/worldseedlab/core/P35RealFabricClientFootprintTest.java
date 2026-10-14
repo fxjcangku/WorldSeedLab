@@ -72,19 +72,24 @@ public final class P35RealFabricClientFootprintTest {
         // 只有四份客户端证据全部通过之后，才执行服务端Anvil独立真值复核。
         Path trueCsv=directory.resolve("posthoc-real-structure-starts.csv");
         var raw=Files.readAllLines(trueCsv);
-        if(raw.isEmpty() || !raw.getFirst().equals("chunk_x,chunk_z,orientation")) {
+        if(raw.isEmpty() || !raw.getFirst().equals("chunk_x,chunk_z,orientation,full_status")) {
             throw new AssertionError("未取得客户端独立的真实StructureStart CSV");
         }
         var starts=new HashMap<String,TrueStart>();
         for(var line:raw.subList(1,raw.size())) {
             if(line.isBlank()) continue;
             var fields=line.split(",",-1);
-            if(fields.length!=3) throw new AssertionError("真实结构NBT格式错误");
+            if(fields.length!=4 || !"minecraft:full".equals(fields[3])) {
+                throw new AssertionError("受控StructureStart必须在独立确认的FULL区块中");
+            }
             var s=new TrueStart(Integer.parseInt(fields[0]),Integer.parseInt(fields[1]),
                     Integer.parseInt(fields[2]));
             if(starts.put(s.x()+":"+s.z(),s)!=null) {
                 throw new AssertionError("重复的受控NBT结构起点不能重复计数");
             }
+        }
+        if(starts.size()!=4) {
+            throw new AssertionError("受控FULL真值必须恰好覆盖四个独立起点");
         }
         var observedStarts=new ArrayList<TrueStart>();
         for(var c:captured) {

@@ -20,9 +20,9 @@ import time
 
 from run_known_seed_server import (
     ROOT, KNOWN_SEED, POSITION, QUERY_POINTS, STRUCTURE,
-    rcon, scan_structure_starts,
+    rcon, scan_structure_starts, region_chunks,
 )
-from run_p34_custom_worldgen import GENERATOR
+from run_p34_custom_worldgen import GENERATOR, scan_custom_terrain
 from run_p33_real_client_e2e import (
     ManagedProcess, wait_until, visible_minecraft_window, xcmd, chat, screenshot,
 )
@@ -193,14 +193,15 @@ def run(version: str):
             newest = max(target,key=lambda p:p.stat().st_mtime_ns)
             result = out/f"client-footprint-{ordinal}.properties"
             result.write_bytes(newest.read_bytes())
-            records.append((ordinal,x,z,ax,az))
+            records.append((ordinal,x,z,ax-4,az-4,ax+24,az+24))
             print(f"[P35] REAL GUI {ordinal+1}/{TARGET_COUNT}: 2 chat corner commands "
                   f"+ 1 manual export; padded ROI and original CLIENT_OBSERVED raster {result.name}",
                   flush=True)
         screenshot(out/"actual-client-last-footprint.png",actual_env)
         (out/"navigation.csv").write_text(
-            "order,locate_x,locate_z,corner_min_x,corner_min_z\n"
-            +"".join(f"{i},{x},{z},{ax},{az}\n" for i,x,z,ax,az in records),
+            "order,locate_x,locate_z,rough_roi_min_x,rough_roi_min_z,rough_roi_max_x,rough_roi_max_z\n"
+            +"".join(f"{i},{x},{z},{lx},{lz},{hx},{hz}\n"
+                     for i,x,z,lx,lz,hx,hz in records),
             encoding="utf-8")
         # 所有客户端文件已经落盘；现在才从受控存档读取独立NBT起点真值。
         rcon("save-all flush",secret)
@@ -215,14 +216,53 @@ def run(version: str):
         real,scanned = scan_structure_starts(worlds[0],located)
         if scanned<50 or len(real)<TARGET_COUNT:
             raise RuntimeError("真值应来自真实FULL区块与StructureStart NBT，数量不足")
+        # posthoc才读服务端FULL区块，不在客户端Controller中引入任何真值。
+        # 强制检查本次四个可见建筑对应的独立 StructureStart 真的已保存为FULL，
+        # 其余区域的已保存StructureStart不用于增加客户端样本量。
+        expected = {(x//16,z//16) for x,z in located}
+        observed_truth = [s for s in real
+                          if (s["start_chunk_x"],s["start_chunk_z"]) in expected]
+        if len(expected)!=TARGET_COUNT or len(observed_truth)!=TARGET_COUNT:
+            raise RuntimeError("所测四座建筑必须各有一条独立服务端StructureStart")
+        if any(len(s["piece_orientations"])!=1 for s in observed_truth):
+            raise RuntimeError("受控结构朝向NBT缺失或出现歧义")
+        directory=worlds[0]/"dimensions/minecraft/overworld/region"
+        found_full=set()
+        for region_x,region_z in sorted({(cx//32,cz//32) for cx,cz in expected}):
+            file=directory/f"r.{region_x}.{region_z}.mca"
+            if not file.is_file():
+                raise RuntimeError("受控独立StructureStart所在Region缺失")
+            for chunk in region_chunks(file):
+                key=(chunk.get("xPos"),chunk.get("zPos"))
+                if key not in expected:
+                    continue
+                if key in found_full:
+                    raise RuntimeError("重复FULL区块，不准冒充独立StructureStart")
+                if chunk.get("Status") not in ("full","minecraft:full"):
+                    raise RuntimeError("StructureStart虽存在但所在区块不是真正FULL")
+                found_full.add(key)
+        if found_full!=expected:
+            raise RuntimeError("客户端四座神殿的服务端独立FULL区块有缺失")
+        terrain=scan_custom_terrain(worlds[0])
         (out/"posthoc-real-structure-starts.csv").write_text(
-            "chunk_x,chunk_z,orientation\n"
+            "chunk_x,chunk_z,orientation,full_status\n"
             +"".join(f"{s['start_chunk_x']},{s['start_chunk_z']},"
-                     f"{s['piece_orientations'][0]}\n" for s in real
-                     if len(s["piece_orientations"])==1),
-            encoding="utf-8")
-        print(f"[P35] POSTHOC ONLY: real saved Minecraft StructureStart NBT "
-              f"{len(real)} structures after client evidence; FULL scan {scanned}",
+                     f"{s['piece_orientations'][0]},minecraft:full\n"
+                     for s in observed_truth),encoding="utf-8")
+        (out/"posthoc-control-summary.json").write_text(
+            json.dumps({
+                "phase":"P3.5", "version":version, "controlled_seed":KNOWN_SEED,
+                "source":"CONTROL_WORLD_POSTHOC_FULL_ANVIL_STRUCTURE_START",
+                "not_client_observed":True, "visible_client_samples":TARGET_COUNT,
+                "saved_structure_starts_total":len(real),
+                "selected_true_starts_with_full_chunks":len(found_full),
+                "scanned_actual_chunks":scanned,
+                "custom_flat_terrain":terrain,
+            },ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+        print(f"[P35] POSTHOC ONLY: {len(found_full)}/{TARGET_COUNT} "
+              f"independent saved StructureStart chunks verified FULL, "
+              f"saved structures total={len(real)}, custom flat terrain="
+              f"{terrain['full_chunks']} FULL chunks; not CLIENT_OBSERVED",
               flush=True)
     except BaseException:
         if client is not None:
