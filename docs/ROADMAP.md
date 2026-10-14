@@ -179,7 +179,7 @@
 - [x] 至少3 FIT + 2 HOLDOUT，水平间隔>=1024方块；拒绝跨版本/世界/维度、重复、过量、默认原版生成器声明或冒充CLIENT_OBSERVED的伪输入。
 - [x] 实现离线 `p32OfflineClientQuartResearch`：显式Z3结构low48 + 用户确认原版模型假设 + 高16位分片；客户端启动不自动求解。
 - [x] 真实负数完整64位Seed `0xBEEF000000000AAB` 的 Minecraft 26.1.2、26.2 控制世界原版生成，实际5处StructureStart和5条FULL quart群系、3 FIT / 2 HOLDOUT验证正确高16并排除0及邻近候选。
-- [ ] 真实两个版本客户端 `runClient` Xvfb启动日志验收（以P3.2 Actions实际日志为准）。
+- [x] 双版本真实 Fabric `runClient` Xvfb启动日志验收：均已初始化 WorldSeedLab（[Actions #38510514412](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38510514412)）；尚未完成真正进入游戏手动采样。
 - [ ] 用户真正进入单人/服务器世界进行交互手动采集和离线重播、证明生成器一致性与保存证据的端到端真实体验。
 - [ ] 非零高16负数完整64位真实世界的全部65536高位重新穷举、更多随机种子和未知生成器兼容性。
 - [ ] 自定义地形+保留原版结构的真实客户端可见几何约束及自定义矿/防透视独立验证。
