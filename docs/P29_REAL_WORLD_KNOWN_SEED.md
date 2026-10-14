@@ -57,7 +57,7 @@ WorldSeedLab P2.9 REAL Minecraft <version> StructureStart NBT confirmed:
 4 genuine starts; low48=0x000000000aab recovered through real Z3 FIT=2 HOLDOUT=1; wrong seed rejected.
 ```
 
-当前已取得上述真实成功输出。真实结构部件 `BB` 经校准推导候选，再送进同一 SMT 的强化几何回归属于后续独立检查，不能用最初的精确 StructureStart 正例冒充。
+当前已取得上述真实成功输出。另已独立验证**结构部件几何逆推**：从相同受控真实世界里保留一处 `Children[].BB` 对应起点作为校准，使用另三处实际生成结构的部件边界求出起始 Chunk（2 FIT、1 HOLDOUT），再执行真实 Z3 和 Java RNG 复核；**26.1.2 和 26.2 均找回已知低48值 `2731`，并观察到多个结构朝向**。这一步仍使用了只有本地受控服务端存档才可获取的部件边界，不是普通 Fabric 客户端已经能自动提取的完整建筑轮廓。
 
 ## 4. 操作与复现
 
@@ -78,4 +78,4 @@ WorldSeedLab P2.9 REAL Minecraft <version> StructureStart NBT confirmed:
 4. **不等于完整世界64位：** 高16位以及未知 Salt、未知结构参数、自定义 RNG 和多世代区块仍需其它独立证据。
 5. **不等于真矿预测：** 自定义矿物生成、假矿反透视必须另行验证；当前测试完全不使用矿石作为 Seed 约束。
 
-**后续路线：** 在已知 Seed 的实际 Minecraft 图形单人世界采集普通客户端可观察的材料与建筑轮廓，对照此次 StructureStart 真值，量化轮廓误差/朝向，才能进一步研究没有服务端权限时是否能够恢复可靠的低48位候选。
+**后续路线：** 在已知 Seed 的实际 Minecraft 图形单人世界采集普通客户端可观察的方块与建筑外轮廓，对照此次 StructureStart 真值，量化轮廓误差/朝向，才能进一步研究没有服务端权限时是否能够恢复可靠的低48位候选。
