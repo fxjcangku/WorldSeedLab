@@ -628,3 +628,31 @@ tasks.register('p36RealFabricAutoEvidenceTest', JavaExec) {
             .orElse("build/p36-real-client-footprint/" + targetMinecraft).get(),
          targetMinecraft
 }
+
+
+// P4.0 目标Minecraft自身的六维气候噪声 + 显式自定义参数表候选检验。
+// 模型未经目标服务器认证时，结果只能是条件匹配，绝不提升为真实Seed。
+tasks.register('p40CustomClimateSmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Verify configurable MultiNoise forward model against actual saved FULL chunk biomes.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P40CustomClimateSmokeTest'
+    systemProperty 'mcVersion', targetMinecraft
+}
+tasks.named('check') {
+    dependsOn tasks.named('p40CustomClimateSmokeTest')
+}
+
+tasks.register('p40CustomClimateAudit', JavaExec) {
+    group = 'research'
+    description = 'Audit explicit complete64 seed hypotheses against locally supplied climate parameters.'
+    dependsOn tasks.named('classes')
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.solver.P40CustomClimateAuditCli'
+    args providers.gradleProperty('p40Quart').orElse('NO_CLIENT_QUART').get(),
+         providers.gradleProperty('p40Model').orElse('NO_CUSTOM_MODEL').get(),
+         targetMinecraft,
+         providers.gradleProperty('p40Candidates').orElse('NO_CANDIDATES').get()
+    systemProperty 'mcVersion', targetMinecraft
+}
