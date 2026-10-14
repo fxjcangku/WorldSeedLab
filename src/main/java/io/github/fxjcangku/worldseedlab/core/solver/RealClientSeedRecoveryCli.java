@@ -265,10 +265,25 @@ public final class RealClientSeedRecoveryCli {
                     + "；不会将材料线索当作天然起点");
             var low = LocalSmtSeedSolver.search(input,
                     new SymbolicRandomSpread.Options(3, 90_000, 64), "z3", 16);
+            boolean globallyBoundedComplete = low.status()
+                    == LocalSmtSeedSolver.Status.BOUNDED_MODEL_EXHAUSTED
+                    && input.searchWindow().startInclusive() == 0
+                    && input.searchWindow().endExclusive() == CandidateSeedSearch.TOTAL_48
+                    && !low.incompleteRejectionPaths();
             System.out.println("Z3低48状态=" + low.status()
                     + " | 候选=" + low.candidates().size()
                     + " | 留出拒绝=" + low.rejectedByHoldout()
                     + " | Java精确拒绝=" + low.rejectedByExactModel());
+            System.out.println("本轮已检索区间="
+                    + input.searchWindow().startInclusive() + ".."
+                    + input.searchWindow().endExclusive()
+                    + " | 非二幂拒绝路径完整性未证明="
+                    + low.incompleteRejectionPaths()
+                    + " | 能否声称全48位域穷尽=" + globallyBoundedComplete);
+            if (!globallyBoundedComplete) {
+                System.out.println("RESEARCH_INCOMPLETE_OR_CONDITIONAL:"
+                        + " 受控窗口/拒绝路径/时间模型上限不能冒充完整世界Seed破解。");
+            }
             for (var candidate : low.candidates()) {
                 System.out.println("LOW48_MODEL_CANDIDATE=0x" + candidate.low48Hex()
                         + " | FIT=" + candidate.fitMatches()
