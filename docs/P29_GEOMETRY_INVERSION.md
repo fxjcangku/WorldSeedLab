@@ -9,7 +9,7 @@ P2.6 仅能从客户端收到的完整区块检测**疑似建筑材料**。材�
 
 P2.9 首先打通**有来源的完整轮廓**到**结构起点的有限假设集合**，而非把目击位置强行转成准确坐标：
 
-1. 在研究者控制的**已知 Seed 测试世界**中，分别记录真实 StructureStart 区块与相同朝向的完整建筑水平外边界，形成可追溯的朝向校准。测试程序不能替用户证明输入的真值来源。
+1. 在研究者控制的**已知 Seed 测试世界**中，分别记录真实 StructureStart 区块与相同结构类型、相同朝向的完整建筑水平外边界，形成可追溯的朝向校准。测试程序不能替用户证明输入的真值来源。
 2. 在目标世界由人工或有审计记录的测绘流程确认**完整、未遮挡**外轮廓（Block X/Z 闭区间）。未加载区域、断裂材料簇或 P2.6 的稀疏候选不能替代完整轮廓。
 3. 对每种受控校准，以起点区块左上方的方块坐标 `chunkX*16, chunkZ*16` 为锚点，计算轮廓边缘相对位移，容许有限边缘测量误差。
 4. 用整数上下界反推候选起始 Chunk。负坐标使用数学意义上的 `floorDiv/ceilDiv`，不会向零截断。
@@ -37,6 +37,7 @@ constraint.0.structureSet=minecraft:research_set
 constraint.0.origin=GEOMETRY_ESTIMATE
 constraint.0.split=FIT
 constraint.0.geometry.quality=COMPLETE_PERIMETER
+constraint.0.geometry.structureId=minecraft:desert_pyramid
 constraint.0.geometry.minBlockX=-203
 constraint.0.geometry.minBlockZ=17
 constraint.0.geometry.maxBlockX=-176
@@ -48,6 +49,7 @@ constraint.0.geometry.calibration.0.variant=north
 constraint.0.geometry.calibration.0.gameVersion=26.2
 constraint.0.geometry.calibration.0.dimension=minecraft:overworld
 constraint.0.geometry.calibration.0.structureSet=minecraft:research_set
+constraint.0.geometry.calibration.0.structureId=minecraft:desert_pyramid
 constraint.0.geometry.calibration.0.control.trueStartChunkX=12
 constraint.0.geometry.calibration.0.control.trueStartChunkZ=-6
 constraint.0.geometry.calibration.0.control.minBlockX=192
@@ -57,7 +59,9 @@ constraint.0.geometry.calibration.0.control.maxBlockZ=-75
 constraint.0.geometry.calibration.0.toleranceBlocks=0
 ```
 
-该示例只是**字段和几何计算格式**，不对应任何真实服务器。一个求解清单仍必须达到至少 **2 FIT + 1 独立 HOLDOUT**，来自不同结构 Region，并使用确实适用的结构集合参数。第二种朝向可增加 `geometry.calibration.1.*`，不得重复 `variant`。
+该示例只是**字段和几何计算格式**，不对应任何真实服务器。结构集合 ID 决定 RandomSpread 的位置规则，具体结构 ID 决定轮廓模板；两者必须单独填写、分别核对，不能因为同属一个集合就互换校准。
+
+一个求解清单仍必须达到至少 **2 FIT + 1 独立 HOLDOUT**，来自不同结构 Region，并使用确实适用的结构集合参数。第二种朝向可增加 `geometry.calibration.1.*`，不得重复 `variant`。
 
 `referenceKind` 字段是研究者对证据来源的**显式声明**，程序无法仅凭这个文字证明“实际拿到了 StructureStart”。伪造校准真值仍会得到数学上自洽但对服务器毫无意义的结果。
 
