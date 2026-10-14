@@ -298,6 +298,10 @@ def main():
             world = saved_worlds[0].parent
         else:
             world = matching[0]
+        inventory = sorted(p for p in world.rglob("*") if p.is_file())
+        print("[P29-REAL] world save file inventory:", [
+            (str(p.relative_to(world)),p.stat().st_size)
+            for p in inventory[:100]], flush=True)
         region_files = sorted((world / "region").glob("*"))
         print("[P29-REAL] world directory:", str(world.relative_to(ROOT)),
               "region files:", [(p.name, p.stat().st_size) for p in region_files[:12]],
