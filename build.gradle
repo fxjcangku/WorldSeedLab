@@ -500,3 +500,17 @@ tasks.register('p34RealFabricCustomClientTest', JavaExec) {
             .orElse("build/p34-real-custom-client/${targetMinecraft}").get(),
          targetMinecraft
 }
+
+
+// P3.4.1 只有隔离的真实目标版本Minecraft服务器加载修改Salt的数据包、
+// 生成并保存FULL区块后才运行；不能使用客户端目击点冒充StructureStart。
+tasks.register('p34ModifiedSaltWorldTest', JavaExec) {
+    group = 'research'
+    description = 'Verify actual full-chunk modified-Salt structure set against two random-spread models.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P34ModifiedSaltWorldTest'
+    args providers.gradleProperty('p34ModifiedSaltControlDir')
+            .orElse("build/p34-modified-salt/${targetMinecraft}").get(),
+         targetMinecraft
+}
