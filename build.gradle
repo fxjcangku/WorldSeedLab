@@ -440,3 +440,63 @@ tasks.register('p33RealFabricClientQuartTest', JavaExec) {
     args providers.gradleProperty('p33ClientEvidence').orElse('NO_ACTUAL_CLIENT_EVIDENCE').get(),
          targetMinecraft
 }
+
+
+// P3.4 自定义地形兼容性预审：实际FULL群系、结构规则假设及故障保护。
+// 无服务器权限、无额外客户端采集，默认两版本check均独立运行。
+tasks.register('p34CompatibilitySmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Audit custom worldgen model provenance, Salt, history and observed quart guardrails.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P34CompatibilitySmokeTest'
+    systemProperty 'mcVersion', targetMinecraft
+}
+tasks.named('check') {
+    dependsOn tasks.named('p34CompatibilitySmokeTest')
+}
+
+
+// 仅在用户明确提供私有CSV、结构约束、候选位图及生成器假设时运行。
+// 输出匿名结论，不自动读取任何游戏文件或在客户端后台计算。
+tasks.register('p34OfflineAudit', JavaExec) {
+    group = 'research'
+    description = 'Explicit offline conditional worldgen compatibility audit; never reveals coordinates.'
+    dependsOn tasks.named('classes')
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.compatibility.P34OfflineAuditCli'
+    args providers.gradleProperty('p34ClientCsv').orElse('NO_CLIENT_QUART_FILE').get(),
+         providers.gradleProperty('p34StructureInput').orElse('NO_STRUCTURAL_FILE').get(),
+         providers.gradleProperty('p34CandidateHex16').orElse('NOT_A_CANDIDATE').get(),
+         providers.gradleProperty('p34History').orElse('UNKNOWN').get(),
+         providers.gradleProperty('p34Salt').orElse('UNKNOWN').get(),
+         providers.gradleProperty('p34Biomes').orElse('UNKNOWN_OR_CUSTOM').get()
+}
+
+
+// P3.4 真正启动自建自定义平坦服务端之后，读取其FULL Anvil区块和
+// StructureStart控制真值。本任务不能作为普通客户端可访问服务端NBT的证明。
+tasks.register('p34RealCustomWorldTest', JavaExec) {
+    group = 'research'
+    description = 'Audit actual saved custom-terrain Minecraft StructureStart and FULL biomes.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P34RealCustomWorldTest'
+    args providers.gradleProperty('p34ControlDir')
+            .orElse("build/p34-controlled/${targetMinecraft}").get(),
+         targetMinecraft
+}
+
+
+// P3.4 真实GUI联机自定义地形，仅在隔离的受控Minecraft客户端已手动导出CSV
+// 且相同地点独立保存FULL Anvil后运行。常规check绝不伪造客户端来源。
+tasks.register('p34RealFabricCustomClientTest', JavaExec) {
+    group = 'research'
+    description = 'Replay actual Fabric client chat quart samples against independent saved custom FULL chunks.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P34RealFabricCustomClientTest'
+    args providers.gradleProperty('p34ClientControlDir')
+            .orElse("build/p34-real-custom-client/${targetMinecraft}").get(),
+         targetMinecraft
+}

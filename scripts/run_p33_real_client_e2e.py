@@ -18,7 +18,9 @@ import subprocess
 import threading
 import time
 
-from run_known_seed_server import rcon
+from run_known_seed_server import rcon, region_chunks
+from run_p34_custom_worldgen import GENERATOR
+import json
 
 ROOT = Path(__file__).resolve().parents[1]
 SEED = 2731
@@ -155,13 +157,58 @@ def screenshot(dst: Path, env: dict):
         pass
 
 
-def run(version: str):
-    out = ROOT / "build" / "p33-real-client" / version
+def export_custom_world_full_truth(world_name: str, out: Path, positions):
+    """只在受控服务器完成保存后，独立从真实FULL区块解出指定quart观测。
+
+    自定义flat世界群系palette必须是唯一的minecraft:desert；不会对普通服
+    读取服务端存档，也不能伪造客户端CLIENT_OBSERVED字段。
+    """
+    levels = [p.parent for p in ROOT.rglob("level.dat") if p.parent.name == world_name]
+    if len(levels) != 1:
+        raise RuntimeError("cannot uniquely locate controlled Minecraft world save")
+    folder = levels[0] / "dimensions/minecraft/overworld/region"
+    if not folder.is_dir():
+        raise RuntimeError("26.x controlled FULL Anvil overworld region missing")
+    verified = []
+    for qx, qy, qz in positions:
+        cx, cz = qx // 4, qz // 4
+        file = folder / f"r.{cx // 32}.{cz // 32}.mca"
+        if not file.is_file():
+            raise RuntimeError("controlled FULL region missing for specified client sample")
+        matched = [chunk for chunk in region_chunks(file)
+                   if chunk.get("xPos") == cx and chunk.get("zPos") == cz]
+        if len(matched) != 1 or matched[0].get("Status") not in ("full","minecraft:full"):
+            raise RuntimeError("client-observed chunk not independently saved as FULL")
+        section_y = (qy * 4) // 16
+        sections = [s for s in matched[0].get("sections",[])
+                    if isinstance(s,dict) and s.get("Y") == section_y]
+        if len(sections) != 1:
+            raise RuntimeError("independent FULL chunk contains no sample-height section")
+        biomes = sections[0].get("biomes", {})
+        palette = biomes.get("palette") if isinstance(biomes,dict) else None
+        if palette != ["minecraft:desert"]:
+            raise RuntimeError("custom-flat controlled world is not single desert biome "
+                               + repr(palette)[:120])
+        verified.append((qx, qy, qz, palette[0]))
+    if len(verified) != 5 or len(set(verified)) != 5:
+        raise AssertionError("P3.4 controlled independent full chunk samples incomplete")
+    (out / "server-full-quart.csv").write_text(
+        "quart_x,quart_y,quart_z,biome_id\n"
+        + "".join(f"{x},{y},{z},{b}\n" for x,y,z,b in verified),
+        encoding="utf-8")
+    print("[P34] Independently inspected 5 saved FULL Anvil quart biomes: all "
+          "minecraft:desert; source=CONTROL_WORLD_OBSERVED, not client", flush=True)
+
+
+def run(version: str, custom_worldgen: bool = False):
+    out = ROOT / "build" / ("p34-real-custom-client" if custom_worldgen
+                            else "p33-real-client") / version
     out.mkdir(parents=True, exist_ok=True)
-    world_name = "wsl_p33_client_e2e_" + version.replace(".", "_")
+    world_name = ("wsl_p34_custom_client_" if custom_worldgen
+                  else "wsl_p33_client_e2e_") + version.replace(".", "_")
     world = ROOT / "run" / world_name
     if world.exists() or list(out.glob("**/client-quart-*.csv")):
-        raise RuntimeError("P3.3 CI must start with a new, isolated world and no stale samples")
+        raise RuntimeError("Controlled GUI E2E must start with an isolated world and no stale samples")
     server_dir = ROOT / "run"
     server_dir.mkdir(exist_ok=True)
     password = secrets.token_hex(24)
@@ -187,6 +234,9 @@ def run(version: str):
         "simulation-distance": "3",
         "max-tick-time": "-1",
     }
+    if custom_worldgen:
+        properties["level-type"] = "flat"
+        properties["generator-settings"] = json.dumps(GENERATOR, separators=(",", ":"))
     (server_dir / "server.properties").write_text(
         "".join(k + "=" + v + "\n" for k, v in properties.items()), encoding="utf-8")
     (server_dir / "eula.txt").write_text("eula=true\n", encoding="utf-8")
@@ -229,7 +279,8 @@ def run(version: str):
              "runServer","--args=nogui"], out / "server.log")
         wait_until(lambda:server.saw("Done (") and server.saw("For help"),
                    180, "controlled Minecraft server did not boot", server)
-        print("[P33] True vanilla server listening on 127.0.0.1, public Seed 2731",
+        print("[P34]" if custom_worldgen else "[P33]",
+              "True controlled Minecraft server listening on loopback; public Seed 2731",
               flush=True)
 
         client = ManagedProcess(
@@ -319,8 +370,15 @@ def run(version: str):
                 raise RuntimeError("Client export not in expected private scope")
             destination = out / "controlled-client-quart.csv"
             destination.write_bytes(actual.read_bytes())
-            print("[P33] Real /wsl quart export generated 1 HMAC-scoped CSV; "
+            print("[P34]" if custom_worldgen else "[P33]",
+                  "Real /wsl quart export generated 1 HMAC-scoped CSV; "
                   "copying only PUBLIC controlled fixture for CI validation",flush=True)
+            if custom_worldgen:
+                # 先通过游戏聊天框产生CLIENT_OBSERVED，之后才从隔离服务器的
+                # 实际FULL Anvil区块取得独立真值。两条来源从不互相生成。
+                rcon("save-all flush", password)
+                time.sleep(3)
+                export_custom_world_full_truth(world_name, out, POSITIONS)
         finally:
             screenshot(out/"controlled-client-final.png",input_env)
     except Exception as e:
@@ -398,4 +456,7 @@ def run(version: str):
 if __name__ == "__main__":
     ap=argparse.ArgumentParser()
     ap.add_argument("--minecraft", required=True, choices=("26.1.2","26.2"))
-    run(ap.parse_args().minecraft)
+    ap.add_argument("--custom-worldgen", action="store_true",
+                    help="P3.4 CI only: real Fabric client joins controlled custom flat world")
+    parsed = ap.parse_args()
+    run(parsed.minecraft, parsed.custom_worldgen)

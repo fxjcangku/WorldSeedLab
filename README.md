@@ -131,6 +131,18 @@ P2.7 已确认的 Minecraft Legacy RandomSpread 数学模型现可转换成**可
 
 [查看 P3.0 的准确能力与后续高16位验证条件](docs/P30_FULL64_EVIDENCE_RESEARCH.md)
 
+## P3.4 / 自定义地形兼容性与结构证据防误报（受控实机双版本已验收）
+
+WorldSeedLab 已建立新的**只读、显式离线执行**的双轴研究流程。结构侧使用 P2.9 完整建筑轮廓推导的稀疏起点候选，调用原创 RandomSpread 数学复核；群系侧对独立真实 quart 观测使用**明示的原版 Overworld 模型假设**。结构匹配与群系匹配必须分别报告，不能互相替代。
+
+- 新增 `MODEL_CONSISTENT`（仅模型一致）、`INSUFFICIENT_EVIDENCE`（证据不足）、`MODEL_CONFLICT`（指定模型冲突）、`GENERATOR_UNKNOWN`（生成器身份/生成历史未知）的明确状态。
+- 对未知 Salt、旧区块或预生成区块、人工建筑、跨世界/维度/版本、重复 Region 和不可信轮廓严格降级或拒绝。
+- **26.1.2 与 26.2 真实 Minecraft 自定义平坦沙漠服务器实验均通过**：服务端 FULL Anvil 区块确认地层改变、沙漠神殿 StructureStart 继续满足原版 RandomSpread，实际自定义群系与原版 MultiNoise 假设冲突。
+- **两版本真实 Fabric GUI 客户端联机也通过**：在隔离的自定义地形服务器由真正游戏聊天框手动执行 5 次 `/wsl quart sample` 和 1 次 `/wsl quart export`，5/5 CLIENT_OBSERVED 均与服务器另行存储的 FULL 区块匹配，3 FIT + 2 HOLDOUT。**这是受控 Seed=2731 世界的兼容性验收，不是未知服的完整64位 Seed 恢复。**
+- 所有匿名审计摘要不输出私人坐标、世界指纹或 Seed；普通客户端不会自动访问新区块，也不会自动上传证据。
+
+[详细技术与测试边界](docs/P34_CUSTOM_WORLDGEN_COMPATIBILITY.md) · [真实自定义服务端 Actions #38518930209](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38518930209) · [真实自定义客户端 Actions #38518930253](https://github.com/fxjcangku/WorldSeedLab/actions/runs/38518930253) · [P3.4 PR #21](https://github.com/fxjcangku/WorldSeedLab/pull/21)
+
 ## 02 / 研究边界
 
 | 研究对象 | 我们希望回答的问题 |
