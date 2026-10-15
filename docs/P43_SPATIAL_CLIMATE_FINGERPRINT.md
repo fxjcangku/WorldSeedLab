@@ -22,7 +22,7 @@ python scripts/study_climate_fingerprint.py --input "D:\private\observations.zip
 python scripts/study_climate_fingerprint.py --input "D:\private\observations.zip" --minecraft 26.2 --seeds "2731,2732" --assume-vanilla-noise-router
 ~~~
 
-没有候选时返回 GENERATOR=UNKNOWN / FULL64=UNKNOWN_NO_SEED_HYPOTHESES。仅显式授权会运行Minecraft噪声预测，并输出真实独立HOLDOUT准确率、训练集中最多群系标签的多数类基线、最差HOLDOUT区域准确率、训练未覆盖的留出标签数量；不输出IP/HMAC/原始XYZ。
+没有候选时返回 GENERATOR=UNKNOWN / FULL64=UNKNOWN_NO_SEED_HYPOTHESES。仅显式授权会运行Minecraft噪声预测，并输出真实独立HOLDOUT准确率、训练集中最多群系标签的多数类基线、最差HOLDOUT区域准确率、训练未覆盖的留出标签数量及其决定的理论最高准确率；训练未覆盖的留出标签超过25%时中止该模型测试，防止把数据不足当成模型错误；不输出IP/HMAC/原始XYZ。
 
 ## 训练泄漏防护
 
@@ -40,3 +40,16 @@ python scripts/study_climate_fingerprint.py --input "D:\private\observations.zip
 - Java25/Gradle9.6.1的26.1.2和26.2 clean build，原P3.9真实Fabric GUI→Z3及P3.8/P3.6等E2E均需通过后才能合并。
 
 未知自定义服务器的生成器ID、NoiseRouter、Salt、结构天然起点和完整64位Seed仍为UNKNOWN。不自动扫描未知服务器、不接触私人yiyiaddon、不复制或发布第三方受限生成器代码或配置。
+
+
+## 使用用户第二轮原始证据的本地实测（仅匿名）
+
+在当前研究环境真正解包并读取用户上传的 worlds.rar 中的原始P1 evidence.jsonl，不凭空由P4.2匿名JSON制造quart坐标。完整两遍流式回放均结束，得到：
+
+- 已验证真实客户端P1记录：2,085,248；可见群系ID：61；宏区域：46
+- 与训练/留出区域距离门槛相容的宏区域：9（地理贪心选择，与用户此前P4.2保守区域结果一致）
+- FIT独立区域：6，实际随机且确定性采样384条；HOLDOUT独立区域：3，采样192条
+- FIT已见群系标签数：27；HOLDOUT中未在FIT出现的标签记录：35/192（18.23%）
+- 因此即便给出了真实正确Seed，对于最近邻只能预测训练曾出现过的标签，当前留出准确率的硬上限至多157/192约81.77%。报告必须披露这个上限，不把映射未覆盖误判为NoiseRouter不匹配。
+
+实际服务端NoiseRouter、Salt、Seed及生成器来源**仍未知**，所以没有执行错误的“全Seed搜索”。原始ZIP、世界HMAC、服务器IP、坐标与身份密钥均只在本机私有取证区，不得上传到公共仓库。
