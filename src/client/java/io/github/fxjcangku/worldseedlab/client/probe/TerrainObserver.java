@@ -31,7 +31,9 @@ public final class TerrainObserver {
                 level.dimension().identifier().toString(),
                 gameVersion,
                 level.getMinY(),
-                level.getMaxY(),
+                // Mojmap LevelHeightAccessor.getMaxY() is inclusive.
+                // DimensionProfile explicitly requires the exclusive upper bound.
+                level.getMinY() + level.getHeight(),
                 level.getSeaLevel(),
                 attributes.hasSkyLight(),
                 attributes.hasCeiling(),
