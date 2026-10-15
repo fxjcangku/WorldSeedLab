@@ -137,12 +137,41 @@ def main(argv=None):
                         help="最多四个明确研究假设Salt；默认原版沙漠神殿14357617")
     parser.add_argument("--vanilla-high16", action="store_true",
                         help="仅显式原版Overworld假设；自定义群系出现时安全拒绝")
+    parser.add_argument("--custom-model", type=Path,
+                        help="P4.1 用户独立确认的自定义MultiNoise参数文件，未认证目标服务器生成器")
+    parser.add_argument("--high16-shard", type=int, default=0,
+                        help="从0开始的高16连续分片索引")
+    parser.add_argument("--high16-shards", type=int, default=16,
+                        help="高16总分片数，默认16")
+    parser.add_argument("--high16-evaluations", type=int, default=128,
+                        help="本次至多计算的完整64位模型次数，默认128")
+    parser.add_argument("--high16-resume", type=int,
+                        help="上次打印的NEXT_INDEX；需匹配完整证据摘要且low48集合稳定")
+    parser.add_argument("--high16-expected-digest",
+                        help="续算时前次输出的P4.1_INPUT_SHA256，防止不同来源间断点混用")
     parser.add_argument("--window-end", type=int, default=1 << 48,
                         help="低48搜索上界；仅受控实验可用4096，默认完整48位")
     parser.add_argument("--dry-run", action="store_true",
                         help="只检查是否存在足够完整客户端结构轮廓，不启动Z3")
     args = parser.parse_args(argv)
     try:
+        if args.custom_model is not None and args.vanilla_high16:
+            raise EvidenceError("原版高16与自定义模型条件高16不能同时执行")
+        if not 1 <= args.high16_shards <= 256 or not 0 <= args.high16_shard < args.high16_shards:
+            raise EvidenceError("高16分片数量或索引非法")
+        if not 1 <= args.high16_evaluations <= 1_000_000:
+            raise EvidenceError("高16实际搜索预算必须在1..1000000")
+        if args.high16_resume is not None and (
+                args.high16_resume < 0 or args.high16_expected_digest is None
+                or not re.fullmatch(r"[a-f0-9]{64}", args.high16_expected_digest)):
+            raise EvidenceError("断点续算必须提供有效非负NEXT_INDEX及上一轮P4.1_INPUT_SHA256")
+        if args.high16_expected_digest and args.high16_resume is None:
+            raise EvidenceError("指定输入摘要但没有NEXT_INDEX")
+        if args.custom_model is None and (args.high16_resume is not None
+                                          or args.high16_expected_digest is not None
+                                          or args.high16_shard != 0
+                                          or args.high16_shards != 16):
+            raise EvidenceError("高16分片参数只能用于显式自定义模型")
         footprints, biomes = inspect(args.input)
         print("WorldSeedLab · 实际客户端 Seed 反演")
         print(f"可用轮廓存档文件: {len(footprints)}（需至少3个独立RandomSpread区域）")
@@ -177,11 +206,55 @@ def main(argv=None):
                 cmd += ["-PrecoveryQuart="+str(quart),
                         "-PrecoveryBiomeMode=EXPLICIT_VANILLA_OVERWORLD_HYPOTHESIS"]
                 print(f"实际筛选了{count}条空间独立群系，原版生成器身份仍未证明")
+            elif args.custom_model is not None:
+                from audit_custom_climate import sample_evidence, encoded_quart
+                from research_p37_custom_worldgen import Dataset
+                if (not args.custom_model.is_file() or args.custom_model.is_symlink()
+                        or args.custom_model.stat().st_size > 1024 * 1024):
+                    raise EvidenceError("本机自定义生成器模型必须是1MiB以内的普通JSON文件")
+                model = json.loads(args.custom_model.read_text(encoding="utf-8"))
+                if not isinstance(model, dict) or model.get("schema") != 1 \
+                        or model.get("provenance") != "USER_SUPPLIED_UNVERIFIED" \
+                        or model.get("climate_sampler") != "minecraft:vanilla_overworld_noise_router" \
+                        or not isinstance(model.get("entries"), list):
+                    raise EvidenceError("自定义生成器模型结构不符；只支持显式原版噪声路由器假设")
+                entries = model["entries"]
+                if not 1 <= len(entries) <= 4096:
+                    raise EvidenceError("自定义气候参数表必须有1..4096条气候区域")
+                try:
+                    possible = {row["biome"] for row in entries}
+                except (KeyError, TypeError) as issue:
+                    raise EvidenceError("自定义模型缺失有效群系映射") from issue
+                dataset = Dataset(args.input)
+                try:
+                    scope, selected, total, observed_ids, namespaces = sample_evidence(
+                        dataset, args.minecraft)
+                finally:
+                    dataset.close()
+                if not observed_ids.issubset(possible):
+                    print("P4.1_MODEL_REGISTRY_INCOMPATIBLE: 在真实P1证据中"
+                          f"有{len(observed_ids - possible)}种未被模型解释的群系")
+                    print("FULL64=UNKNOWN_CUSTOM_WORLDGEN；"
+                          "停止不可信的高16位假设搜索，不能说目标服Seed不存在")
+                    return 2
+                quart = Path(d) / "client-quart.csv"
+                quart.write_text(encoded_quart(scope, selected), encoding="utf-8")
+                cmd += ["-PrecoveryQuart=" + str(quart),
+                        "-PrecoveryBiomeMode=EXPLICIT_CUSTOM_CLIMATE_HYPOTHESIS",
+                        "-PrecoveryCustomModel=" + str(args.custom_model.resolve()),
+                        "-PrecoveryShardIndex=" + str(args.high16_shard),
+                        "-PrecoveryShardCount=" + str(args.high16_shards),
+                        "-PrecoveryHigh16MaxEvaluations=" + str(args.high16_evaluations)]
+                if args.high16_resume is not None:
+                    cmd += ["-PrecoveryHigh16Resume=" + str(args.high16_resume),
+                            "-PrecoveryHigh16Digest=" + args.high16_expected_digest]
+                print("P4.1：客户端真实群系=" + str(total)
+                      + "；独立3FIT+2HOLDOUT就绪；噪声参数与服务端身份未认证")
             cmd += ["p39RealSeedRecovery"]
             print("运行本机原版Java RNG/Z3真求解；结果为模型候选，Salt/自然来源未确认")
             result = subprocess.run(cmd, cwd=root, check=False)
         return result.returncode
-    except (EvidenceError, OSError, zipfile.BadZipFile) as exc:
+    except (EvidenceError, OSError, zipfile.BadZipFile, ValueError, TypeError) as exc:
         print("RESULT=BLOCKED: " + str(exc), file=sys.stderr)
         return 2
 

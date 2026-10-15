@@ -4,6 +4,9 @@ import io.github.fxjcangku.worldseedlab.core.geometry.ClientVisibleDesertPyramid
 import io.github.fxjcangku.worldseedlab.core.geometry.StructureFootprintInverter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -227,13 +230,108 @@ public final class RealClientSeedRecoveryCli {
         return List.copyOf(out);
     }
 
+    /**
+     * 续算输入签名：包含low48候选集合、真实quart坐标/留出角色、假设参数表和世界作用域。
+     * 只输出SHA256摘要，不输出服务器地址、坐标、世界HMAC或本机密钥；
+     * 换任何一份证据或配置都拒绝按旧索引继续。
+     */
+    private static String conditionalInputDigest(
+            List<LocalSmtSeedSolver.VerifiedLow48> low,
+            ClientQuartEvidenceArchive.Archive archive,
+            P40CustomClimateModel.Specification spec) throws Exception {
+        MessageDigest sha = MessageDigest.getInstance("SHA-256");
+        StringBuilder canonical = new StringBuilder(4096)
+                .append(archive.scope().worldFingerprint()).append('|')
+                .append(archive.scope().gameVersion()).append('|')
+                .append(archive.scope().dimension()).append('|')
+                .append(spec.generatorProfile()).append('|')
+                .append(spec.noiseRouter()).append('\n');
+        low.stream().map(LocalSmtSeedSolver.VerifiedLow48::seedLow48)
+                .sorted().forEach(seed -> canonical.append(seed).append(';'));
+        canonical.append('\n');
+        for (var sample : archive.samples()) {
+            canonical.append(sample.quartX()).append(',')
+                    .append(sample.quartY()).append(',')
+                    .append(sample.quartZ()).append(',')
+                    .append(sample.observedBiome()).append(',')
+                    .append(sample.split()).append(';');
+        }
+        canonical.append('\n');
+        for (var entry : spec.entries()) {
+            canonical.append(entry.getFirst()).append('=')
+                    .append(entry.getSecond()).append(';');
+        }
+        return HexFormat.of().formatHex(
+                sha.digest(canonical.toString().getBytes(StandardCharsets.UTF_8)));
+    }
+
+    /** 未认证自定义模型仅提供可分片条件筛选，不能削弱原版高16验证门槛。 */
+    private static void conditionalCustomHigh16(
+            Observation observed, LocalSmtSeedSolver.Outcome low,
+            ClientQuartEvidenceArchive.Archive archive, String modelPath) throws Exception {
+        var spec = P40CustomClimateModel.read(Path.of(modelPath));
+        int shardIndex = Integer.parseInt(System.getProperty("recoveryShardIndex", "0"));
+        int shardCount = Integer.parseInt(System.getProperty("recoveryShardCount", "16"));
+        var partition = Full64High16ShardPlan.partition(
+                low.candidates().size(), shardIndex, shardCount);
+        long resume = Long.parseLong(System.getProperty("recoveryHigh16Resume",
+                Long.toString(partition.fromIndex())));
+        if (resume < partition.fromIndex() || resume >= partition.endExclusive()) {
+            throw new IllegalArgumentException("高16续算位置不属于当前分片");
+        }
+        String digest = conditionalInputDigest(low.candidates(), archive, spec);
+        String expected = System.getProperty("recoveryHigh16Digest", "");
+        if (resume > partition.fromIndex()
+                && (!digest.equals(expected)
+                    || low.status() != LocalSmtSeedSolver.Status.BOUNDED_MODEL_EXHAUSTED)) {
+            throw new IllegalArgumentException("跨次续算需完整且稳定的低48候选集和匹配的证据SHA256");
+        }
+        long maxEvaluations = Long.parseLong(
+                System.getProperty("recoveryHigh16MaxEvaluations", "128"));
+        if (maxEvaluations < 1 || maxEvaluations > 1_000_000) {
+            throw new IllegalArgumentException("高16候选本轮预算必须在1..1000000");
+        }
+        var budget = new Full64BiomeCandidateSearch.SearchBudget(
+                resume, partition.endExclusive(),
+                Math.min(maxEvaluations, partition.endExclusive() - resume),
+                120_000, 64);
+        System.out.println("P4.1_CUSTOM_MODEL_SOURCE=USER_SUPPLIED_UNVERIFIED"
+                + " | MODEL_NOISE_ROUTER=EXPLICIT_VANILLA_OVERWORLD_HYPOTHESIS");
+        System.out.println("P4.1_INPUT_SHA256=" + digest
+                + " | 低48假设数量=" + low.candidates().size()
+                + " | 分片=" + shardIndex + "/" + shardCount
+                + " | 分片区间=" + partition.fromIndex()
+                + ".." + partition.endExclusive());
+        var found = P41ConditionalHigh16Search.search(
+                low.candidates(), archive, spec, budget, Thread.currentThread()::isInterrupted);
+        System.out.println("P4.1_CONDITIONAL_RESULT=" + found.completion()
+                + " | examined=" + found.evaluations()
+                + " | fitRejected=" + found.fitRejected()
+                + " | holdoutRejected=" + found.holdoutRejected()
+                + " | NEXT_INDEX=" + found.nextIndex()
+                + " | DOMAIN_SIZE=" + found.domainSize());
+        for (var candidate : found.candidates()) {
+            System.out.println("CONDITIONAL_CUSTOM_FULL64=0x" + candidate.hex16()
+                    + " | FIT=" + candidate.fitMatches()
+                    + " | HOLDOUT=" + candidate.holdoutMatches()
+                    + " | SEED_NOT_VERIFIED_ON_REMOTE_SERVER");
+        }
+        if (!found.fullConditionalDomainChecked(budget)) {
+            System.out.println("DOMAIN_INCOMPLETE: 仅检查本轮连续高16位子区间；"
+                    + "没有完成全部分片时不能宣称所有高位已穷尽。");
+        }
+        System.out.println("FULL64=UNKNOWN_CUSTOM_WORLDGEN，"
+                + "未知生成器、结构Salt、历史混合区块和人工建筑自然来源未证明");
+    }
+
     public static void main(String[] args) throws Exception {
-        if (args.length < 1 || args.length > 4) {
+        if (args.length < 1 || args.length > 5) {
             throw new IllegalArgumentException(
                     "用法：p39RealSeedRecovery -PrecoveryEvidence=observations.zip "
                     + "[-PrecoverySalts=14357617] "
-                    + "[-PrecoveryQuart=/path/client-quart.csv "
-                    + "-PrecoveryBiomeMode=EXPLICIT_VANILLA_OVERWORLD_HYPOTHESIS]");
+                    + "[-PrecoveryQuart=client-quart.csv -PrecoveryBiomeMode="
+                    + "EXPLICIT_VANILLA_OVERWORLD_HYPOTHESIS或EXPLICIT_CUSTOM_CLIMATE_HYPOTHESIS "
+                    + "-PrecoveryCustomModel=climate.json]");
         }
         String version = System.getProperty("mcVersion", "26.2");
         Observation observed = inspect(Path.of(args[0]), version);
@@ -252,9 +350,13 @@ public final class RealClientSeedRecoveryCli {
         }
 
         List<Integer> hypotheses = salts(args.length >= 2 ? args[1] : "14357617");
-        if ((args.length == 3) || (args.length == 4
-                && !"EXPLICIT_VANILLA_OVERWORLD_HYPOTHESIS".equals(args[3]))) {
-            throw new IllegalArgumentException("高16位必须明确提供quart CSV和原版生成器假设");
+        boolean vanillaHigh16 = args.length == 4
+                && "EXPLICIT_VANILLA_OVERWORLD_HYPOTHESIS".equals(args[3]);
+        boolean conditionalCustom = args.length == 5
+                && "EXPLICIT_CUSTOM_CLIMATE_HYPOTHESIS".equals(args[3]);
+        if (args.length == 3 || (args.length >= 4
+                && !vanillaHigh16 && !conditionalCustom)) {
+            throw new IllegalArgumentException("quart、高16生成器模型和参数文件必须同时明确授权");
         }
         long startInclusive = Long.parseLong(System.getProperty("recoveryStart", "0"));
         long endExclusive = Long.parseLong(System.getProperty("recoveryEnd",
@@ -290,33 +392,37 @@ public final class RealClientSeedRecoveryCli {
                         + " | HOLDOUT=" + candidate.holdoutMatches()
                         + " | NATURAL_ORIGIN=UNKNOWN");
             }
-            if (args.length == 4 && !low.candidates().isEmpty()) {
+            if ((vanillaHigh16 || conditionalCustom) && !low.candidates().isEmpty()) {
                 var archive = ClientQuartEvidenceArchive.read(Path.of(args[2]));
                 if (!observed.worldFingerprint().equals(archive.scope().worldFingerprint())
                         || !observed.version().equals(archive.scope().gameVersion())
                         || !observed.dimension().equals(archive.scope().dimension())) {
                     throw new IOException("真实quart群系与真实轮廓HMAC/维度/版本不一致");
                 }
-                var scope = new Full64BiomeCandidateSearch.Scope(
-                        observed.worldFingerprint(), observed.version(), observed.dimension(),
-                        VanillaOverworldBiomeModel.GENERATOR_PROFILE);
-                var model = VanillaOverworldBiomeModel.create(scope);
-                long domain = (long) low.candidates().size() * (1 << 16);
-                var budget = new Full64BiomeCandidateSearch.SearchBudget(
-                        0, domain, Math.min(domain, 1_000_000), 120_000, 64);
-                var full = Full64BiomeCandidateSearch.search(
-                        low.candidates(), archive.forVanillaHypothesis(), model,
-                        budget, Thread.currentThread()::isInterrupted);
-                System.out.println("FULL64_仅原版假设=" + full.completion()
-                        + " | 实际高位检查=" + full.evaluations()
-                        + "/" + full.domainSize());
-                for (var candidate : full.candidates()) {
-                    System.out.println("FULL64_MODEL_CANDIDATE=0x" + candidate.hex16()
-                            + " | signed=" + candidate.signedDecimal()
-                            + " | MODEL_NOT_VERIFIED_ON_UNKNOWN_SERVER");
+                if (conditionalCustom) {
+                    conditionalCustomHigh16(observed, low, archive, args[4]);
+                } else {
+                    var scope = new Full64BiomeCandidateSearch.Scope(
+                            observed.worldFingerprint(), observed.version(), observed.dimension(),
+                            VanillaOverworldBiomeModel.GENERATOR_PROFILE);
+                    var model = VanillaOverworldBiomeModel.create(scope);
+                    long domain = (long) low.candidates().size() * (1 << 16);
+                    var budget = new Full64BiomeCandidateSearch.SearchBudget(
+                            0, domain, Math.min(domain, 1_000_000), 120_000, 64);
+                    var full = Full64BiomeCandidateSearch.search(
+                            low.candidates(), archive.forVanillaHypothesis(), model,
+                            budget, Thread.currentThread()::isInterrupted);
+                    System.out.println("FULL64_仅原版假设=" + full.completion()
+                            + " | 实际高位检查=" + full.evaluations()
+                            + "/" + full.domainSize());
+                    for (var candidate : full.candidates()) {
+                        System.out.println("FULL64_MODEL_CANDIDATE=0x" + candidate.hex16()
+                                + " | signed=" + candidate.signedDecimal()
+                                + " | MODEL_NOT_VERIFIED_ON_UNKNOWN_SERVER");
+                    }
                 }
-            } else if (args.length < 4) {
-                System.out.println("FULL64=UNKNOWN：未提供可验证的真实生成器映射及独立高16证据");
+            } else {
+                System.out.println("FULL64=UNKNOWN：尚无可用于条件高16搜索的低48候选与真实群系");
             }
         }
         System.out.println("本研究实际运行SMT与FIT/HOLDOUT；模型一致仍不证明未知目标服真实Seed。");
