@@ -15,7 +15,7 @@ from zipfile import ZipFile
 from research_p37_custom_worldgen import Dataset, EvidenceRejected
 from study_climate_fingerprint import (
     choose_regions, scan_coverage, sample_regions, encode, main as run_cli,
-    MAX_PER_REGION,
+    MAX_PER_REGION, _rank,
 )
 
 WORLD = "a" * 64
@@ -80,6 +80,47 @@ class P43CliTests(TestCase):
         self.assertEqual(text.count(",HOLDOUT\n"), 2*MAX_PER_REGION)
         self.assertIn("sampling=AUTOMATIC_FULL_CHUNK_OBSERVATION",text)
         self.assertNotIn("CONTROL_WORLD_OBSERVED",text)
+
+    def test_conflict_after_reservoir_eviction_is_rejected(self):
+        # 特意复测区域中未进入前64名的quart；旧版只追踪heap活动点会漏掉冲突。
+        source = Dataset(self.path)
+        try:
+            scope, regions, *_ = scan_coverage(source, "26.2")
+        finally:
+            source.close()
+        original = [r for r in self.rows if (r["position"]["x"] // 4 // 128,
+                    r["position"]["z"] // 4 // 128) == regions[0]]
+        self.assertGreater(len(original), MAX_PER_REGION)
+        # _rank越大越可能被reservoir剔除；选择最大者保证能覆盖此路径。
+        victim = max(original, key=lambda r: _rank((
+            r["position"]["x"] // 4, r["position"]["y"] // 4,
+            r["position"]["z"] // 4)))
+        changed = dict(victim)
+        changed["observed_identifier"] = "worldseedlab:contradictory_biome"
+        write_zip(self.path, self.rows + [changed])
+        source = Dataset(self.path)
+        try:
+            with self.assertRaisesRegex(EvidenceRejected, "互相矛盾"):
+                sample_regions(source, regions)
+        finally:
+            source.close()
+
+    def test_repeated_same_quart_not_counted_twice(self):
+        source = Dataset(self.path)
+        try:
+            _, regions, *_ = scan_coverage(source, "26.2")
+        finally:
+            source.close()
+        write_zip(self.path, self.rows + [self.rows[0]] * 5)
+        source = Dataset(self.path)
+        try:
+            points = sample_regions(source, regions)
+        finally:
+            source.close()
+        self.assertEqual(sum(len(p) for p in points.values()),
+                         len(regions) * MAX_PER_REGION)
+        for rows in points.values():
+            self.assertEqual(len({coords for coords, _ in rows}), len(rows))
 
     def test_insufficient_region_coverage(self):
         with self.assertRaises(EvidenceRejected):
