@@ -25,7 +25,7 @@ from research_p37_custom_worldgen import (
 )
 
 MAX_ROW = 8192
-MAX_PER_REGION = 48
+MAX_PER_REGION = 64
 MAX_SELECTED_REGIONS = 12
 BIOME = re.compile(r"^[a-z0-9_.-]+:[a-z0-9_./-]+$")
 MAGIC = "WSL_P43_SPATIAL_CLIMATE_V1"
@@ -81,17 +81,23 @@ def iterate_p1(dataset: Dataset):
 def choose_regions(regions):
     if len(regions) < 5:
         raise EvidenceRejected("不足5个可见宏区域，无法做跨地区验证")
-    chosen = [min(regions)]
-    while len(chosen) < min(MAX_SELECTED_REGIONS, len(regions)):
-        eligible = [r for r in regions if r not in chosen and all(
-            max(abs(r[0]-v[0]), abs(r[1]-v[1])) >= 3 for v in chosen)]
-        if not eligible:
-            break
-        # 完全依赖坐标选择，避免按目标群系挑选好看的留出点。
-        next_region = max(eligible, key=lambda r: (
-            min((r[0]-v[0])**2 + (r[1]-v[1])**2 for v in chosen),
-            -r[0], -r[1]))
-        chosen.append(next_region)
+    ordered = sorted(regions)
+    # 相比从最远端开始贪心，先最大化可用的独立地区数量：
+    # 同一轮真实P1实测获得9区，而旧最远点方案仅7区。
+    # 不看群系标签，因此不会人为挑选HOLDOUT更容易命中的地区。
+    candidates = []
+    for sequence in (ordered, list(reversed(ordered))):
+        chosen = []
+        for region in sequence:
+            if all(max(abs(region[0]-p[0]),abs(region[1]-p[1])) >= 3
+                   for p in chosen):
+                chosen.append(region)
+                if len(chosen) >= MAX_SELECTED_REGIONS:
+                    break
+        candidates.append(chosen)
+    chosen = max(candidates, key=lambda points: (
+        len(points), -sum(abs(x)+abs(z) for x,z in points)))
+    chosen = sorted(chosen)
     if len(chosen) < 5:
         raise EvidenceRejected("没有3FIT+2HOLDOUT且保守相隔1024格的宏区域")
     return chosen
