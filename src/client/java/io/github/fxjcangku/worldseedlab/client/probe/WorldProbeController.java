@@ -246,7 +246,8 @@ public final class WorldProbeController {
             var location = client.player.blockPosition();
             return Optional.of(new MapAccess(scope, localWorld, dim,
                     location.getX(), location.getZ(), location.getY(),
-                    client.level.getMinY(), client.level.getMaxY()));
+                    client.level.getMinY(),
+                     client.level.getMinY() + client.level.getHeight()));
         } catch (IOException | RuntimeException problem) {
             status = "本地地图作用域读取失败：" + problem.getMessage();
             logger.error("Cannot open observed map scope", problem);
@@ -832,7 +833,8 @@ public final class WorldProbeController {
         while (!pending.isEmpty()) {
             ChunkKey next = pending.removeFirst();
             if (!isLoaded(level, next)) { enqueued.remove(next); continue; }
-            cursor = new ChunkSamplingCursor(next, level.getMinY(), level.getMaxY());
+            cursor = new ChunkSamplingCursor(next, level.getMinY(),
+                    level.getMinY() + level.getHeight());
             chunk = next;
             samples = new ArrayList<>(512);
             return true;

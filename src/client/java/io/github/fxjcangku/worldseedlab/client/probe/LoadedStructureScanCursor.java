@@ -60,7 +60,8 @@ public final class LoadedStructureScanCursor {
             throw new IllegalArgumentException("chunk is not already loaded");
         }
         minY = level.getMinY();
-        maxY = level.getMaxY() - 1;
+        // getMaxY() already denotes the inclusive top block; subtracting one skips it.
+        maxY = level.getMaxY();
         if (maxY <= minY) throw new IllegalArgumentException("invalid build height");
         // 不在构造阶段读取BlockState。首16格预检也由advance的tick预算支付。
         for (int localX : LAND_COLUMNS) {

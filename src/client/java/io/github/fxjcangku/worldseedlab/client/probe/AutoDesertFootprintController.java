@@ -352,7 +352,7 @@ public final class AutoDesertFootprintController {
             int centerX = Math.floorDiv(client.player.blockPosition().getX(), 16);
             int centerZ = Math.floorDiv(client.player.blockPosition().getZ(), 16);
             int buildMinY = client.level.getMinY();
-            int buildMaxYExclusive = client.level.getMaxY();
+            int buildMaxYExclusive = client.level.getMinY() + client.level.getHeight();
             if ((long) buildMaxYExclusive - buildMinY
                     < AutoDesertFootprintPlan.BLUE_SEARCH_HEIGHT) {
                 stop("P3.6 当前维度高度不足32格，拒绝不完整材料扫描");
@@ -442,7 +442,7 @@ public final class AutoDesertFootprintController {
         final AutoDesertFootprintPlan.Survey survey;
         try {
             survey = AutoDesertFootprintPlan.fromObservedBlue(
-                    blue, level.getMinY(), level.getMaxY());
+                    blue, level.getMinY(), level.getMinY() + level.getHeight());
         } catch (IllegalArgumentException badElevation) {
             invalidAnchorElevation++;
             return true; // 没有合法Y窗口，无意义重试。
