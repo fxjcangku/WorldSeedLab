@@ -127,6 +127,11 @@ public final class P43ClimateFingerprintSmokeTest {
                             && score.maximumPossibleAccuracy()<=1,
                     "模型指标越界或不可信");
         }
+        require(evaluated.scores().getFirst().accuracy() >= 0.70
+                        && evaluated.scores().getFirst().accuracy()
+                           > evaluated.scores().get(1).accuracy() + 0.30,
+                "受控Minecraft真实Climate场上的气候→标签测试必须对正确Seed"
+                + "明显优于错误Seed，不能让无鉴别力算法假通过");
         var again = P43ClimateFingerprintAudit.evaluate(archive,
                 List.of(2731L,2732L),8);
         require(again.scores().equals(evaluated.scores()),
