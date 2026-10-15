@@ -42,7 +42,7 @@ class P43CliTests(TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix="wsl-p43-test-")
         self.path = Path(self.temp.name)/"observations.zip"
-        self.rows = [observed(region, n) for region in range(6) for n in range(60)]
+        self.rows = [observed(region, n) for region in range(6) for n in range(90)]
         write_zip(self.path, self.rows)
 
     def tearDown(self):
@@ -57,7 +57,7 @@ class P43CliTests(TestCase):
 
     def test_true_scope_and_spatial_separation(self):
         scope, regions, rows, kinds, namespaces = self.read()
-        self.assertEqual(rows, 360)
+        self.assertEqual(rows, 540)
         self.assertEqual(len(regions), 6)
         self.assertEqual(kinds, 2)
         self.assertEqual(namespaces, 2)
