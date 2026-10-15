@@ -229,13 +229,30 @@ tasks.register('p39RealSeedRecovery', JavaExec) {
             providers.gradleProperty('recoverySalts').orElse('14357617').get()]
     if (providers.gradleProperty('recoveryQuart').isPresent()) {
         evidenceArgs.add(providers.gradleProperty('recoveryQuart').get())
-        evidenceArgs.add(providers.gradleProperty('recoveryBiomeMode').orElse('NOT_CONFIRMED').get())
+        def high16Mode = providers.gradleProperty('recoveryBiomeMode').orElse('NOT_CONFIRMED').get()
+        evidenceArgs.add(high16Mode)
+        if (high16Mode == 'EXPLICIT_CUSTOM_CLIMATE_HYPOTHESIS') {
+            if (!providers.gradleProperty('recoveryCustomModel').isPresent()) {
+                throw new GradleException('P4.1 custom climate mode requires local -PrecoveryCustomModel')
+            }
+            evidenceArgs.add(providers.gradleProperty('recoveryCustomModel').get())
+        } else if (providers.gradleProperty('recoveryCustomModel').isPresent()) {
+            throw new GradleException('Custom model requires explicit custom climate mode')
+        }
+    } else if (providers.gradleProperty('recoveryCustomModel').isPresent()) {
+        throw new GradleException('Custom model requires real client quart evidence')
     }
     args evidenceArgs
     systemProperty 'mcVersion', targetMinecraft
     systemProperty 'recoveryStart', providers.gradleProperty('recoveryStart').orElse('0').get()
     systemProperty 'recoveryEnd', providers.gradleProperty('recoveryEnd')
             .orElse('281474976710656').get()
+    systemProperty 'recoveryShardIndex', providers.gradleProperty('recoveryShardIndex').orElse('0').get()
+    systemProperty 'recoveryShardCount', providers.gradleProperty('recoveryShardCount').orElse('16').get()
+    systemProperty 'recoveryHigh16Resume', providers.gradleProperty('recoveryHigh16Resume').orElse('0').get()
+    systemProperty 'recoveryHigh16Digest', providers.gradleProperty('recoveryHigh16Digest').orElse('').get()
+    systemProperty 'recoveryHigh16MaxEvaluations',
+            providers.gradleProperty('recoveryHigh16MaxEvaluations').orElse('128').get()
 }
 
 tasks.register('p39RealSeedRecoverySmokeTest', JavaExec) {
@@ -655,4 +672,19 @@ tasks.register('p40CustomClimateAudit', JavaExec) {
          targetMinecraft,
          providers.gradleProperty('p40Candidates').orElse('NO_CANDIDATES').get()
     systemProperty 'mcVersion', targetMinecraft
+}
+
+
+// P4.1: 外部自定义气候模型只有条件高16能力；受控 Minecraft FULL 真值
+// 和严格阻断不完整/跨作用域、分片续算不同模型混用均随双版本 clean build 检查。
+tasks.register('p41ConditionalHigh16SmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Verify P4.1 conditional high16 shards against actual Minecraft FULL saved biome evidence.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P41ConditionalHigh16SmokeTest'
+    systemProperty 'mcVersion', targetMinecraft
+}
+tasks.named('check') {
+    dependsOn tasks.named('p41ConditionalHigh16SmokeTest')
 }
