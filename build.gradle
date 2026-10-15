@@ -249,7 +249,9 @@ tasks.register('p39RealSeedRecovery', JavaExec) {
             .orElse('281474976710656').get()
     systemProperty 'recoveryShardIndex', providers.gradleProperty('recoveryShardIndex').orElse('0').get()
     systemProperty 'recoveryShardCount', providers.gradleProperty('recoveryShardCount').orElse('16').get()
-    systemProperty 'recoveryHigh16Resume', providers.gradleProperty('recoveryHigh16Resume').orElse('0').get()
+    if (providers.gradleProperty('recoveryHigh16Resume').isPresent()) {
+        systemProperty 'recoveryHigh16Resume', providers.gradleProperty('recoveryHigh16Resume').get()
+    }
     systemProperty 'recoveryHigh16Digest', providers.gradleProperty('recoveryHigh16Digest').orElse('').get()
     systemProperty 'recoveryHigh16MaxEvaluations',
             providers.gradleProperty('recoveryHigh16MaxEvaluations').orElse('128').get()
