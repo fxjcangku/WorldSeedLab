@@ -147,6 +147,12 @@ python scripts/recover_seed.py --input "D:\private\observations.zip" --minecraft
 
 [详细算法、跨次断点与验收说明](docs/P41_CONDITIONAL_CUSTOM_HIGH16.md)
 
+## P4.2 / 自定义生成器可辨识性实证审计与高度取证修正
+
+已实现一个完全只读的离线生成器假设审计器，利用同世界的P1真实quart群系、P2地表与STRATA地下方块进行完整流式校验：重复/矛盾位置、三证据链交叉覆盖、已声明候选模型的世界高度和群系集合冲突。支持修复旧版错误标记为排他上界的 getMaxY() 历史记录，未来取证改为 minY+getHeight()。**模型没有被排除不等于识别生成器；仍不会在未知Salt/NoiseRouter/自然StructureStart条件下伪报64位Seed。**
+
+实服第二轮匿名回放：2,085,248条真实quart均不重复、61种群系含27种非原版、46处三链共同宏区域、9处保守空间独立地区。客户端原始高度上界639为历史含上界错误记录，应规范化为排他上界640；完全未修改原版Overworld已被排除，但服务端可能仍复用部分原版NoiseRouter。详情见[生成器识别与可辨识性P4.2](docs/P42_GENERATOR_IDENTIFIABILITY.md)。
+
 ## P3.9 / 真实客户端证据直接进行种子反演（本机Z3，不再手工填写起点）
 
 本轮新增 **真正的反演执行入口**，输入 `observations.zip` / 本机 HMAC 世界原始取证目录即可。自动读取完整21×21的 P3.6/P3.5 真实方块轮廓，按受控真世界几何校准建立独立 RandomSpread FIT/HOLDOUT，实际调用 Z3 求低48位候选，再由精确 Java RNG 复核；可选真实quart+显式原版生成器假设进行高16条件筛选。**这并不证明未知自定义服务器生成器/建筑自然来源/Salt。**
