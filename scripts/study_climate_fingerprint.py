@@ -27,6 +27,7 @@ from research_p37_custom_worldgen import (
 MAX_ROW = 8192
 MAX_PER_REGION = 64
 MAX_SELECTED_REGIONS = 12
+MAX_TRACKED_QUARTS = 2_500_000  # 仅选中区域；限制真实客户端P1全量去重内存
 BIOME = re.compile(r"^[a-z0-9_.-]+:[a-z0-9_./-]+$")
 MAGIC = "WSL_P43_SPATIAL_CLIMATE_V1"
 
@@ -128,26 +129,33 @@ def _rank(point):
 def sample_regions(dataset, chosen):
     selected = set(chosen)
     heaps = {r: [] for r in chosen}
-    active_positions = {r: {} for r in chosen}
+    # 必须在整个选中地域去重，而非只检查当前进入前64名的reservoir。
+    # 否则某quart被挤出heap后再被观察成另一种群系，会无声通过审计。
+    # 坐标用无碰撞位打包，只在内存存在，绝不写入公开结果。
+    seen_all = {}
+    biome_codes = {}
     for _, point, biome in iterate_p1(dataset):
         region = (point[0] // 128, point[2] // 128)
         if region not in selected:
             continue
-        heap = heaps[region]
-        seen = active_positions[region]
-        if point in seen:
-            if seen[point] != biome:
-                raise EvidenceRejected("同一候选quart在多次实测中观测到冲突群系")
+        packed = ((point[0] + 8_000_000) << 36) | (
+            (point[2] + 8_000_000) << 12) | (point[1] + 1024)
+        code = biome_codes.setdefault(biome, len(biome_codes))
+        previous = seen_all.get(packed)
+        if previous is not None:
+            if previous != code:
+                raise EvidenceRejected("同一选中地域quart复测存在互相矛盾的群系")
             continue
+        if len(seen_all) >= MAX_TRACKED_QUARTS:
+            raise EvidenceRejected("选中地域quart超过250万个，请分段审计")
+        seen_all[packed] = code
+        heap = heaps[region]
         priority = _rank(point)
         item = (-priority, point, biome)
         if len(heap) < MAX_PER_REGION:
             heapq.heappush(heap, item)
-            seen[point] = biome
         elif item > heap[0]:
-            discarded = heapq.heapreplace(heap, item)
-            seen.pop(discarded[1], None)
-            seen[point] = biome
+            heapq.heapreplace(heap, item)
     return {key: sorted((p, biome) for _, p, biome in heap)
             for key, heap in heaps.items()}
 
