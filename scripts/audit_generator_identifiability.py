@@ -180,8 +180,8 @@ class Audit:
             self.require(mode != "SURFACE" or not vertical,
                          "SURFACE档位不能伪造地下数据")
             self.detail_rows += 1
-            self.add_region(self.strata_regions, cx*16, cz*16)
             if mode == "STRATA":
+                self.add_region(self.strata_regions, cx*16, cz*16)
                 self.strata_chunks.add((cx, cz))
                 self.vertical_cells += len(vertical)
             for cell in surface:
@@ -285,8 +285,8 @@ def model_references(path):
             raise EvidenceRejected("模型不允许自行声称已经通过目标服务器认证")
         ids = ref.get("possible_biomes")
         if not isinstance(ids,list) or not 1 <= len(ids) <= 4096 \
-                or len(set(ids)) != len(ids) or not all(
-                isinstance(b,str) and len(b)<=256 and BIOME_ID.fullmatch(b) for b in ids):
+                or not all(isinstance(b,str) and len(b)<=256 and BIOME_ID.fullmatch(b)
+                           for b in ids) or len(set(ids)) != len(ids):
             raise EvidenceRejected("模型参考群系列表非法")
         profile = ref.get("dimension_profile")
         if profile is not None and (not isinstance(profile,dict) or
