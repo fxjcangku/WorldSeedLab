@@ -690,3 +690,18 @@ tasks.register('p41ConditionalHigh16SmokeTest', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('p41ConditionalHigh16SmokeTest')
 }
+
+
+// P4.2：独立Minecraft 26.1.2/26.2 Mojmap受控真值证明
+// getMaxY()含上界、minY+getHeight()排他上界；原版Overworld噪声和海平面真值。
+tasks.register('p42HeightAndVanillaReferenceSmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Verify real target Minecraft inclusive getMaxY, exclusive world height, vanilla Overworld baseline.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P42HeightAndVanillaReferenceSmokeTest'
+    systemProperty 'mcVersion', targetMinecraft
+}
+tasks.named('check') {
+    dependsOn tasks.named('p42HeightAndVanillaReferenceSmokeTest')
+}
