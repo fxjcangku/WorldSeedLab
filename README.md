@@ -147,6 +147,12 @@ python scripts/recover_seed.py --input "D:\private\observations.zip" --minecraft
 
 [详细算法、跨次断点与验收说明](docs/P41_CONDITIONAL_CUSTOM_HIGH16.md)
 
+## P4.3 / 六维气候场指纹与自定义群系可预测性研究
+
+新增本机只读气候指纹实验：普通客户端P1真实已加载区块的自定义群系标签，按至少3个FIT和2个HOLDOUT、跨地域相隔约1024方块拆分。对**用户明确提供的完整64位候选**调用对应Minecraft 26.1.2/26.2的原生六轴气候噪声，然后比较自定义群系标签的留出预测准确度与多数类基线，检查是否有值得进一步独立验证的原版NoiseRouter复用信号。
+
+无需Seed候选时只检测证据与输出 UNKNOWN；不能从大量自定义群系直接生成真实Seed，也不会将条件映射兼容性解释成服务器NoiseRouter身份、Seed或Terralith版本。详细研究、控制变量与命令见 [P4.3气候指纹可迁移性检验](docs/P43_SPATIAL_CLIMATE_FINGERPRINT.md)。
+
 ## P4.2 / 自定义生成器可辨识性实证审计与高度取证修正
 
 已实现一个完全只读的离线生成器假设审计器，利用同世界的P1真实quart群系、P2地表与STRATA地下方块进行完整流式校验：重复/矛盾位置、三证据链交叉覆盖、已声明候选模型的世界高度和群系集合冲突。支持修复旧版错误标记为排他上界的 getMaxY() 历史记录，未来取证改为 minY+getHeight()。**模型没有被排除不等于识别生成器；仍不会在未知Salt/NoiseRouter/自然StructureStart条件下伪报64位Seed。**
