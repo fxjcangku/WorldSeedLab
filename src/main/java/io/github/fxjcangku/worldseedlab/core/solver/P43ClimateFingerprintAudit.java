@@ -35,13 +35,13 @@ public final class P43ClimateFingerprintAudit {
 
     public enum Verdict {
         EXPLORATORY_ONLY, INSUFFICIENT_SPATIALLY_INDEPENDENT_SAMPLES,
-        INSUFFICIENT_LABEL_DIVERSITY
+        INSUFFICIENT_LABEL_DIVERSITY, INSUFFICIENT_LABEL_COVERAGE
     }
 
     public record Score(long seedBits, int holdoutRows, int correctlyPredicted,
                         int baselineCorrect, int unseenHoldoutLabels,
                         double accuracy, double baselineAccuracy,
-                        double minHoldoutRegionAccuracy) {
+                        double minHoldoutRegionAccuracy, double maximumPossibleAccuracy) {
         public String signedSeed() { return Long.toString(seedBits); }
         public String hexSeed() { return "%016x".formatted(seedBits); }
     }
@@ -136,6 +136,15 @@ public final class P43ClimateFingerprintAudit {
                     fits.size(), holdouts.size(), archive.fitRegions(),
                     archive.holdoutRegions(), knownFitLabels.size(), List.of());
         }
+        // 只在FIT出现过的自定义群系才可能被无参数最近邻分类器预测。
+        // 未见标签过多，拒绝把差准确率误判为原版NoiseRouter不适配。
+        long unseenCount = holdouts.stream()
+                .filter(p -> !knownFitLabels.contains(p.biomeId())).count();
+        if (unseenCount * 4 > holdouts.size()) {
+            return new Outcome(Verdict.INSUFFICIENT_LABEL_COVERAGE,
+                    fits.size(), holdouts.size(), archive.fitRegions(),
+                    archive.holdoutRegions(), knownFitLabels.size(), List.of());
+        }
 
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
@@ -172,7 +181,8 @@ public final class P43ClimateFingerprintAudit {
                     counts -> counts[1] / (double) counts[0]).min().orElse(0);
             scores.add(new Score(seed, holdouts.size(), accurate, baselineCorrect,
                     unseen, accurate / (double) holdouts.size(),
-                    baselineCorrect / (double) holdouts.size(), minimum));
+                    baselineCorrect / (double) holdouts.size(), minimum,
+                    (holdouts.size() - unseen) / (double) holdouts.size()));
         }
         return new Outcome(Verdict.EXPLORATORY_ONLY,
                 fits.size(), holdouts.size(), archive.fitRegions(),
