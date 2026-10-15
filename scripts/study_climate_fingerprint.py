@@ -81,23 +81,16 @@ def iterate_p1(dataset: Dataset):
 def choose_regions(regions):
     if len(regions) < 5:
         raise EvidenceRejected("不足5个可见宏区域，无法做跨地区验证")
-    ordered = sorted(regions)
-    # 相比从最远端开始贪心，先最大化可用的独立地区数量：
-    # 同一轮真实P1实测获得9区，而旧最远点方案仅7区。
-    # 不看群系标签，因此不会人为挑选HOLDOUT更容易命中的地区。
-    candidates = []
-    for sequence in (ordered, list(reversed(ordered))):
-        chosen = []
-        for region in sequence:
-            if all(max(abs(region[0]-p[0]),abs(region[1]-p[1])) >= 3
-                   for p in chosen):
-                chosen.append(region)
-                if len(chosen) >= MAX_SELECTED_REGIONS:
-                    break
-        candidates.append(chosen)
-    chosen = max(candidates, key=lambda points: (
-        len(points), -sum(abs(x)+abs(z) for x,z in points)))
-    chosen = sorted(chosen)
+    # 与既有P3.7/P4.2预先确定的审计协议一致：按坐标字典序
+    # 贪心挑取空间独立的宏区域，不看群系标签也不比较HOLDOUT准确率。
+    # 这样本轮独立区域与历史可重现审计同口径。
+    chosen = []
+    for region in sorted(regions):
+        if all(max(abs(region[0]-p[0]), abs(region[1]-p[1])) >= 3
+               for p in chosen):
+            chosen.append(region)
+            if len(chosen) >= MAX_SELECTED_REGIONS:
+                break
     if len(chosen) < 5:
         raise EvidenceRejected("没有3FIT+2HOLDOUT且保守相隔1024格的宏区域")
     return chosen
