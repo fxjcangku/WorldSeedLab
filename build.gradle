@@ -705,3 +705,30 @@ tasks.register('p42HeightAndVanillaReferenceSmokeTest', JavaExec) {
 tasks.named('check') {
     dependsOn tasks.named('p42HeightAndVanillaReferenceSmokeTest')
 }
+
+
+// P4.3: 已加载FULL群系的多区域气候指纹学习。只在显式离线假设下运行，
+// 不读取远程服Seed、第三方受限生成器数据或在Fabric客户端后台求解。
+tasks.register('p43ClimateFingerprintSmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Verify target Minecraft FULL saved quart parity and climate fingerprint privacy/leakage gates.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P43ClimateFingerprintSmokeTest'
+    systemProperty 'mcVersion', targetMinecraft
+}
+tasks.named('check') {
+    dependsOn tasks.named('p43ClimateFingerprintSmokeTest')
+}
+
+tasks.register('p43ClimateFingerprint', JavaExec) {
+    group = 'research'
+    description = 'Compare explicit full64 hypotheses with multi-region observed custom biome predictability.'
+    dependsOn tasks.named('classes')
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.solver.P43ClimateFingerprintCli'
+    args providers.gradleProperty('p43Samples').orElse('NO_SPATIAL_QUART').get(),
+         providers.gradleProperty('p43Seeds').orElse('NO_SEED_HYPOTHESES').get(),
+         'EXPLICIT_UNVERIFIED_VANILLA_NOISE_ROUTER'
+    systemProperty 'mcVersion', targetMinecraft
+}
