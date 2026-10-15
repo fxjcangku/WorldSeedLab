@@ -135,6 +135,18 @@ P2.7 已确认的 Minecraft Legacy RandomSpread 数学模型现可转换成**可
 
 [查看 P3.0 的准确能力与后续高16位验证条件](docs/P30_FULL64_EVIDENCE_RESEARCH.md)
 
+## P4.1 / 自定义气候生成器的条件高16位分片反演
+
+P4.1 将 P3.9 **真实客户端建筑轮廓 → Z3 low48 → Java FIT/HOLDOUT** 与 P4.0 自定义 MultiNoise 前向模型联动；模型参数须由研究者合法、独立取得。成功得到可复核 low48 后，不再需要手工输入完整64位列表，而是在真实 Minecraft 26.1.2 / 26.2 的气候噪声上按分片实际枚举高16位，精确输出下一次续算位置与证据/模型摘要。使用 3FIT + 2HOLDOUT 的独立客户端quart数据排除不匹配候选。
+
+~~~powershell
+python scripts/recover_seed.py --input "D:\private\observations.zip" --minecraft 26.2 --custom-model "D:\private\climate.json" --high16-shard 0 --high16-shards 16
+~~~
+
+**未知服务器真正生成器/NoiseRouter、结构Salt、生成历史及建筑自然来源尚未认证。** 如果像当前真实实服观测一样，没有≥3个独立RandomSpread区域的完整结构轮廓，程序必须返回低48证据不足，而非冒充解出Seed。自定义模型高16仅为条件研究，不降低原有强安全门槛，不自动推断全部64位。
+
+[详细算法、跨次断点与验收说明](docs/P41_CONDITIONAL_CUSTOM_HIGH16.md)
+
 ## P3.9 / 真实客户端证据直接进行种子反演（本机Z3，不再手工填写起点）
 
 本轮新增 **真正的反演执行入口**，输入 `observations.zip` / 本机 HMAC 世界原始取证目录即可。自动读取完整21×21的 P3.6/P3.5 真实方块轮廓，按受控真世界几何校准建立独立 RandomSpread FIT/HOLDOUT，实际调用 Z3 求低48位候选，再由精确 Java RNG 复核；可选真实quart+显式原版生成器假设进行高16条件筛选。**这并不证明未知自定义服务器生成器/建筑自然来源/Salt。**
