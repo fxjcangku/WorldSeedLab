@@ -49,6 +49,9 @@ jobs:
       - name: P4.2 real client generator identifiability and legacy height safety
         run: python3 scripts/test_audit_generator_identifiability.py
 
+      - name: P4.3 spatial climate fingerprint evidence safety tests
+        run: python3 scripts/test_study_climate_fingerprint.py
+
       - name: Compile and verify
         run: gradle --no-daemon --stacktrace -PmcVersion=${{ matrix.minecraft }} clean build
 
