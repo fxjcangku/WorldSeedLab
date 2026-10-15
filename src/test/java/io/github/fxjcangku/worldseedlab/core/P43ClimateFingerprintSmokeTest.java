@@ -63,12 +63,6 @@ public final class P43ClimateFingerprintSmokeTest {
                 "5个真正FULL群系点不能伪装成具有统计能力的模型训练集");
 
         // 受控数据标签只由已知2731的Minecraft气候温度计算；未知服务器绝不可用作真值。
-        var climateScope = new Full64BiomeCandidateSearch.Scope(HMAC, version,
-                "minecraft:overworld", "worldseedlab:p43_controlled_test");
-        var trueModel = io.github.fxjcangku.worldseedlab.core.solver.P40CustomClimateModel
-                .create(climateScope,
-                    io.github.fxjcangku.worldseedlab.core.solver.P40CustomClimateModel
-                            .controlledVanillaPreset("worldseedlab:p43_controlled_test"));
         // 真实气候向量仍由本次被检验的Minecraft代码生成；这是算法自检，而非FULL独立真值。
         var registries = net.minecraft.data.registries.VanillaRegistries.createLookup();
         var noise = registries.lookupOrThrow(net.minecraft.core.registries.Registries.NOISE);
@@ -103,6 +97,20 @@ public final class P43ClimateFingerprintSmokeTest {
         require(archive.fitRegions()==4 && archive.holdoutRegions()==2
                         && archive.distinctBiomes()==2,
                 "受控地区分离或气候标签的训练多样性不足");
+        // 已被FIT遗漏的留出自定义群系不能由最近邻标签学习器预测。
+        // 若超过25%，应拒绝用低准确率宣称NoiseRouter错误。
+        var undercovered = points.stream().map(p ->
+                p.split() == P43SpatialClimateEvidence.Split.HOLDOUT
+                ? new P43SpatialClimateEvidence.Point(p.quartX(), p.quartY(),
+                        p.quartZ(), "worldseedlab:controlled_unseen", p.split())
+                : p).toList();
+        var missingLabelReport = P43ClimateFingerprintAudit.evaluate(
+                new P43SpatialClimateEvidence.Archive(scope, undercovered,0,0,0),
+                List.of(2731L), 8);
+        require(missingLabelReport.verdict()
+                        == P43ClimateFingerprintAudit.Verdict.INSUFFICIENT_LABEL_COVERAGE
+                        && missingLabelReport.scores().isEmpty(),
+                "训练集中缺失大批留出群系时不得给出错误NoiseRouter结论");
         var evaluated = P43ClimateFingerprintAudit.evaluate(archive,
                 List.of(2731L,2732L),8);
         require(evaluated.verdict()==P43ClimateFingerprintAudit.Verdict.EXPLORATORY_ONLY
@@ -114,7 +122,9 @@ public final class P43ClimateFingerprintSmokeTest {
                             && score.accuracy()>=0 && score.accuracy()<=1
                             && score.baselineAccuracy()>=0 && score.baselineAccuracy()<=1
                             && score.minHoldoutRegionAccuracy()>=0
-                            && score.minHoldoutRegionAccuracy()<=1,
+                            && score.minHoldoutRegionAccuracy()<=1
+                            && score.maximumPossibleAccuracy()>=0
+                            && score.maximumPossibleAccuracy()<=1,
                     "模型指标越界或不可信");
         }
         var again = P43ClimateFingerprintAudit.evaluate(archive,
