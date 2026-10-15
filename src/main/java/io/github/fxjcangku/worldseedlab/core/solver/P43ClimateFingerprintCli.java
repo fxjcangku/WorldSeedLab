@@ -45,9 +45,10 @@ public final class P43ClimateFingerprintCli {
             System.out.printf(java.util.Locale.ROOT,
                     "HYPOTHESIS_SEED=0x%s | HOLDOUT_ACCURACY=%.6f"
                     + " | MAJORITY_BASELINE=%.6f | WORST_HOLDOUT_REGION=%.6f"
-                    + " | UNSEEN_LABEL_ROWS=%d%n",
+                    + " | MAX_POSSIBLE_ACCURACY=%.6f | UNSEEN_LABEL_ROWS=%d%n",
                     score.hexSeed(), score.accuracy(), score.baselineAccuracy(),
-                    score.minHoldoutRegionAccuracy(), score.unseenHoldoutLabels());
+                    score.minHoldoutRegionAccuracy(), score.maximumPossibleAccuracy(),
+                    score.unseenHoldoutLabels());
         }
         System.out.println("RESULT=EXPLORATORY_COMPATIBILITY_ONLY"
                 + " GENERATOR_IDENTITY=UNKNOWN LOW48=NOT_DERIVED"
