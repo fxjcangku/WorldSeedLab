@@ -28,7 +28,7 @@ python scripts/study_climate_fingerprint.py --input "D:\private\observations.zip
 
 - 从已有本机原始P1 CLIENT_OBSERVATION逐行读完整文件，严格单个世界HMAC/维度/游戏版本和已加载FULL的quart中心，最多800万条，保守容量和异常失败关闭。
 - 按32×32区块（512方块）定义宏区域。选择5..12个距离保守至少1024方块的不同宏区域：约三分之二作为FIT，至少2个作为HOLDOUT。每区域最多48个确定性空间样本；不同区域绝不共享训练与留出角色。
-- 不按已观测的群系标签挑选好看的HOLDOUT地点；默认从宏区域位置进行确定性最远点选择。
+- 不按已观测的群系标签挑选好看的HOLDOUT地点；沿用P4.2先前规定的宏区域坐标字典序贪心规则，避免事后按准确率选择留出组。
 - 每个输入的原始XYZ/HMAC只存在用户自己的临时CSV，任务结束自动删除，不发布GitHub，不将数据发往Minecraft服务器。
 - 模型报告 EXPLORATORY_ONLY、INSUFFICIENT_SPATIALLY_INDEPENDENT_SAMPLES 或 INSUFFICIENT_LABEL_DIVERSITY 等有限结果。即使分数完美，也不是目标服务器Seed或真实NoiseRouter证明。
 
