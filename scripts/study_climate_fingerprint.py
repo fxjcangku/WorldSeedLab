@@ -135,17 +135,26 @@ def _rank(point):
 def sample_regions(dataset, chosen):
     selected = set(chosen)
     heaps = {r: [] for r in chosen}
+    active_positions = {r: {} for r in chosen}
     for _, point, biome in iterate_p1(dataset):
         region = (point[0] // 128, point[2] // 128)
         if region not in selected:
             continue
         heap = heaps[region]
+        seen = active_positions[region]
+        if point in seen:
+            if seen[point] != biome:
+                raise EvidenceRejected("同一候选quart在多次实测中观测到冲突群系")
+            continue
         priority = _rank(point)
         item = (-priority, point, biome)
         if len(heap) < MAX_PER_REGION:
             heapq.heappush(heap, item)
+            seen[point] = biome
         elif item > heap[0]:
-            heapq.heapreplace(heap, item)
+            discarded = heapq.heapreplace(heap, item)
+            seen.pop(discarded[1], None)
+            seen[point] = biome
     return {key: sorted((p, biome) for _, p, biome in heap)
             for key, heap in heaps.items()}
 
