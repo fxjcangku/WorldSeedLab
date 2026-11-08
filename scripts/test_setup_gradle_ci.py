@@ -39,10 +39,11 @@ class GradleCiInstallerTest(unittest.TestCase):
             archive.writestr(f"gradle-{setup.VERSION}/bin/gradle", "NOT_EXECUTED_TEST_LAUNCHER")
         return stream.getvalue()
 
-    def test_transient_504_retries_then_checks_completed_bytes(self):
+    def test_asset_api_negotiates_zip_without_credentials_and_504_uses_official_fallback(self):
         payload = b"TEST_ONLY_DISTRIBUTION_BYTES"
         failure = urllib.error.HTTPError(setup.DOWNLOAD_URLS[0], 504, "Gateway Timeout", {}, None)
-        with mock.patch.object(setup.urllib.request, "urlopen", side_effect=[failure, io.BytesIO(payload)]) as open_url, \
+        with mock.patch.dict(os.environ, {"GITHUB_TOKEN": "TEST_TOKEN_MUST_NOT_BE_SENT", "GH_TOKEN": "TEST_TOKEN_MUST_NOT_BE_SENT"}), \
+                mock.patch.object(setup.urllib.request, "urlopen", side_effect=[failure, io.BytesIO(payload)]) as open_url, \
                 mock.patch.object(setup.time, "sleep") as sleep, \
                 mock.patch.object(setup, "EXPECTED_SHA256", hashlib.sha256(payload).hexdigest()):
             destination = self.root / "distribution.zip"
@@ -50,6 +51,18 @@ class GradleCiInstallerTest(unittest.TestCase):
         self.assertEqual(destination.read_bytes(), payload)
         self.assertEqual(open_url.call_count, 2)
         self.assertEqual([call.args[0].full_url for call in open_url.call_args_list], list(setup.DOWNLOAD_URLS[:2]))
+        first, fallback = (call.args[0] for call in open_url.call_args_list)
+        self.assertEqual(first.full_url, "https://api.github.com/repos/gradle/gradle-distributions/releases/assets/717698303")
+        first_headers = {key.lower(): value for key, value in first.header_items()}
+        fallback_headers = {key.lower(): value for key, value in fallback.header_items()}
+        self.assertEqual(first_headers["accept"], "application/octet-stream")
+        self.assertEqual(first_headers["x-github-api-version"], "2022-11-28")
+        self.assertNotIn("accept", fallback_headers)
+        self.assertNotIn("x-github-api-version", fallback_headers)
+        for headers in (first_headers, fallback_headers):
+            self.assertNotIn("authorization", headers)
+            self.assertNotIn("proxy-authorization", headers)
+            self.assertNotIn("TEST_TOKEN_MUST_NOT_BE_SENT", headers.values())
         sleep.assert_called_once_with(10)
 
     def test_exhausted_network_retries_leave_no_archive(self):
@@ -59,16 +72,24 @@ class GradleCiInstallerTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "已尝试 6 次"):
                 setup.download_distribution(destination)
         self.assertEqual(open_url.call_count, setup.DOWNLOAD_ATTEMPTS)
-        self.assertEqual([call.args[0].full_url for call in open_url.call_args_list], list(setup.DOWNLOAD_URLS) * 2)
+        self.assertEqual({call.args[0].full_url for call in open_url.call_args_list}, {
+            "https://api.github.com/repos/gradle/gradle-distributions/releases/assets/717698303",
+            "https://github.com/gradle/gradle-distributions/releases/download/v9.9.0/gradle-9.9.0-bin.zip",
+            "https://downloads.gradle.org/distributions/gradle-9.9.0-bin.zip",
+            "https://services.gradle.org/distributions/gradle-9.9.0-bin.zip",
+        })
         self.assertEqual([call.args[0] for call in sleep.call_args_list], [10, 20, 30, 30, 30])
         self.assertFalse(destination.exists())
 
     def test_bad_checksum_never_executes_or_exports_gradle(self):
-        with mock.patch.object(setup.urllib.request, "urlopen", return_value=io.BytesIO(b"corrupt")), \
-                mock.patch.object(setup.subprocess, "run") as execute:
-            with self.assertRaisesRegex(ValueError, "SHA256"):
-                setup.main()
-        execute.assert_not_called()
+        for payload in (b"corrupt", b'{"id":717698303,"name":"gradle-9.9.0-bin.zip"}'):
+            with self.subTest(payload=payload), \
+                    mock.patch.object(setup.urllib.request, "urlopen", return_value=io.BytesIO(payload)) as open_url, \
+                    mock.patch.object(setup.subprocess, "run") as execute:
+                with self.assertRaisesRegex(ValueError, "SHA256"):
+                    setup.main()
+                execute.assert_not_called()
+                open_url.assert_called_once()
         self.assertEqual(self.path_file.read_text(), "")
         self.assertEqual(self.env_file.read_text(), "")
         self.assertFalse(list(self.root.glob("wsl-gradle-*")))

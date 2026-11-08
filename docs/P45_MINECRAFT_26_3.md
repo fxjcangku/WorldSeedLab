@@ -46,7 +46,11 @@
 
 ## CI 下载故障与修复
 
-初轮Actions遇到官方Gradle分发ZIP间歇性HTTP504，多个任务在编译前失败。现使用统一 `scripts/setup_gradle_ci.py`，锁定9.9.0及官方SHA256，在180秒下载预算内最多6次尝试三个官方入口（已完整下载并验证的Gradle官方GitHub发行资产优先，两个官方分发域名后备）；摘要、归档和实际版本全部验证后才向后续步骤提供Gradle。`setup-gradle`继续配置原有缓存和报告，不再重复安装分发包，GitHub令牌及缓存权限不变。重试仍失败的任务保持失败，不跳过游戏或求解验收。
+Actions下载官方Gradle分发ZIP时多次遇到HTTP504，多个任务在编译前失败。统一安装器 `scripts/setup_gradle_ci.py` 锁定9.9.0及官方SHA256，在180秒下载预算内最多6次尝试。首选[Gradle官方GitHub发行资产API](https://api.github.com/repos/gradle/gradle-distributions/releases/assets/717698303)，显式发送 `Accept: application/octet-stream` 和 `X-GitHub-Api-Version: 2022-11-28`，不读取或发送GitHub凭据；原GitHub发行下载地址及 `downloads.gradle.org`、`services.gradle.org` 三个官方入口保留为后备。
+
+该API资产身份已由[官方v9.9.0 release元数据](https://api.github.com/repos/gradle/gradle-distributions/releases/tags/v9.9.0)确认。2026-11-08在本机无凭据验证中，一次1MiB Range请求返回206；随后完整请求返回200，下载134,916,961字节，实际SHA256为 `0b00b0ffe07c4d4789c12d4935a44a7057d55774b7540bd4a3f76f336deb177a`，与固定校验值一致。这些记录证明官方入口与完整分发包身份，不代替对应提交的真实CI验收。
+
+摘要、归档和实际版本全部验证后，安装器才向后续步骤提供Gradle。`setup-gradle`继续配置原有缓存和报告，不重复安装分发包，GitHub令牌及缓存权限不变。重试仍失败的任务保持失败，不跳过游戏或求解验收。
 
 ## 26.3 真实图形启动修复
 

@@ -18,7 +18,9 @@ import zipfile
 
 
 VERSION = "9.9.0"
+GITHUB_ASSET_API_URL = "https://api.github.com/repos/gradle/gradle-distributions/releases/assets/717698303"
 DOWNLOAD_URLS = (
+    GITHUB_ASSET_API_URL,
     f"https://github.com/gradle/gradle-distributions/releases/download/v{VERSION}/gradle-{VERSION}-bin.zip",
     f"https://downloads.gradle.org/distributions/gradle-{VERSION}-bin.zip",
     f"https://services.gradle.org/distributions/gradle-{VERSION}-bin.zip",
@@ -44,7 +46,11 @@ def download_distribution(destination: Path) -> None:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 raise TimeoutError("Gradle 下载总时间预算已耗尽")
-            request = urllib.request.Request(url, headers={"User-Agent": "WorldSeedLab-CI"})
+            headers = {"User-Agent": "WorldSeedLab-CI"}
+            if url == GITHUB_ASSET_API_URL:
+                # 公开发行资产API须显式请求ZIP；不读取或发送GitHub令牌。
+                headers.update({"Accept": "application/octet-stream", "X-GitHub-Api-Version": "2022-11-28"})
+            request = urllib.request.Request(url, headers=headers)
             with urllib.request.urlopen(request, timeout=min(DOWNLOAD_TIMEOUT_SECONDS, remaining)) as response, \
                     destination.open("wb") as output:
                 while True:
@@ -61,7 +67,7 @@ def download_distribution(destination: Path) -> None:
             actual = digest.hexdigest()
             if actual != EXPECTED_SHA256:
                 raise ValueError(f"Gradle {VERSION} SHA256 不符：expected={EXPECTED_SHA256}, actual={actual}")
-            print(f"Gradle {VERSION} 官方 ZIP 已校验：bytes={size} sha256={actual}", flush=True)
+            print(f"Gradle {VERSION} 官方 ZIP 已校验：bytes={size} sha256={actual} source={url}", flush=True)
             return
         except (urllib.error.URLError, TimeoutError, ConnectionError, http.client.HTTPException) as error:
             destination.unlink(missing_ok=True)
