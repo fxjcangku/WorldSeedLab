@@ -18,6 +18,8 @@ import subprocess
 import threading
 import time
 
+from minecraft_versions import SUPPORTED_MINECRAFT_VERSIONS
+
 from run_known_seed_server import rcon, region_chunks
 from run_p34_custom_worldgen import GENERATOR
 import json
@@ -90,6 +92,23 @@ def wait_until(check, limit_s: float, description: str, *procs: ManagedProcess):
 def xcmd(*args, env):
     return subprocess.check_output(["xdotool", *args], env=env,
                                    text=True, timeout=15).strip()
+
+
+def controlled_gui_environment(version: str, *, display: str = ":97",
+                               base_env: dict | None = None) -> dict:
+    """真实 CI 客户端共用 X11/软件 OpenGL；不改玩家配置或伪报图形能力。"""
+    if version not in SUPPORTED_MINECRAFT_VERSIONS:
+        raise ValueError("不支持的真实客户端测试版本")
+    env = dict(os.environ if base_env is None else base_env)
+    env.update({"DISPLAY": display, "XDG_SESSION_TYPE": "x11", "LIBGL_ALWAYS_SOFTWARE": "1"})
+    env.pop("WAYLAND_DISPLAY", None)
+    env.pop("WAYLAND_SOCKET", None)
+    if version == "26.3":
+        # 26.3 RenderPearl 的 SDL3 窗口要求 sRGB；Xvfb 的 GLX visual 不足时，
+        # 使用 SDL3 官方 EGL 路径创建同一真实 OpenGL 上下文，不降级功能要求。
+        env["SDL_VIDEO_DRIVER"] = "x11"
+        env["SDL_VIDEO_FORCE_EGL"] = "1"
+    return env
 
 
 def client_display_environments(base_env):
@@ -219,6 +238,7 @@ def run(version: str, custom_worldgen: bool = False):
         "generate-structures": "true",
         "online-mode": "false",
         "server-ip": "127.0.0.1",
+        "white-list": "false",  # 26.3 默认开启；此服务器仅供隔离本机 GUI 实验。
         "server-port": "25565",
         "enable-rcon": "true",
         "rcon.port": "25575",
@@ -249,12 +269,7 @@ def run(version: str, custom_worldgen: bool = False):
     client_options.write_text(
         "onboardAccessibility:false\nnarrator:0\npauseOnLostFocus:false\n",
         encoding="utf-8")
-    env = os.environ.copy()
-    env["DISPLAY"] = ":97"
-    env["XDG_SESSION_TYPE"] = "x11"
-    env.pop("WAYLAND_DISPLAY", None)
-    env.pop("WAYLAND_SOCKET", None)
-    env["LIBGL_ALWAYS_SOFTWARE"] = "1"
+    env = controlled_gui_environment(version)
     display = subprocess.Popen(
         ["Xvfb",":97","-screen","0","1280x720x24","-nolisten","tcp"],
         cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
@@ -455,7 +470,7 @@ def run(version: str, custom_worldgen: bool = False):
 
 if __name__ == "__main__":
     ap=argparse.ArgumentParser()
-    ap.add_argument("--minecraft", required=True, choices=("26.1.2","26.2"))
+    ap.add_argument("--minecraft", required=True, choices=SUPPORTED_MINECRAFT_VERSIONS)
     ap.add_argument("--custom-worldgen", action="store_true",
                     help="P3.4 CI only: real Fabric client joins controlled custom flat world")
     parsed = ap.parse_args()

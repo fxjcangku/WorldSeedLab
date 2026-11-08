@@ -32,7 +32,7 @@ public final class P32NegativeRealWorldTest {
             throw new IllegalArgumentException("参数: 真实StructureStart CSV 实际FULL群系CSV 游戏版本");
         }
         String version = args[2];
-        if (!"26.1.2".equals(version) && !"26.2".equals(version)) {
+        if (!BootstrapCheck.supportsMinecraftVersion(version)) {
             throw new IllegalArgumentException("版本必须来自目标Minecraft");
         }
         Path startPath = Path.of(args[0]);

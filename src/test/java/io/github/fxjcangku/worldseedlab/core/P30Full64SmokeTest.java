@@ -50,7 +50,7 @@ public final class P30Full64SmokeTest {
         var reference = RandomSpreadMath.potentialChunk(CONTROL_FULL64, -121, 52, spec);
         check(reference.equals(RandomSpreadMath.potentialChunk(CONTROL_LOW48, -121, 52, spec)),
                 "structure placement alone provably cannot distinguish high16");
-        for (String version : new String[] {"26.1.2", "26.2"}) {
+        for (String version : new String[] {"26.1.2", "26.2", "26.3"}) {
             Scope scope = new Scope(WORLD, version, "minecraft:overworld", PROFILE);
             var model = new ControlRngModel(scope);
             List<BiomeSample> data = data(scope, CONTROL_FULL64);

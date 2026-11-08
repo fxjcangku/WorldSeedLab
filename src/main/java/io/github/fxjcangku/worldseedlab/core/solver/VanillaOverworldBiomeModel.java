@@ -1,16 +1,8 @@
 package io.github.fxjcangku.worldseedlab.core.solver;
 
-import net.minecraft.SharedConstants;
-import net.minecraft.server.Bootstrap;
-import net.minecraft.core.HolderGetter;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.data.registries.VanillaRegistries;
-import net.minecraft.world.level.biome.MultiNoiseBiomeSource;
-import net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterLists;
-import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
-import net.minecraft.world.level.levelgen.RandomState;
-import net.minecraft.world.level.levelgen.synth.NormalNoise;
+import io.github.fxjcangku.worldseedlab.core.worldgen.WorldgenVersionAdapter;
 import java.util.Objects;
+import java.util.function.LongFunction;
 
 /**
  * 使用对应版本 Minecraft 官方 Mojmap 的真实 Overworld MultiNoise 气候生成器。
@@ -28,20 +20,14 @@ public final class VanillaOverworldBiomeModel
     public static final String GENERATOR_PROFILE = "minecraft:vanilla_overworld";
 
     private final Full64BiomeCandidateSearch.Scope scope;
-    private final HolderGetter<NormalNoise.NoiseParameters> noises;
-    private final NoiseGeneratorSettings settings;
-    private final MultiNoiseBiomeSource biomeSource;
+    private final LongFunction<Full64BiomeCandidateSearch.BiomeSampler> samplerFactory;
 
     private VanillaOverworldBiomeModel(
             Full64BiomeCandidateSearch.Scope scope,
-            HolderGetter<NormalNoise.NoiseParameters> noises,
-            NoiseGeneratorSettings settings,
-            MultiNoiseBiomeSource biomeSource
+            LongFunction<Full64BiomeCandidateSearch.BiomeSampler> samplerFactory
     ) {
         this.scope = Objects.requireNonNull(scope);
-        this.noises = Objects.requireNonNull(noises);
-        this.settings = Objects.requireNonNull(settings);
-        this.biomeSource = Objects.requireNonNull(biomeSource);
+        this.samplerFactory = Objects.requireNonNull(samplerFactory);
     }
 
     public static VanillaOverworldBiomeModel create(
@@ -53,17 +39,8 @@ public final class VanillaOverworldBiomeModel
             throw new IllegalArgumentException(
                     "仅支持已确认的原版主世界群系生成器，不支持自定义设置或其它维度");
         }
-        SharedConstants.tryDetectVersion();
-        Bootstrap.bootStrap();
-        var provider = VanillaRegistries.createLookup();
-        var noiseLookup = provider.lookupOrThrow(Registries.NOISE);
-        var noiseSettings = provider.lookupOrThrow(Registries.NOISE_SETTINGS)
-                .getOrThrow(NoiseGeneratorSettings.OVERWORLD).value();
-        var preset = provider.lookupOrThrow(
-                        Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
-                .getOrThrow(MultiNoiseBiomeSourceParameterLists.OVERWORLD);
-        return new VanillaOverworldBiomeModel(scope, noiseLookup, noiseSettings,
-                MultiNoiseBiomeSource.createFromPreset(preset));
+        return new VanillaOverworldBiomeModel(scope,
+                WorldgenVersionAdapter.createVanillaBiomeFactory(scope.gameVersion()));
     }
 
     @Override
@@ -80,10 +57,6 @@ public final class VanillaOverworldBiomeModel
 
     @Override
     public Full64BiomeCandidateSearch.BiomeSampler prepare(long full64Seed) {
-        RandomState state = RandomState.create(settings, noises, full64Seed);
-        var climate = state.sampler();
-        return (quartX, quartY, quartZ) ->
-                biomeSource.getNoiseBiome(quartX, quartY, quartZ, climate)
-                        .unwrapKey().orElseThrow().identifier().toString();
+        return samplerFactory.apply(full64Seed);
     }
 }

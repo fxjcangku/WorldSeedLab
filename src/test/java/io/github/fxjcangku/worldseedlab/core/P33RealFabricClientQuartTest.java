@@ -4,7 +4,6 @@ import io.github.fxjcangku.worldseedlab.core.solver.ClientQuartEvidenceArchive;
 import io.github.fxjcangku.worldseedlab.core.solver.Full64BiomeCandidateSearch;
 import io.github.fxjcangku.worldseedlab.core.solver.LocalSmtSeedSolver;
 import io.github.fxjcangku.worldseedlab.core.solver.VanillaOverworldBiomeModel;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -23,7 +22,7 @@ public final class P33RealFabricClientQuartTest {
             throw new IllegalArgumentException("用法: 实际客户端生成的CSV 游戏版本");
         }
         var version = args[1];
-        if (!"26.1.2".equals(version) && !"26.2".equals(version)) {
+        if (!BootstrapCheck.supportsMinecraftVersion(version)) {
             throw new IllegalArgumentException("目标版本非法");
         }
         Path path = Path.of(args[0]);
@@ -36,8 +35,7 @@ public final class P33RealFabricClientQuartTest {
             throw new AssertionError("客户端实际CSV版本/维度/群系来源或样本数错误");
         }
 
-        var original = Files.readAllLines(Path.of("src","test","resources","p31",
-                "vanilla_" + version + "_seed2731_quart.csv"));
+        var original = P31ControlledFixture.readLines(version);
         if (original.size() != 6) {
             throw new AssertionError("公开真实世界 Anvil FULL 群系真值文件不存在");
         }

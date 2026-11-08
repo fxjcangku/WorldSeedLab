@@ -86,7 +86,7 @@ public final class RecoveryReport {
             structure.addProperty("separation", model.separation());
             structure.addProperty("distribution", model.distribution().name());
             structure.addProperty("salt", model.salt());
-            structure.addProperty("calibration", ClientStructureEvidence.CALIBRATION_ID);
+            structure.addProperty("calibration", ClientStructureEvidence.calibrationId(result.gameVersion()));
             structure.addProperty("qualification", "EXPLICIT_UNVERIFIED_HYPOTHESIS");
             entry.add("structure_model", structure);
             entry.add("low48", low48(item.low48()));

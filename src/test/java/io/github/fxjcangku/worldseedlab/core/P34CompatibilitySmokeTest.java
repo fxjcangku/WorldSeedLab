@@ -7,8 +7,6 @@ import io.github.fxjcangku.worldseedlab.core.solver.RandomSpreadMath;
 import io.github.fxjcangku.worldseedlab.core.solver.RandomSpreadSpec;
 import io.github.fxjcangku.worldseedlab.core.solver.StartPlacementConstraint;
 import io.github.fxjcangku.worldseedlab.core.solver.VanillaOverworldBiomeModel;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -91,8 +89,7 @@ public final class P34CompatibilitySmokeTest {
                 "客户端轮廓不能充当StructureStart真值");
 
         // 真实Minecraft服务端FULL Anvil样本必须保留CONTROL_WORLD_OBSERVED来源。
-        List<String> lines = Files.readAllLines(Path.of("src", "test", "resources", "p31",
-                "vanilla_" + version + "_seed2731_quart.csv"));
+        List<String> lines = P31ControlledFixture.readLines(version);
         require(lines.size() == 6
                 && "quart_x,quart_y,quart_z,biome_id".equals(lines.getFirst()),
                 "真实Minecraft FULL quart公开对照文件缺失");

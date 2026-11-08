@@ -15,9 +15,11 @@ import subprocess
 import threading
 import time
 
+from minecraft_versions import SUPPORTED_MINECRAFT_VERSIONS
+
 from run_known_seed_server import (
     ROOT, KNOWN_SEED, POSITION, STRUCTURE, QUERY_POINTS, rcon, region_chunks,
-    scan_structure_starts, scan_observed_biome_quart_samples,
+    scan_structure_starts, scan_observed_biome_quart_samples, block_palette_ids,
 )
 
 VANILLA_DESERT_SALT = 14357617
@@ -31,7 +33,8 @@ def install_modified_salt_pack(world: Path, version: str) -> None:
     与目标Minecraft的数据包版本精确匹配。随后须由游戏自己确认启用，
     最终还要用真实已生成StructureStart的偏移核对，不能仅信任此文件。
     """
-    formats = {"26.1.2": [101, 1], "26.2": [107, 1]}
+    # 26.3来自Mojang官方server.jar及内嵌server-26.3.jar的version.json，未沿用26.2。
+    formats = {"26.1.2": [101, 1], "26.2": [107, 1], "26.3": [121, 0]}
     pack_version = formats[version]
     target = world / "datapacks" / DATAPACK_NAME
     location = target / "data" / "minecraft" / "worldgen" / "structure_set"
@@ -86,7 +89,7 @@ def scan_custom_terrain(world: Path):
                 if not isinstance(section, dict):
                     continue
                 palette = section.get("block_states", {}).get("palette", [])
-                names = {v.get("Name") for v in palette if isinstance(v, dict)}
+                names = block_palette_ids(palette)
                 if section.get("Y") == 3 and "minecraft:sandstone" in names:
                     sandstone_sections += 1
                 if section.get("Y") == 4 and "minecraft:sand" in names:
@@ -101,7 +104,7 @@ def scan_custom_terrain(world: Path):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--minecraft", choices=["26.1.2", "26.2"], required=True)
+    parser.add_argument("--minecraft", choices=SUPPORTED_MINECRAFT_VERSIONS, required=True)
     parser.add_argument("--modified-salt", action="store_true",
                         help="仅受控实验：在全新世界真实替换神殿结构集Salt")
     args = parser.parse_args()

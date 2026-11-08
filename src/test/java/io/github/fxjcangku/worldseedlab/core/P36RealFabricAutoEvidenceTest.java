@@ -20,7 +20,7 @@ public final class P36RealFabricAutoEvidenceTest {
         if (args.length != 2) throw new IllegalArgumentException("真实自动客户端数据目录、版本缺失");
         Path root = Path.of(args[0]);
         String version = args[1];
-        if (!"26.1.2".equals(version) && !"26.2".equals(version)) {
+        if (!BootstrapCheck.supportsMinecraftVersion(version)) {
             throw new IllegalArgumentException("P3.6不支持此Minecraft版本");
         }
         int count = 0;

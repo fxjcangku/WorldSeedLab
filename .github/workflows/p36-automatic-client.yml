@@ -3,6 +3,12 @@ name: P3.6 Actual Automatic Client Structures and Terrain
 on:
   pull_request:
     paths:
+      - 'scripts/run_p33_real_client_e2e.py'
+      - 'src/versions/**'
+      - 'gradle.properties'
+      - 'scripts/setup_gradle_ci.py'
+      - 'scripts/minecraft_versions.py'
+      - 'versions/**'
       - '.github/workflows/p36-automatic-client.yml'
       - 'scripts/run_p36_real_automatic_client.py'
       - 'src/client/java/io/github/fxjcangku/worldseedlab/client/probe/AutoDesertFootprintController.java'
@@ -23,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        minecraft: ['26.1.2', '26.2']
+        minecraft: ['26.1.2', '26.2', '26.3']
     steps:
       - uses: actions/checkout@v4
       - name: Java 25
@@ -31,15 +37,16 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - name: Gradle 9.6.1
+      - name: Configure Gradle cache and reports
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.6.1'
+
+      - name: Install verified Gradle 9.9.0
+        run: python3 -u scripts/setup_gradle_ci.py
       - name: Install real virtual X11 keyboard and local Z3
         run: |
           sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
-            xvfb xauth xdotool scrot x11-utils openbox libgl1-mesa-dri mesa-utils z3
+            xvfb xauth xdotool scrot x11-utils openbox libgl1-mesa-dri libegl1 libegl-mesa0 mesa-utils z3
       - name: Real Fabric GUI on known custom-desert server, only once auto on
         run: |
           timeout --signal=INT --kill-after=30s 1100s \

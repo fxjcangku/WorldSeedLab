@@ -23,7 +23,9 @@ public final class CoreSmokeTest {
         require(BootstrapCheck.inspect(25, "26.1.2").ok(), "26.1.2 must be supported");
         require(BootstrapCheck.inspect(25, "26.2").ok(), "26.2 must be supported");
         require(!BootstrapCheck.inspect(21, "26.2").ok(), "Java 21 must be rejected");
-        require(!BootstrapCheck.inspect(25, "26.3").ok(), "unsupported Minecraft must be rejected");
+        require(BootstrapCheck.inspect(25, "26.3").ok(), "26.3 must be supported");
+        require(!BootstrapCheck.inspect(25, "26.4").ok(), "未知版本必须拒绝");
+        require(!BootstrapCheck.supportsMinecraftVersion(null), "缺失版本必须拒绝");
 
         byte[] firstSecret = "local-install-key-a".getBytes(StandardCharsets.UTF_8);
         byte[] secondSecret = "local-install-key-b".getBytes(StandardCharsets.UTF_8);

@@ -8,7 +8,7 @@ import java.util.Properties
 group = project.maven_group
 version = project.mod_version
 
-def supportedVersions = ['26.1.2', '26.2']
+def supportedVersions = ['26.1.2', '26.2', '26.3']
 def targetMinecraft = providers.gradleProperty('mcVersion').orElse('26.2').get()
 if (!supportedVersions.contains(targetMinecraft)) {
     throw new GradleException("Unsupported Minecraft target: ${targetMinecraft}. Expected one of ${supportedVersions}")
@@ -62,8 +62,10 @@ tasks.withType(JavaCompile).configureEach {
 processResources {
     inputs.property('mod_version', project.version)
     inputs.property('minecraft_version', targetMinecraft)
+    inputs.property('loader_version', loaderVersion)
     filesMatching('fabric.mod.json') {
-        expand 'mod_version': project.version, 'minecraft_version': targetMinecraft
+        expand 'mod_version': project.version, 'minecraft_version': targetMinecraft,
+               'loader_version': loaderVersion
     }
 }
 
@@ -85,7 +87,8 @@ tasks.named('test', Test) {
     failOnNoDiscoveredTests = false
 }
  
-// 26.2 relocated some client GUI methods. Compile only the adapter for the target version.
+// 仅编译目标版本的真实 Mojmap 适配层；26.3 的 worldgen 和旧两版接口不同。
+sourceSets.main.java.srcDir "src/versions/${targetMinecraft}/main/java"
 sourceSets.client.java.srcDir "src/versions/${targetMinecraft}/java"
 
 tasks.register('p1SmokeTest', JavaExec) {

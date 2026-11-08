@@ -9,8 +9,8 @@ import io.github.fxjcangku.worldseedlab.core.solver.SolverResearchInput;
 import io.github.fxjcangku.worldseedlab.core.solver.StartPlacementConstraint;
 import io.github.fxjcangku.worldseedlab.core.solver.SymbolicRandomSpread;
 import io.github.fxjcangku.worldseedlab.core.solver.VanillaOverworldBiomeModel;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -23,7 +23,7 @@ import java.util.Map;
  */
 public final class P32OfflinePipelineIntegrationTest {
     private static final String WORLD = "e".repeat(64);
-    private static final int[][] REAL_STARTS = {
+    private static final int[][] LEGACY_REAL_STARTS = {
             {-784,749}, {-1166,-1044}, {-117,-106}, {930,791}
     };
 
@@ -31,11 +31,13 @@ public final class P32OfflinePipelineIntegrationTest {
 
     public static void main(String[] args) throws Exception {
         String version = System.getProperty("mcVersion", "26.2");
+        int[][] realStarts = controlledStarts(version);
+        List<String> rows = P31ControlledFixture.readLines(version);
         var spec = new RandomSpreadSpec("minecraft:desert_pyramids", 32, 8,
                 RandomSpreadSpec.Distribution.LINEAR, 14357617);
         var constraints = new java.util.ArrayList<StartPlacementConstraint>();
-        for (int i=0; i<REAL_STARTS.length; i++) {
-            int[] pos = REAL_STARTS[i];
+        for (int i=0; i<realStarts.length; i++) {
+            int[] pos = realStarts[i];
             constraints.add(StartPlacementConstraint.controlledExact(
                     WORLD, version, "minecraft:overworld",
                     spec.structureSetId(), pos[0], pos[1],
@@ -52,9 +54,6 @@ public final class P32OfflinePipelineIntegrationTest {
                         && candidate.holdoutMatches()==1),
                 "真正生成神殿起点必须由本机Z3回推low48=2731");
 
-        Path saved = Path.of("src","test","resources","p31",
-                "vanilla_" + version + "_seed2731_quart.csv");
-        List<String> rows = Files.readAllLines(saved);
         var transport = new ClientQuartEvidenceArchive.Session(
                 WORLD, version, "minecraft:overworld");
         for (String line : rows.subList(1,rows.size())) {
@@ -87,6 +86,29 @@ public final class P32OfflinePipelineIntegrationTest {
                 + version + " LOW48=2731, 3 structure FIT/1 HOLDOUT, "
                 + "3 biome FIT/2 HOLDOUT, FULL64=2731 survives and high16=1 rejected.");
         System.out.println("口径：客户端数据格式为测试模拟；并非真实 runClient 交互记录。");
+    }
+
+    /** 26.3必须读取本版真实StructureStart；旧双版保留已独立验收的原始控制坐标。 */
+    private static int[][] controlledStarts(String version) throws Exception {
+        if (!BootstrapCheck.supportsMinecraftVersion(version)) {
+            throw new IllegalArgumentException("结构控制世界版本不受支持");
+        }
+        if (!"26.3".equals(version)) return LEGACY_REAL_STARTS;
+        var rows = P31ControlledFixture.readStructureStarts(version);
+        var selected = new ArrayList<int[]>();
+        var positions = new HashSet<String>();
+        var regions = new HashSet<String>();
+        for (String line : rows.subList(1, rows.size())) {
+            String[] fields = line.split(",", -1);
+            check(fields.length == 2, "真实结构CSV列数错误");
+            int x = Integer.parseInt(fields[0]);
+            int z = Integer.parseInt(fields[1]);
+            check(positions.add(x + ":" + z), "真实结构起点不能重复");
+            String region = Math.floorDiv(x, 32) + ":" + Math.floorDiv(z, 32);
+            if (selected.size() < 4 && regions.add(region)) selected.add(new int[] {x, z});
+        }
+        check(selected.size() == 4, "26.3需四个不同Region的实际StructureStart用于3FIT+1HOLDOUT");
+        return selected.toArray(int[][]::new);
     }
 
     private static void check(boolean pass, String description) {

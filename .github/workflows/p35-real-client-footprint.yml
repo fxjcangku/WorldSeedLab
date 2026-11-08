@@ -3,6 +3,12 @@ name: P3.5 Real Client-Visible Desert Temple Footprint
 on:
   pull_request:
     paths:
+      - 'scripts/run_p33_real_client_e2e.py'
+      - 'src/versions/**'
+      - 'gradle.properties'
+      - 'scripts/setup_gradle_ci.py'
+      - 'scripts/minecraft_versions.py'
+      - 'versions/**'
       - '.github/workflows/p35-real-client-footprint.yml'
       - 'scripts/run_p35_real_client_footprint.py'
       - 'src/client/java/io/github/fxjcangku/worldseedlab/client/probe/ClientDesertFootprintCaptureController.java'
@@ -23,7 +29,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        minecraft: ['26.1.2', '26.2']
+        minecraft: ['26.1.2', '26.2', '26.3']
     steps:
       - uses: actions/checkout@v4
       - name: Install Java 25
@@ -31,15 +37,16 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - name: Install Gradle 9.6.1
+      - name: Configure Gradle cache and reports
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.6.1'
+
+      - name: Install verified Gradle 9.9.0
+        run: python3 -u scripts/setup_gradle_ci.py
       - name: Install real GUI virtual display and keyboard
         run: |
           sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
-            xvfb xauth xdotool scrot x11-utils openbox libgl1-mesa-dri mesa-utils z3
+            xvfb xauth xdotool scrot x11-utils openbox libgl1-mesa-dri libegl1 libegl-mesa0 mesa-utils z3
       - name: Run actual dedicated Minecraft custom-desert server and actual Fabric GUI
         run: |
           timeout --signal=INT --kill-after=30s 1040s \

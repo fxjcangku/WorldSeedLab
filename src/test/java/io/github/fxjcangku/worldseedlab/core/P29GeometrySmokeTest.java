@@ -35,7 +35,7 @@ public final class P29GeometrySmokeTest {
     private P29GeometrySmokeTest() {}
 
     public static void main(String[] args) throws Exception {
-        for (String version : new String[] {"26.1.2", "26.2"}) {
+        for (String version : new String[] {"26.1.2", "26.2", "26.3"}) {
             String manifest = syntheticManifest(version, 4096);
             var input = parse(manifest);
             check(input.constraints().size() == 5, "expected 3 FIT and 2 HOLDOUT");
@@ -249,15 +249,20 @@ public final class P29GeometrySmokeTest {
     }
 
     private static void checkFailureForUnsupportedScope() {
-        var calibration = StructureFootprintInverter.Calibration.fromControlled(
-                "controlled", "26.1.2", DIMENSION, SET_ID, STRUCTURE_ID, "north",
-                footprint(2, 3, OFFSET), 2, 3, 0);
-        var target = new StructureFootprintInverter.ObservedFootprint(
-                WORLD, "26.2", DIMENSION, SET_ID, STRUCTURE_ID,
-                footprint(4, 5, OFFSET),
-                StructureFootprintInverter.FootprintQuality.COMPLETE_PERIMETER);
-        expectFail(() -> StructureFootprintInverter.infer(target, List.of(calibration)),
-                "cross-version reference must not be promoted");
+        for (String source : List.of("26.1.2", "26.2", "26.3")) {
+            var calibration = StructureFootprintInverter.Calibration.fromControlled(
+                    "controlled", source, DIMENSION, SET_ID, STRUCTURE_ID, "north",
+                    footprint(2, 3, OFFSET), 2, 3, 0);
+            for (String version : List.of("26.1.2", "26.2", "26.3")) {
+                if (source.equals(version)) continue;
+                var target = new StructureFootprintInverter.ObservedFootprint(
+                        WORLD, version, DIMENSION, SET_ID, STRUCTURE_ID,
+                        footprint(4, 5, OFFSET),
+                        StructureFootprintInverter.FootprintQuality.COMPLETE_PERIMETER);
+                expectFail(() -> StructureFootprintInverter.infer(target, List.of(calibration)),
+                        "新增版本支持不能使跨版本校准合法化");
+            }
+        }
     }
 
     private static void check(boolean condition, String failure) {

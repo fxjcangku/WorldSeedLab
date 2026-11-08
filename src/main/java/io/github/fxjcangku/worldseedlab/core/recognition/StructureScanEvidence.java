@@ -1,5 +1,6 @@
 package io.github.fxjcangku.worldseedlab.core.recognition;
 
+import io.github.fxjcangku.worldseedlab.core.BootstrapCheck;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -26,7 +27,7 @@ public record StructureScanEvidence(
                 || dimension == null || !ID.matcher(dimension).matches()) {
             throw new IllegalArgumentException("invalid world/dimension scope");
         }
-        if (!"26.1.2".equals(clientVersion) && !"26.2".equals(clientVersion)) {
+        if (!BootstrapCheck.supportsMinecraftVersion(clientVersion)) {
             throw new IllegalArgumentException("unsupported observation game version");
         }
         if (scannedCells < 32 || scannedCells > 8192 || minObservedY > maxObservedY) {

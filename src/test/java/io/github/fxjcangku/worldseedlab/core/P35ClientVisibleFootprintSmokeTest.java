@@ -22,7 +22,7 @@ public final class P35ClientVisibleFootprintSmokeTest {
     private P35ClientVisibleFootprintSmokeTest() {}
 
     public static void main(String[] args) throws Exception {
-        for (var version : List.of("26.1.2", "26.2")) {
+        for (var version : List.of("26.1.2", "26.2", "26.3")) {
             var scope = new ClientVisibleDesertPyramidRaster.Scope(WORLD, version, DIM);
             var footprint = new StructureFootprintInverter.BlockBounds(-319,-511,-299,-491);
             byte[] cells = synthetic(footprint, Y, Y+31);

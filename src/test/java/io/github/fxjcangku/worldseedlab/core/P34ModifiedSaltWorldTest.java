@@ -36,7 +36,7 @@ public final class P34ModifiedSaltWorldTest {
     private P34ModifiedSaltWorldTest() {}
 
     public static void main(String[] args) throws Exception {
-        require(args.length == 2 && ("26.1.2".equals(args[1]) || "26.2".equals(args[1])),
+        require(args.length == 2 && (BootstrapCheck.supportsMinecraftVersion(args[1])),
                 "必须明确提供真实Minecraft版本和隔离世界真值目录");
         String version = args[1];
         Path root = Path.of(args[0]);

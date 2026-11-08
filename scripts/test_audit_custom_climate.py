@@ -65,6 +65,24 @@ class TestP40(unittest.TestCase):
         self.assertEqual(text.count(",FIT"), 3)
         self.assertEqual(text.count(",HOLDOUT"), 2)
 
+    def test_three_version_custom_samples_remain_isolated(self):
+        for version in ("26.1.2", "26.2", "26.3"):
+            with self.subTest(version=version):
+                build_zip(self.archive, [dict(row(*point), client_version=version)
+                                         for point in POINTS])
+                data = Dataset(self.archive)
+                try:
+                    scope, selected, total, _, _ = sample_evidence(data, version)
+                    self.assertEqual(scope[2], version)
+                    self.assertEqual(len(selected), 5)
+                    self.assertEqual(total, len(POINTS))
+                    for other in ("26.1.2", "26.2", "26.3"):
+                        if other != version:
+                            with self.assertRaises(EvidenceRejected):
+                                sample_evidence(data, other)
+                finally:
+                    data.close()
+
     def test_unknown_no_seed_output(self):
         output = io.StringIO()
         with contextlib.redirect_stdout(output):

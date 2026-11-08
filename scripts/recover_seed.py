@@ -18,6 +18,7 @@ import tempfile
 import zipfile
 
 from audit_custom_climate import ID, encoded_quart, sample_evidence
+from minecraft_versions import SUPPORTED_MINECRAFT_VERSIONS
 from research_p37_custom_worldgen import Dataset, EvidenceRejected
 
 CLIENT_ARCHIVE = re.compile(r"(?:^|/)(?:client-auto-desert-|client-footprint-)[^/]{0,180}\.properties$")
@@ -78,7 +79,7 @@ def parse_args(argv=None):
         description="WorldSeedLab真实客户端世界种子反演，非管理员/Seed直读")
     parser.add_argument("--input", required=True, type=Path,
                         help="原始observations.zip、P3.5/P3.6受控档案ZIP或单一证据目录")
-    parser.add_argument("--minecraft", required=True, choices=["26.1.2", "26.2"])
+    parser.add_argument("--minecraft", required=True, choices=SUPPORTED_MINECRAFT_VERSIONS)
     parser.add_argument("--salts", default="14357617",
                         help="最多四个不重复的int32研究假设Salt；默认原版沙漠神殿14357617")
     parser.add_argument("--vanilla-high16", action="store_true",
@@ -244,7 +245,7 @@ def build_command(args, quart: Path | None = None) -> list[str]:
 def run_recovery(args, prepared: PreparedQuart | None) -> int:
     """显式运行本机求解器；含私有quart的临时目录无论成功失败都会销毁。"""
     if not shutil.which("gradle") or not shutil.which("z3"):
-        raise EvidenceError("缺少本机Java25/Gradle9.6.1或Z3命令，无法实际运行反演")
+        raise EvidenceError("缺少本机Java25/Gradle9.9.0或Z3命令，无法实际运行反演")
     root = Path(__file__).resolve().parents[1]
     with tempfile.TemporaryDirectory(prefix="wsl-p39-quart-") as directory:
         quart = None
