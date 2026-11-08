@@ -6,8 +6,10 @@ on:
       - '.github/workflows/p39-real-seed-recovery.yml'
       - 'src/main/java/io/github/fxjcangku/worldseedlab/core/solver/RealClientSeedRecoveryCli.java'
       - 'src/test/java/io/github/fxjcangku/worldseedlab/core/P39RealSeedRecoverySmokeTest.java'
+      - 'src/test/java/io/github/fxjcangku/worldseedlab/core/P44RecoveryPipelineSmokeTest.java'
       - 'scripts/recover_seed.py'
       - 'scripts/test_recover_seed.py'
+      - 'scripts/test_p41_conditional_recovery.py'
       - 'src/main/java/io/github/fxjcangku/worldseedlab/core/geometry/**'
       - 'src/main/java/io/github/fxjcangku/worldseedlab/core/solver/**'
       - 'scripts/run_p36_real_automatic_client.py'
@@ -42,6 +44,7 @@ jobs:
         run: |
           python3 -m py_compile scripts/recover_seed.py scripts/test_recover_seed.py
           python3 -u scripts/test_recover_seed.py -v
+          python3 -u scripts/test_p41_conditional_recovery.py -v
       - name: Install actual virtual GUI and local SMT solver
         run: |
           sudo apt-get update -qq
@@ -56,21 +59,51 @@ jobs:
           gradle --no-daemon --console=plain -PmcVersion=${{ matrix.minecraft }} \
             p36RealFabricAutoEvidenceTest
       - name: Run new real CLIENT raster importer and actual Z3 inversion
+        shell: bash
         run: |
           mkdir -p build/p39-recovery/${{ matrix.minecraft }}
           gradle --no-daemon --console=plain \
             -PmcVersion=${{ matrix.minecraft }} \
             -PrecoveryEvidence=build/p36-real-client-footprint/${{ matrix.minecraft }} \
             -PrecoverySalts=14357617 -PrecoveryEnd=4096 \
+            -PrecoveryReport=build/p39-recovery/${{ matrix.minecraft }}/recovery.json \
             p39RealSeedRecovery | tee build/p39-recovery/${{ matrix.minecraft }}/recovery-log.txt
           grep -E 'LOW48_MODEL_CANDIDATE=0x000000000aab([^0-9a-f]|$)' \
             build/p39-recovery/${{ matrix.minecraft }}/recovery-log.txt
           grep -F 'Z3低48状态=' build/p39-recovery/${{ matrix.minecraft }}/recovery-log.txt
+      - name: Verify typed recovery result and unverified mining boundary
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          version = '${{ matrix.minecraft }}'
+          report = json.loads(Path(f'build/p39-recovery/{version}/recovery.json').read_text())
+          assert report['format'] == 'WorldSeedLabRecovery' and report['schema'] == 1
+          assert report['game_version'] == version
+          assert report['result'] == 'MODEL_HYPOTHESES_EVALUATED'
+          assert report['server_seed_status'] == 'UNKNOWN'
+          assert report['ore_prediction_status'] == 'UNVERIFIED'
+          assert report['ready_for_mining'] is False
+          assert len(report['hypotheses']) == 1
+          hypothesis = report['hypotheses'][0]
+          assert hypothesis['structure_model']['salt'] == 14357617
+          low = hypothesis['low48']
+          assert low['start_inclusive'] == 0 and low['end_exclusive'] == 4096
+          assert low['full_domain_complete'] is False
+          candidates = [item for item in low['candidates'] if item['hex'] == '000000000aab']
+          assert len(candidates) == 1
+          assert candidates[0]['unsigned_decimal'] == '2731'
+          assert candidates[0]['fit_matches'] >= 2 and candidates[0]['holdout_matches'] >= 1
+          assert hypothesis['high16']['completion'] == 'NOT_REQUESTED'
+          print('Actual Fabric/Z3 controlled low48 report verified; remote seed and ore rules remain unverified.')
+          PY
       - name: Upload only public controlled research result
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: P39-RealControlledRecovery-${{ matrix.minecraft }}
-          path: build/p39-recovery/${{ matrix.minecraft }}/recovery-log.txt
+          path: |
+            build/p39-recovery/${{ matrix.minecraft }}/recovery-log.txt
+            build/p39-recovery/${{ matrix.minecraft }}/recovery.json
           if-no-files-found: warn
           retention-days: 7

@@ -19,13 +19,17 @@ python scripts/recover_seed.py --input "D:\private\observations.zip" --minecraft
 - P1证据流式读取全部真实quart ID，缺失模型群系ID立即 MODEL_REGISTRY_INCOMPATIBLE，不运行Z3或高16；不把冲突误报为世界Seed不存在。
 - 每次默认按16分片，每次最多128个实际候选 / 120秒。性能会受Minecraft RandomState初始化影响；每次打印实际examined、fitRejected、holdoutRejected、NEXT_INDEX和DOMAIN_SIZE。没有穷尽不称全域。
 - 支持更改 --high16-shard 1..15。每个分片在已排序low48候选集合上使用完全相同的半开索引计划，防重复/防遗漏。仍然需要运行各分片且完成所有候选检查才能讨论在该假设下的完整搜索。
-- 若到达 EVALUATION_BUDGET/TIME_BUDGET/RESULT_CAP，使用上次打印的 NEXT_INDEX 和 P4.1_INPUT_SHA256，继续**同一个分片**：
+- 若到达 EVALUATION_BUDGET/TIME_BUDGET/RESULT_CAP，使用上次打印的 NEXT_INDEX 和 RECOVERY_RESUME_TOKEN，继续**同一个分片**：
 
 ~~~powershell
-python scripts/recover_seed.py --input "D:\private\observations.zip" --minecraft 26.2 --custom-model "D:\private\climate.json" --high16-shard 0 --high16-shards 16 --high16-evaluations 128 --high16-resume 128 --high16-expected-digest <上一轮实际打印的64位十六进制摘要>
+python scripts/recover_seed.py --input "D:\private\observations.zip" --minecraft 26.2 --custom-model "D:\private\climate.json" --high16-shard 0 --high16-shards 16 --high16-evaluations 128 --high16-resume 128 --high16-expected-digest "wsl-p44-v1:<上一轮实际打印的64位十六进制摘要>"
 ~~~
 
-上例的续算索引128只是解释格式，**必须改为上一轮真实 NEXT_INDEX**。摘要由客户端世界作用域、模型全部参数、真实quart、FIT/HOLDOUT角色及low48集合计算；不会打印原始HMAC、坐标、IP、identity.key。改变证据、样本、模型或low48候选集合必须拒绝旧断点；低48候选求解状态非 BOUNDED_MODEL_EXHAUSTED 也拒绝跨进程断点复用。高16只检查有限范围或尚未跑完所有分片时不得宣称全域唯一。
+上例的续算索引128只是解释格式，**必须改为上一轮真实 NEXT_INDEX，并完整复制 RECOVERY_RESUME_TOKEN**。P4.4 版本化摘要绑定客户端世界作用域、模型全部参数、真实 quart、FIT/HOLDOUT、结构约束与 Salt、低48搜索窗口和结果资格、候选集合以及高16分片计划；不会打印原始HMAC、坐标、IP、identity.key。改变证据、样本、模型或low48候选集合必须拒绝旧断点；低48候选求解状态非 BOUNDED_MODEL_EXHAUSTED 也拒绝跨进程断点复用。高16只检查有限范围或尚未跑完所有分片时不得宣称全域唯一。
+
+**旧 P4.1 裸64位十六进制摘要不能用于 P4.4 续算。** 旧摘要没有完整绑定结构输入，升级后须从该分片起点重新运行并保存新的版本化 token；原始证据和旧报告无需修改。
+
+多 Salt 初次研究会为每个假设分别产生结果。续算时使用 `--salts <其中一个Salt>`，并复制该假设自己的 `NEXT_INDEX` 和 token；同一个断点不能同时应用到多个 Salt。每个 token 只绑定所属结构假设，不受同批其它 Salt 是否存在影响。
 
 ## 正反验收
 

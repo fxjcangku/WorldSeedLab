@@ -227,11 +227,13 @@ tasks.register('p39RealSeedRecovery', JavaExec) {
     def evidenceArgs = [
             providers.gradleProperty('recoveryEvidence').orElse('NO_CLIENT_EVIDENCE').get(),
             providers.gradleProperty('recoverySalts').orElse('14357617').get()]
+    def customHigh16 = false
     if (providers.gradleProperty('recoveryQuart').isPresent()) {
         evidenceArgs.add(providers.gradleProperty('recoveryQuart').get())
         def high16Mode = providers.gradleProperty('recoveryBiomeMode').orElse('NOT_CONFIRMED').get()
         evidenceArgs.add(high16Mode)
         if (high16Mode == 'EXPLICIT_CUSTOM_CLIMATE_HYPOTHESIS') {
+            customHigh16 = true
             if (!providers.gradleProperty('recoveryCustomModel').isPresent()) {
                 throw new GradleException('P4.1 custom climate mode requires local -PrecoveryCustomModel')
             }
@@ -239,22 +241,34 @@ tasks.register('p39RealSeedRecovery', JavaExec) {
         } else if (providers.gradleProperty('recoveryCustomModel').isPresent()) {
             throw new GradleException('Custom model requires explicit custom climate mode')
         }
-    } else if (providers.gradleProperty('recoveryCustomModel').isPresent()) {
-        throw new GradleException('Custom model requires real client quart evidence')
+    } else if (providers.gradleProperty('recoveryCustomModel').isPresent()
+            || providers.gradleProperty('recoveryBiomeMode').isPresent()) {
+        throw new GradleException('A high16 model requires real client quart evidence')
+    }
+    def customParameters = ['recoveryShardIndex', 'recoveryShardCount',
+                            'recoveryHigh16Resume', 'recoveryHigh16Digest',
+                            'recoveryHigh16MaxEvaluations']
+    if (!customHigh16 && customParameters.any { providers.gradleProperty(it).isPresent() }) {
+        throw new GradleException('High16 shard, budget and resume parameters require explicit custom climate mode')
     }
     args evidenceArgs
     systemProperty 'mcVersion', targetMinecraft
     systemProperty 'recoveryStart', providers.gradleProperty('recoveryStart').orElse('0').get()
     systemProperty 'recoveryEnd', providers.gradleProperty('recoveryEnd')
             .orElse('281474976710656').get()
-    systemProperty 'recoveryShardIndex', providers.gradleProperty('recoveryShardIndex').orElse('0').get()
-    systemProperty 'recoveryShardCount', providers.gradleProperty('recoveryShardCount').orElse('16').get()
-    if (providers.gradleProperty('recoveryHigh16Resume').isPresent()) {
-        systemProperty 'recoveryHigh16Resume', providers.gradleProperty('recoveryHigh16Resume').get()
+    if (customHigh16) {
+        systemProperty 'recoveryShardIndex', providers.gradleProperty('recoveryShardIndex').orElse('0').get()
+        systemProperty 'recoveryShardCount', providers.gradleProperty('recoveryShardCount').orElse('16').get()
+        if (providers.gradleProperty('recoveryHigh16Resume').isPresent()) {
+            systemProperty 'recoveryHigh16Resume', providers.gradleProperty('recoveryHigh16Resume').get()
+        }
+        systemProperty 'recoveryHigh16Digest', providers.gradleProperty('recoveryHigh16Digest').orElse('').get()
+        systemProperty 'recoveryHigh16MaxEvaluations',
+                providers.gradleProperty('recoveryHigh16MaxEvaluations').orElse('128').get()
     }
-    systemProperty 'recoveryHigh16Digest', providers.gradleProperty('recoveryHigh16Digest').orElse('').get()
-    systemProperty 'recoveryHigh16MaxEvaluations',
-            providers.gradleProperty('recoveryHigh16MaxEvaluations').orElse('128').get()
+    if (providers.gradleProperty('recoveryReport').isPresent()) {
+        systemProperty 'recoveryReport', providers.gradleProperty('recoveryReport').get()
+    }
 }
 
 tasks.register('p39RealSeedRecoverySmokeTest', JavaExec) {
@@ -267,6 +281,19 @@ tasks.register('p39RealSeedRecoverySmokeTest', JavaExec) {
 }
 tasks.named('check') {
     dependsOn tasks.named('p39RealSeedRecoverySmokeTest')
+}
+
+// P4.4 恢复服务、结果契约和断点身份；候选不可当作已认证的矿物预测输入。
+tasks.register('p44RecoveryPipelineSmokeTest', JavaExec) {
+    group = 'verification'
+    description = 'Validate recovery orchestration, private reports and evidence-bound resume identity.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P44RecoveryPipelineSmokeTest'
+    systemProperty 'mcVersion', targetMinecraft
+}
+tasks.named('check') {
+    dependsOn tasks.named('p44RecoveryPipelineSmokeTest')
 }
 
 // P2.7：纯 Java 有界候选求解器 + 对实际目标 Minecraft 本体的结构随机放置对照。

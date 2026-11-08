@@ -47,6 +47,12 @@
 
 [开发及构建说明](docs/DEVELOPMENT.md) · [P1 真实群系采集](docs/P1_OBSERVATION.md) · [P2 跑图与维度日志](docs/P2_DIAGNOSTICS.md) · [开发习惯](%E5%BC%80%E5%8F%91%E4%B9%A0%E6%83%AF.md) · [双版本 CI](../../actions/workflows/build.yml)
 
+### P4.4 / 恢复流程重构与本机结果接口
+
+离线恢复现在按参数、证据、求解调度和结果输出分层，继续使用已有原创 Z3/Java RNG 与高16模型。26.2 的原有命令仍可使用，增加 `--report <新文件.json>` 后可读取每个 Salt 假设的低48/条件64位候选、独立验证和搜索进度，方便后续工具接入。
+
+原版和自定义气候模式共用严格 P1 校验；续算 token 升级后绑定完整结构规则、证据和分片，旧断点须从对应分片起点重新计算。报告始终区分模型候选与真实服务器种子，当前 `ready_for_mining=false`：自定义矿物生成规则尚需独立验证。使用方法见 [恢复入口与 JSON 结果](docs/P39_REAL_CLIENT_SEED_RECOVERY.md) 和 [续算迁移](docs/P41_CONDITIONAL_CUSTOM_HIGH16.md)。
+
 ## 01.6 / 更细的地形与地下剖面研究
 
 研究预览已加入 **OFF / SURFACE / STRATA** 三级取证。在玩家显式启动采集后，可读取客户端已加载区块的方块状态、流体、群系与地下稀疏切片。地表每区块 16 列进一步保存 **WORLD_SURFACE、OCEAN_FLOOR、MOTION_BLOCKING** 三种高度图与海床方块 ID。
