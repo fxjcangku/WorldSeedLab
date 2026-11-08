@@ -53,6 +53,7 @@ def run(version: str, p38_materials: bool = False):
         "generate-structures": "true",
         "online-mode": "false",
         "server-ip": "127.0.0.1",
+        "white-list": "false",  # 26.3 默认开启；此服务器仅供隔离本机 GUI 实验。
         "server-port": PORT,
         "enable-rcon": "true",
         "rcon.port": "25575",

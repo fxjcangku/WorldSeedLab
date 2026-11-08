@@ -49,7 +49,7 @@ class GradleCiInstallerTest(unittest.TestCase):
             setup.download_distribution(destination)
         self.assertEqual(destination.read_bytes(), payload)
         self.assertEqual(open_url.call_count, 2)
-        self.assertEqual([call.args[0].full_url for call in open_url.call_args_list], list(setup.DOWNLOAD_URLS))
+        self.assertEqual([call.args[0].full_url for call in open_url.call_args_list], list(setup.DOWNLOAD_URLS[:2]))
         sleep.assert_called_once_with(10)
 
     def test_exhausted_network_retries_leave_no_archive(self):
@@ -59,6 +59,7 @@ class GradleCiInstallerTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "已尝试 6 次"):
                 setup.download_distribution(destination)
         self.assertEqual(open_url.call_count, setup.DOWNLOAD_ATTEMPTS)
+        self.assertEqual([call.args[0].full_url for call in open_url.call_args_list], list(setup.DOWNLOAD_URLS) * 2)
         self.assertEqual([call.args[0] for call in sleep.call_args_list], [10, 20, 30, 30, 30])
         self.assertFalse(destination.exists())
 

@@ -19,10 +19,11 @@ import zipfile
 
 VERSION = "9.9.0"
 DOWNLOAD_URLS = (
+    f"https://github.com/gradle/gradle-distributions/releases/download/v{VERSION}/gradle-{VERSION}-bin.zip",
     f"https://downloads.gradle.org/distributions/gradle-{VERSION}-bin.zip",
     f"https://services.gradle.org/distributions/gradle-{VERSION}-bin.zip",
 )
-# 2026-11-08 从官方 downloads 与 services 的 .sha256 地址分别核对。
+# 2026-11-08 核对两个官方.sha256及GitHub发行资产digest，并完整下载发行ZIP复核。
 EXPECTED_SHA256 = "0b00b0ffe07c4d4789c12d4935a44a7057d55774b7540bd4a3f76f336deb177a"
 MAX_DOWNLOAD_BYTES = 256 * 1024 * 1024
 MAX_EXTRACTED_BYTES = 512 * 1024 * 1024

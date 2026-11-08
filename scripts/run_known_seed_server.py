@@ -102,6 +102,45 @@ class NbtReader:
         return self.tag(10)
 
 
+def block_palette_ids(palette: object) -> set[str]:
+    """读取官方26.x保存的方块ID，不把未知palette形态静默当成空气。
+
+    旧版使用Name/Properties；26.3默认状态缩成字符串，非默认状态使用
+    id/properties。26.3混合ListTag在二进制中将字符串包装成唯一空键对象，
+    此处仅解这一层明确包装，不更改通用NBT解析或接受任意嵌套对象。
+    """
+    if not isinstance(palette, list) or len(palette) > 4096:
+        raise ValueError("invalid saved block palette list")
+    names = set()
+    for entry in palette:
+        if isinstance(entry, str):
+            block_id = entry
+        elif isinstance(entry, dict):
+            if set(entry) == {""}:
+                block_id = entry[""]
+            else:
+                if "Name" in entry and "id" not in entry:
+                    id_key, property_key = "Name", "Properties"
+                elif "id" in entry and "Name" not in entry:
+                    id_key, property_key = "id", "properties"
+                else:
+                    raise ValueError("ambiguous or missing saved block palette ID")
+                if set(entry) - {id_key, property_key}:
+                    raise ValueError("unsupported saved block palette fields")
+                properties = entry.get(property_key, {})
+                if not isinstance(properties, dict) or any(
+                        not isinstance(key, str) or not key or not isinstance(value, str) or not value
+                        for key, value in properties.items()):
+                    raise ValueError("invalid saved block palette properties")
+                block_id = entry[id_key]
+        else:
+            raise ValueError("unsupported saved block palette entry")
+        if not isinstance(block_id, str) or re.fullmatch(r"[a-z0-9_.-]+:[a-z0-9/._-]+", block_id) is None:
+            raise ValueError("invalid saved block palette resource ID")
+        names.add(block_id)
+    return names
+
+
 def region_chunks(path: Path):
     data = path.read_bytes()
     # Mojang 的 region storage 可能先创建零字节占位文件；

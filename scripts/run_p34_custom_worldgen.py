@@ -19,7 +19,7 @@ from minecraft_versions import SUPPORTED_MINECRAFT_VERSIONS
 
 from run_known_seed_server import (
     ROOT, KNOWN_SEED, POSITION, STRUCTURE, QUERY_POINTS, rcon, region_chunks,
-    scan_structure_starts, scan_observed_biome_quart_samples,
+    scan_structure_starts, scan_observed_biome_quart_samples, block_palette_ids,
 )
 
 VANILLA_DESERT_SALT = 14357617
@@ -89,7 +89,7 @@ def scan_custom_terrain(world: Path):
                 if not isinstance(section, dict):
                     continue
                 palette = section.get("block_states", {}).get("palette", [])
-                names = {v.get("Name") for v in palette if isinstance(v, dict)}
+                names = block_palette_ids(palette)
                 if section.get("Y") == 3 and "minecraft:sandstone" in names:
                     sandstone_sections += 1
                 if section.get("Y") == 4 and "minecraft:sand" in names:
