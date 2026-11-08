@@ -27,6 +27,17 @@ gradle -PmcVersion=26.2 clean build
 gradle -PmcVersion=26.2 runClient
 ```
 
+### P4.4 恢复流程回归与机器结果
+
+离线入口仍为 `scripts/recover_seed.py`，新增可选 `--report <新文件>`。直接 Gradle 调用对应 `-PrecoveryReport=<新文件>`；数据协议及种子/矿物验证边界见 [P3.9 使用说明](P39_REAL_CLIENT_SEED_RECOVERY.md)。
+
+```bash
+python3 -m unittest discover -s scripts -p 'test_*.py' -v
+gradle --no-daemon -PmcVersion=26.2 p44RecoveryPipelineSmokeTest
+```
+
+`p44RecoveryPipelineSmokeTest` 已加入两版本 `check`。它检验恢复调度、跨作用域拒绝、续算身份、结果隐私及禁止覆盖，不能替代真正 GUI 联机验收。P3.9 工作流继续从真实 Fabric 客户端获得受控轮廓，并让本机 Z3 求解；现在同时检验 JSON 中的受控候选与未认证状态。只有该工作流实际通过后才能报告本轮真实客户端端到端成功。
+
 全部 `build` 将执行：
 
 - `coreSmokeTest`：世界 HMAC、默认禁用、P0 模型存储。

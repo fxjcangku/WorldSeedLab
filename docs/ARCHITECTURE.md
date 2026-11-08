@@ -1,5 +1,17 @@
 # WorldSeedLab · 软件分层与数据边界
 
+## P4.4 离线恢复流程与结果契约
+
+恢复入口保留 `scripts/recover_seed.py` 与 Gradle `p39RealSeedRecovery`。Python 将参数校验、证据准备、命令组装和执行分开；原版与自定义气候模式复用同一套严格 P1 来源、世界作用域和空间留出检查。
+
+Java 的 `RealClientSeedRecoveryCli` 只负责命令行适配。客户端完整轮廓导入、结构约束组装、恢复调度及结果序列化分层实现；恢复服务接收明确的请求并返回不可变结果，不依赖控制台输出驱动下一阶段。原有 LCG、SMT、几何和高16位数学实现继续复用。
+
+每个 Salt 假设单独保留低48结果与高16结果：候选数、独立 FIT/HOLDOUT、搜索范围、终止原因、实际检查数和续算位置必须能分别读取。完成当前窗口、完成全部候选域与确认目标服务器真实 Seed 是三个不同结论。
+
+可选 `--report` 将 `WorldSeedLabRecovery` schema=1 JSON 写入指定的新文件。默认不创建结果文件；不覆盖现有文件。报告不含原始世界 HMAC、XYZ、服务器地址、私钥或输入路径，完整64位数字用字符串表达，避免下游 JavaScript 丢失精度。它是恢复结果接口，当前 `server_seed_status=UNKNOWN`、`ore_prediction_status=UNVERIFIED`、`ready_for_mining=false`，不能由条件候选直接启用矿点预测。
+
+P4.4 续算身份绑定结构模型、Salt、结构 FIT/HOLDOUT 约束、低48搜索范围及结果资格、客户端 quart、气候模型和高16分片。新 token 带 `wsl-p44-v1:` 版本前缀；旧弱摘要不兼容，必须从对应分片起点重新计算。客户端采集、GUI 与离线求解依旧彼此隔离。
+
 ## P3.6 自动联合取证入口（独立于离线求解器）
 
 `/wsl auto on` 只会在玩家明确授权后启动一次 P1/P2 群系与地形采集、P2.6 低成本材料候选，以及 `client/probe/AutoDesertFootprintController`。它从已经接受的 FULL 区块逐 Tick 有界读取蓝陶瓦锚点，调用 `core/geometry/AutoDesertFootprintPlan` 制定29×29粗ROI，然后复用 `ClientVisibleDesertPyramidRaster` 的四侧21/21严格轮廓校验。只有完整不歧义的 CLIENT_OBSERVED_Blocks 经有界单线程异步写入HMAC世界/维度目录。生成器和人工来源仍UNKNOWN，绝不自动调用Z3、服务端NBT、强制区块加载或网络上传。离线独立研究另用群系/地形生成器模型检验完整64位，不因自动材料匹配就当作已证明Seed。

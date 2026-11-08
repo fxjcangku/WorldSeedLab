@@ -38,16 +38,8 @@ jobs:
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq z3
           z3 --version
 
-      - name: P4.0 offline client evidence/model safety tests
-        run: python3 scripts/test_audit_custom_climate.py
-
-      - name: P4.1 conditional high16 source/resume privacy safety
-        run: |
-          python3 scripts/test_recover_seed.py
-          python3 scripts/test_p41_conditional_recovery.py
-
-      - name: P4.2 real client generator identifiability and legacy height safety
-        run: python3 scripts/test_audit_generator_identifiability.py
+      - name: Offline evidence, recovery routing and resume regression tests
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
 
       - name: Compile and verify
         run: gradle --no-daemon --stacktrace -PmcVersion=${{ matrix.minecraft }} clean build

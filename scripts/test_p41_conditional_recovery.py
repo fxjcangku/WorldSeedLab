@@ -16,6 +16,22 @@ from recover_seed import main
 from test_audit_custom_climate import HASH, POINTS, build_zip, row
 
 
+def model_config(biomes=("minecraft:forest", "terralith:test_biome")):
+    """独立人工参数仅用于Python路由；不代表真实生成器配置。"""
+    return {
+        "schema": 1,
+        "provenance": "USER_SUPPLIED_UNVERIFIED",
+        "generator_profile": "worldseedlab:controlled_testing_only",
+        "climate_sampler": "minecraft:vanilla_overworld_noise_router",
+        "entries": [{
+            "biome": biome,
+            "temperature": [-1.0, 1.0], "humidity": [-1.0, 1.0],
+            "continentalness": [-1.0, 1.0], "erosion": [-1.0, 1.0],
+            "depth": [-1.0, 1.0], "weirdness": [-1.0, 1.0], "offset": 0.0,
+        } for biome in biomes],
+    }
+
+
 class TestP41ConditionalRouting(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix="p41-test-")
@@ -27,16 +43,7 @@ class TestP41ConditionalRouting(unittest.TestCase):
             for i in range(3):
                 archive.writestr(f"client-auto-desert-artificial-{i}.properties", "NOT_REAL")
         self.model = base / "unverified.json"
-        self.model.write_text(json.dumps({
-            "schema": 1,
-            "provenance": "USER_SUPPLIED_UNVERIFIED",
-            "generator_profile": "worldseedlab:controlled_testing_only",
-            "climate_sampler": "minecraft:vanilla_overworld_noise_router",
-            "entries": [
-                {"biome": "minecraft:forest"},
-                {"biome": "terralith:test_biome"}
-            ]
-        }), encoding="utf-8")
+        self.model.write_text(json.dumps(model_config()), encoding="utf-8")
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -48,19 +55,79 @@ class TestP41ConditionalRouting(unittest.TestCase):
 
     def test_reject_shard_or_resume_without_provenance(self):
         base = ["--input", str(self.archive), "--minecraft", "26.2",
-                "--custom-model", str(self.model)]
+                "--custom-model", str(self.model), "--dry-run"]
         self.assertEqual(main(base + ["--high16-shards", "0"]), 2)
         self.assertEqual(main(base + ["--high16-shard", "16"]), 2)
+        self.assertEqual(main(base + ["--high16-evaluations", "0"]), 2)
+        self.assertEqual(main(base + ["--high16-evaluations", "1000001"]), 2)
         self.assertEqual(main(base + ["--high16-resume", "1024"]), 2)
-        self.assertEqual(main(base + ["--high16-expected-digest", "a" * 64]), 2)
+        self.assertEqual(main(base + ["--high16-expected-digest", "wsl-p44-v1:" + "a" * 64]), 2)
+        for index in (-1, 1 << 63):
+            self.assertEqual(main(base + ["--high16-resume", str(index),
+                                          "--high16-expected-digest", "wsl-p44-v1:" + "a" * 64]), 2)
+
+    def test_old_resume_digest_requires_restart(self):
+        errors = io.StringIO()
+        with contextlib.redirect_stderr(errors), mock.patch("recover_seed.subprocess.run") as forbidden:
+            code = main(["--input", str(self.archive), "--minecraft", "26.2",
+                         "--custom-model", str(self.model), "--dry-run",
+                         "--high16-resume", "128", "--high16-expected-digest", "f" * 64])
+        self.assertEqual(code, 2)
+        self.assertIn("旧版裸断点摘要", errors.getvalue())
+        self.assertIn("本分片起点", errors.getvalue())
+        forbidden.assert_not_called()
+
+    def test_multiple_salts_cannot_share_one_resume_token(self):
+        base = ["--input", str(self.archive), "--minecraft", "26.2",
+                "--custom-model", str(self.model), "--salts=1,2", "--dry-run"]
+        errors, output = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stderr(errors), contextlib.redirect_stdout(output), \
+                mock.patch("recover_seed.subprocess.run") as forbidden:
+            self.assertEqual(main(base), 0, "多Salt首轮仍可显式研究")
+            self.assertEqual(main(base + ["--high16-resume", "128",
+                                           "--high16-expected-digest", "wsl-p44-v1:" + "a" * 64]), 2)
+        self.assertIn("断点续算仅支持单个结构Salt", errors.getvalue())
+        forbidden.assert_not_called()
+
+    def test_complete_model_validated_before_dry_run(self):
+        mutations = [
+            lambda model: model.update(schema=True),
+            lambda model: model.pop("generator_profile"),
+            lambda model: model.update(generator_profile="minecraft:unverified"),
+            lambda model: model.update(entries=[]),
+            lambda model: model["entries"][0].update(biome=None),
+            lambda model: model["entries"][0].pop("temperature"),
+            lambda model: model["entries"][0].update(temperature=[1, -1]),
+            lambda model: model["entries"][0].update(humidity=[-float("inf"), 1]),
+            lambda model: model["entries"][0].update(depth=[False, 1]),
+            lambda model: model["entries"][0].update(offset=float("nan")),
+        ]
+        for number, mutate in enumerate(mutations):
+            with self.subTest(number=number):
+                config = model_config()
+                mutate(config)
+                self.model.write_text(json.dumps(config), encoding="utf-8")
+                errors = io.StringIO()
+                with contextlib.redirect_stderr(errors), \
+                        mock.patch("recover_seed.subprocess.run") as forbidden:
+                    code = main(["--input", str(self.archive), "--minecraft", "26.2",
+                                 "--custom-model", str(self.model), "--dry-run"])
+                self.assertEqual(code, 2)
+                self.assertIn("RESULT=BLOCKED", errors.getvalue())
+                forbidden.assert_not_called()
+
+    def test_valid_custom_dry_run_does_not_run_solver(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output), mock.patch("recover_seed.subprocess.run") as forbidden:
+            code = main(["--input", str(self.archive), "--minecraft", "26.2",
+                         "--custom-model", str(self.model), "--dry-run"])
+        self.assertEqual(code, 0)
+        self.assertIn("RESULT=STRUCTURE_FILES_PRESENT_UNVERIFIED", output.getvalue())
+        self.assertNotIn("LOW48_MODEL_CANDIDATE", output.getvalue())
+        forbidden.assert_not_called()
 
     def test_model_registry_conflict_exits_before_z3(self):
-        self.model.write_text(json.dumps({
-            "schema": 1,
-            "provenance": "USER_SUPPLIED_UNVERIFIED",
-            "climate_sampler": "minecraft:vanilla_overworld_noise_router",
-            "entries": [{"biome": "minecraft:forest"}]
-        }), encoding="utf-8")
+        self.model.write_text(json.dumps(model_config(("minecraft:forest",))), encoding="utf-8")
         output = io.StringIO()
         with mock.patch("recover_seed.shutil.which", return_value="/dev/null"), \
                 mock.patch("recover_seed.subprocess.run") as forbidden, \
@@ -82,7 +149,7 @@ class TestP41ConditionalRouting(unittest.TestCase):
             self.assertIn("-PrecoveryShardCount=16", command)
             self.assertIn("-PrecoveryHigh16MaxEvaluations=17", command)
             self.assertIn("-PrecoveryHigh16Resume=12345", command)
-            self.assertIn("-PrecoveryHigh16Digest=" + "f"*64, command)
+            self.assertIn("-PrecoveryHigh16Digest=wsl-p44-v1:" + "f"*64, command)
             quart = Path(next(c.split("=", 1)[1] for c in command
                               if c.startswith("-PrecoveryQuart=")))
             self.assertTrue(quart.is_file())
@@ -101,7 +168,7 @@ class TestP41ConditionalRouting(unittest.TestCase):
                          "--custom-model", str(self.model),
                          "--high16-shard", "3", "--high16-shards", "16",
                          "--high16-evaluations", "17", "--high16-resume", "12345",
-                         "--high16-expected-digest", "f"*64])
+                         "--high16-expected-digest", "wsl-p44-v1:" + "f"*64])
         self.assertEqual(code, 0)
         self.assertFalse(captured["temp_path"].exists(), "私有quart临时文件必须自动销毁")
         self.assertNotIn(HASH, output.getvalue(), "不得泄露完整世界HMAC")
