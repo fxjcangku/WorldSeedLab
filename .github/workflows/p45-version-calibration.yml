@@ -1,0 +1,46 @@
+name: P4.5 Official Version Calibration
+
+on:
+  push:
+    branches: ['feature/p45-minecraft-26-3']
+    paths:
+      - 'scripts/calibrate_minecraft_fixture.py'
+      - 'scripts/run_known_seed_server.py'
+      - 'scripts/minecraft_versions.py'
+      - '.github/workflows/p45-version-calibration.yml'
+  workflow_dispatch:
+    inputs:
+      minecraft:
+        description: 'Official target version to calibrate from a new saved FULL world'
+        required: true
+        default: '26.3'
+        type: choice
+        options: ['26.1.2', '26.2', '26.3']
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    name: Official Minecraft ${{ inputs.minecraft || '26.3' }} FULL truth
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Verify official server and generate independent version fixtures
+        env:
+          TARGET_MINECRAFT: ${{ inputs.minecraft || '26.3' }}
+        run: python3 -u scripts/calibrate_minecraft_fixture.py --minecraft "$TARGET_MINECRAFT"
+      - name: Upload public controlled calibration without world saves or server settings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: P45-Official-Calibration-${{ inputs.minecraft || '26.3' }}
+          path: build/p45-calibration/${{ inputs.minecraft || '26.3' }}/
+          if-no-files-found: error
+          retention-days: 30

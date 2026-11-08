@@ -9,15 +9,19 @@ from __future__ import annotations
 import argparse
 import gzip
 import json
+import os
 from pathlib import Path
 import re
 import secrets
+import shutil
 import socket
 import struct
 import subprocess
 import threading
 import time
 import zlib
+
+from minecraft_versions import SUPPORTED_MINECRAFT_VERSIONS
 
 ROOT = Path(__file__).resolve().parents[1]
 KNOWN_SEED = 2731
@@ -295,17 +299,47 @@ def rcon(command: str, password: str):
                 return re.sub(r"§[0-9a-fk-or]", "", answer)
 
 
+def controlled_server_command(version: str, rundir: Path, vanilla_server_jar: Path | None = None):
+    """测试专用原版服务端可独立于模组编译启动，打破新版本真值夹具的依赖环。
+
+    提供jar时调用者须先核对Mojang官方下载身份；此处只接受显式本机普通jar，
+    不下载或替换文件，不读取第三方服务器。默认仍使用原有Loom受控运行。
+    """
+    if version not in SUPPORTED_MINECRAFT_VERSIONS:
+        raise ValueError("unsupported controlled Minecraft version")
+    if vanilla_server_jar is None:
+        return (["gradle", "--no-daemon", "--console=plain", "-PmcVersion=" + version,
+                 "runServer", "--args=nogui"], ROOT)
+    if (vanilla_server_jar.is_symlink() or not vanilla_server_jar.is_file()
+            or vanilla_server_jar.suffix.lower() != ".jar"):
+        raise ValueError("controlled vanilla server must be an existing regular non-symlink jar")
+    java_home = os.environ.get("JAVA_HOME")
+    if java_home:
+        java = Path(java_home) / "bin" / ("java.exe" if os.name == "nt" else "java")
+        if not java.is_file():
+            raise ValueError("JAVA_HOME does not contain the controlled Java executable")
+        executable = str(java)
+    else:
+        executable = shutil.which("java")
+        if executable is None:
+            raise ValueError("controlled vanilla server requires Java on PATH or JAVA_HOME")
+    return ([executable, "-Xmx2G", "-jar", str(vanilla_server_jar.resolve()), "nogui"], rundir)
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--minecraft", choices=["26.1.2","26.2"], required=True)
+    parser.add_argument("--minecraft", choices=SUPPORTED_MINECRAFT_VERSIONS, required=True)
     # P3.2 非零高16/负数Seed控制世界：只能在本机全新工作目录执行。
     parser.add_argument("--seed", type=int, default=KNOWN_SEED)
+    parser.add_argument("--vanilla-server-jar", type=Path,
+                        help="隔离测试专用：显式使用已独立核实官方身份的本机原版jar，跳过模组编译")
     args = parser.parse_args()
     mc = args.minecraft
     seed = args.seed
     if seed < -(1 << 63) or seed >= (1 << 63):
         raise ValueError("controlled 64bit seed must fit Java signed long")
     rundir = ROOT / "run"
+    command, command_cwd = controlled_server_command(mc, rundir, args.vanilla_server_jar)
     rundir.mkdir(exist_ok=True)
     world_name = "worldseedlab_known_seed_" + mc.replace(".", "_")
     if seed != KNOWN_SEED:
@@ -331,10 +365,8 @@ def main():
     output = (ROOT / "build" / ("p29-realworld" if seed == KNOWN_SEED
                                else "p32-negative-realworld") / mc)
     output.mkdir(parents=True, exist_ok=True)
-    process = subprocess.Popen([
-        "gradle", "--no-daemon", "--console=plain", "-PmcVersion=" + mc,
-        "runServer", "--args=nogui",
-    ], cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+    process = subprocess.Popen(command, cwd=command_cwd,
+       stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
        text=True, bufsize=1)
     logs = []
     ready = threading.Event()
