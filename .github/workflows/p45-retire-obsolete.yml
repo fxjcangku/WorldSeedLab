@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Cancel only the two superseded P45 commit runs
+      - name: Cancel only the superseded P45 commit runs
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -23,6 +23,7 @@ jobs:
           obsolete = {
               '51d0308932b40aa5ec30117bb1ed8a61452da119',
               'b6c2bf2e4c9b30b2a32d748b9887fb2bde7df41a',
+              'e899e0d21e889d78118875b739dd01bd919fca95',
           }
           base = 'https://api.github.com/repos/' + repository
           headers = {'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
