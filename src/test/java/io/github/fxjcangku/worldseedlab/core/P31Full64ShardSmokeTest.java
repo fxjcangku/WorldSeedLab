@@ -9,7 +9,7 @@ import java.util.List;
 
 /**
  * P3.1 分片边界、负索引与原版真实存档群系正反例。
- * 在双版本标准 check 中执行几项，完整65536高位由独立 Actions 分片任务验收。
+ * 在各版本标准 check 中执行几项，完整65536高位由独立 Actions 分片任务验收。
  */
 public final class P31Full64ShardSmokeTest {
     private P31Full64ShardSmokeTest() {}
@@ -46,8 +46,7 @@ public final class P31Full64ShardSmokeTest {
         var scope = new Full64BiomeCandidateSearch.Scope(
                 "e".repeat(64), version, "minecraft:overworld",
                 VanillaOverworldBiomeModel.GENERATOR_PROFILE);
-        Path file = Path.of("src", "test", "resources", "p31",
-                "vanilla_" + version + "_seed2731_quart.csv");
+        Path file = P31ControlledFixture.path(version);
         var actualSavedSamples = P31Full64ShardRunner.readControlledSamples(file, scope);
         var truth = VanillaOverworldBiomeModel.create(scope);
         var outcome = Full64BiomeCandidateSearch.search(

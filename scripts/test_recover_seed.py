@@ -97,6 +97,34 @@ class SeedRecoveryPreflightTest(unittest.TestCase):
         self.assertEqual(csv.count(",HOLDOUT\n"), 2)
         self.assertNotIn("CONTROL_WORLD_OBSERVED", csv)
 
+    def test_three_supported_versions_keep_their_own_evidence_scope(self):
+        for version in ("26.1.2", "26.2", "26.3"):
+            with self.subTest(version=version):
+                rows = [dict(value, client_version=version) for value in self.rows]
+                controlled_zip(self.archive, rows)
+                args = parse_args(["--input", str(self.archive), "--minecraft", version,
+                                   "--vanilla-high16"])
+                prepared = prepare_quart(args, validate_options(args))
+                self.assertIn("gameVersion=" + version + "\n", prepared.contents)
+                self.assertEqual(prepared.selected_count, 5)
+
+    def test_supported_versions_cannot_be_mixed_or_relabelled(self):
+        for source in ("26.1.2", "26.2", "26.3"):
+            for target in ("26.1.2", "26.2", "26.3"):
+                if source == target:
+                    continue
+                with self.subTest(source=source, target=target):
+                    controlled_zip(self.archive, [dict(value, client_version=source)
+                                                  for value in self.rows])
+                    with mock.patch("recover_seed.subprocess.run") as forbidden:
+                        code, output, errors = captured_main([
+                            "--input", str(self.archive), "--minecraft", target,
+                            "--vanilla-high16", "--dry-run"])
+                    self.assertEqual(code, 2)
+                    self.assertIn("RESULT=BLOCKED", errors)
+                    self.assertNotIn("LOW48_MODEL_CANDIDATE", output)
+                    forbidden.assert_not_called()
+
     def test_custom_biome_rejects_vanilla_high16(self):
         rows = self.rows + [row(12290, 2, "terralith:mirage_isles")]
         with self.assertRaisesRegex(EvidenceError, "非minecraft"):

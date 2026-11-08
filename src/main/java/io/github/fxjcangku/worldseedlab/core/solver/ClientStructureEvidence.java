@@ -1,5 +1,6 @@
 package io.github.fxjcangku.worldseedlab.core.solver;
 
+import io.github.fxjcangku.worldseedlab.core.BootstrapCheck;
 import io.github.fxjcangku.worldseedlab.core.geometry.ClientVisibleDesertPyramidRaster;
 import io.github.fxjcangku.worldseedlab.core.geometry.StructureFootprintInverter;
 import java.io.IOException;
@@ -20,18 +21,27 @@ import java.util.zip.ZipFile;
 /**
  * 只读导入普通客户端完整轮廓，并构造独立 FIT/HOLDOUT 结构约束。
  *
- * <p>此层不启动求解、不读取系统属性、不输出原始作用域。几何零偏移校准
- * 来自 P3.5 两版受控游戏 FULL+StructureStart 对照（Actions 38563599534）；
+ * <p>此层不启动求解、不读取系统属性、不输出原始作用域。26.1.2/26.2的
+ * 零偏移校准来自 P3.5 受控游戏 FULL+StructureStart（Actions 38563599534）；
+ * 26.3使用独立P4.5引用，必须另由对应版本真实客户端及FULL+StructureStart验收。
  * 应用于未知服务器仍为模型假设，不认证天然来源、Salt 或生成历史。
  */
 public final class ClientStructureEvidence {
     private ClientStructureEvidence() {}
 
     public static final String SET_ID = "minecraft:desert_pyramids";
-    public static final String CALIBRATION_ID = "p35_real_mc_20261014";
     private static final int MAX_INPUT_ENTRIES = 100_000;
     private static final int MAX_ARCHIVES = 64;
     private static final int MAX_ARCHIVE_BYTES = 320_000;
+
+    /** 新版几何不得冒用旧版实验身份；原两版ID保持稳定以保留已有续算身份。 */
+    public static String calibrationId(String version) {
+        if (!BootstrapCheck.supportsMinecraftVersion(version)) {
+            throw new IllegalArgumentException("不支持该版本的结构校准");
+        }
+        return "26.3".equals(version)
+                ? "p45_26_3_zero_offset_hypothesis" : "p35_real_mc_20261014";
+    }
 
     public record Site(ClientVisibleDesertPyramidRaster raster,
                        StructureFootprintInverter.BlockBounds outline,
@@ -41,7 +51,7 @@ public final class ClientStructureEvidence {
                               String dimension, String worldFingerprint) {
         public Observation {
             sites = List.copyOf(sites);
-            if (!"26.1.2".equals(version) && !"26.2".equals(version)) {
+            if (!BootstrapCheck.supportsMinecraftVersion(version)) {
                 throw new IllegalArgumentException("客户端轮廓版本不受支持");
             }
             if (filesSeen < sites.size() || filesSeen > MAX_ARCHIVES) {
@@ -84,8 +94,8 @@ public final class ClientStructureEvidence {
      */
     public static Observation inspect(Path input, String expectedVersion) throws IOException {
         Objects.requireNonNull(input);
-        if (!"26.1.2".equals(expectedVersion) && !"26.2".equals(expectedVersion)) {
-            throw new IllegalArgumentException("必须指定Minecraft 26.1.2或26.2匹配版本");
+        if (!BootstrapCheck.supportsMinecraftVersion(expectedVersion)) {
+            throw new IllegalArgumentException("必须指定Minecraft 26.1.2、26.2或26.3匹配版本");
         }
         List<ClientVisibleDesertPyramidRaster> records = new ArrayList<>();
         int seen = 0;
@@ -205,7 +215,7 @@ public final class ClientStructureEvidence {
         var model = new RandomSpreadSpec(SET_ID, 32, 8,
                 RandomSpreadSpec.Distribution.LINEAR, salt);
         var calibration = new StructureFootprintInverter.Calibration(
-                CALIBRATION_ID, observed.version(), observed.dimension(),
+                calibrationId(observed.version()), observed.version(), observed.dimension(),
                 SET_ID, "minecraft:desert_pyramid", "controlled_21x21_geometry",
                 0, 0, 20, 20, 0);
         List<Site> independent = new ArrayList<>();

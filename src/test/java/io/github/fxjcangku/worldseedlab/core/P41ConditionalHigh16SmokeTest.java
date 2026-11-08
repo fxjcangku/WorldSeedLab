@@ -8,13 +8,11 @@ import io.github.fxjcangku.worldseedlab.core.solver.P40CustomClimateModel;
 import io.github.fxjcangku.worldseedlab.core.solver.P41ConditionalHigh16Search;
 import io.github.fxjcangku.worldseedlab.core.solver.VanillaOverworldBiomeModel;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
 /**
- * P4.1 两版真实Minecraft FULL存档群系与目标版本Mojmap前向噪声校验。
+ * P4.1 对应版本真实Minecraft FULL存档群系与目标版本Mojmap前向噪声校验。
  * 结构低48使用受控已知真起点回归的2731，不能冒充未知服务器已破解。
  * 外部自定义噪声映射未知，以下仅测试条件模型下的高位枚举和续算。
  */
@@ -26,8 +24,7 @@ public final class P41ConditionalHigh16SmokeTest {
         String world = "c".repeat(64);
         var session = new ClientQuartEvidenceArchive.Session(
                 world, version, "minecraft:overworld");
-        var original = Files.readAllLines(Path.of("src", "test", "resources", "p31",
-                "vanilla_" + version + "_seed2731_quart.csv"));
+        var original = P31ControlledFixture.readLines(version);
         check(original.size() == 6, "真实FULL存档quart必须包含5个独立样本");
         var scope = new Full64BiomeCandidateSearch.Scope(
                 world, version, "minecraft:overworld",

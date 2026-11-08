@@ -3,6 +3,8 @@ name: P3.4 Real Fabric Client Custom Terrain Quart E2E
 on:
   pull_request:
     paths:
+      - 'scripts/minecraft_versions.py'
+      - 'versions/**'
       - '.github/workflows/p34-real-custom-client.yml'
       - 'scripts/run_p33_real_client_e2e.py'
       - 'scripts/run_p34_custom_worldgen.py'
@@ -22,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        minecraft: ['26.1.2', '26.2']
+        minecraft: ['26.1.2', '26.2', '26.3']
     steps:
       - uses: actions/checkout@v4
       - name: Install Java 25
@@ -30,10 +32,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - name: Install Gradle 9.6.1
+      - name: Install Gradle 9.9.0
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.6.1'
+          gradle-version: '9.9.0'
       - name: Install isolated X11 and actual keyboard interface
         run: |
           sudo apt-get update -qq

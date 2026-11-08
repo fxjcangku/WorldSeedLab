@@ -5,15 +5,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.datafixers.util.Pair;
-import net.minecraft.SharedConstants;
-import net.minecraft.server.Bootstrap;
-import net.minecraft.core.HolderGetter;
+import io.github.fxjcangku.worldseedlab.core.worldgen.WorldgenVersionAdapter;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.world.level.biome.Climate;
-import net.minecraft.world.level.levelgen.NoiseGeneratorSettings;
-import net.minecraft.world.level.levelgen.RandomState;
-import net.minecraft.world.level.levelgen.synth.NormalNoise;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -25,6 +19,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.function.LongFunction;
 
 /**
  * P4.0：用真正 Mojmap RandomState 气候噪声和可审计的六维 MultiNoise 参数列表
@@ -59,17 +54,14 @@ public final class P40CustomClimateModel implements Full64BiomeCandidateSearch.B
     }
 
     private final Full64BiomeCandidateSearch.Scope scope;
-    private final HolderGetter<NormalNoise.NoiseParameters> noises;
-    private final NoiseGeneratorSettings settings;
+    private final LongFunction<Climate.Sampler> climateFactory;
     private final Climate.ParameterList<String> climateBiomes;
 
     private P40CustomClimateModel(Full64BiomeCandidateSearch.Scope scope,
-                                  HolderGetter<NormalNoise.NoiseParameters> noises,
-                                  NoiseGeneratorSettings settings,
+                                  LongFunction<Climate.Sampler> climateFactory,
                                   List<Pair<Climate.ParameterPoint, String>> entries) {
         this.scope = scope;
-        this.noises = noises;
-        this.settings = settings;
+        this.climateFactory = Objects.requireNonNull(climateFactory);
         this.climateBiomes = new Climate.ParameterList<>(entries);
     }
 
@@ -81,13 +73,8 @@ public final class P40CustomClimateModel implements Full64BiomeCandidateSearch.B
                 || !scope.generatorProfile().equals(spec.generatorProfile())) {
             throw new IllegalArgumentException("世界维度或生成器配置不匹配");
         }
-        SharedConstants.tryDetectVersion();
-        Bootstrap.bootStrap();
-        var registry = VanillaRegistries.createLookup();
-        var noises = registry.lookupOrThrow(Registries.NOISE);
-        var settings = registry.lookupOrThrow(Registries.NOISE_SETTINGS)
-                .getOrThrow(NoiseGeneratorSettings.OVERWORLD).value();
-        return new P40CustomClimateModel(scope, noises, settings, spec.entries());
+        return new P40CustomClimateModel(scope,
+                WorldgenVersionAdapter.createClimateFactory(scope.gameVersion()), spec.entries());
     }
 
     /** 只读取用户本机指定的纯参数 JSON；不执行脚本、不解压、不联网。 */
@@ -148,9 +135,7 @@ public final class P40CustomClimateModel implements Full64BiomeCandidateSearch.B
 
     /** 已校准的原版模型仅可用作受控比较，不会提升本模型的可信来源。 */
     public static Specification controlledVanillaPreset(String identifier) {
-        SharedConstants.tryDetectVersion();
-        Bootstrap.bootStrap();
-        var registry = VanillaRegistries.createLookup();
+        var registry = WorldgenVersionAdapter.createWorldLookup();
         var preset = registry.lookupOrThrow(Registries.MULTI_NOISE_BIOME_SOURCE_PARAMETER_LIST)
                 .getOrThrow(net.minecraft.world.level.biome.MultiNoiseBiomeSourceParameterLists.OVERWORLD)
                 .value().parameters().values();
@@ -174,7 +159,7 @@ public final class P40CustomClimateModel implements Full64BiomeCandidateSearch.B
 
     @Override
     public Full64BiomeCandidateSearch.BiomeSampler prepare(long full64Seed) {
-        var climate = RandomState.create(settings, noises, full64Seed).sampler();
+        var climate = climateFactory.apply(full64Seed);
         return (x, y, z) -> climateBiomes.findValue(climate.sample(x, y, z));
     }
 }

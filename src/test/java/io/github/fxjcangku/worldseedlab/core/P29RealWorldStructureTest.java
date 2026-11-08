@@ -41,7 +41,7 @@ public final class P29RealWorldStructureTest {
                     "需要来自真实 Minecraft 存档的 structure starts CSV 与版本号");
         }
         String version = args[1];
-        if (!"26.1.2".equals(version) && !"26.2".equals(version)) {
+        if (!BootstrapCheck.supportsMinecraftVersion(version)) {
             throw new IllegalArgumentException("unsupported Minecraft version");
         }
         Path csv = Path.of(args[0]);

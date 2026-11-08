@@ -22,7 +22,7 @@ public final class P34RealFabricCustomClientTest {
     private P34RealFabricCustomClientTest() {}
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 2 || (!"26.1.2".equals(args[1]) && !"26.2".equals(args[1]))) {
+        if (args.length != 2 || (!BootstrapCheck.supportsMinecraftVersion(args[1]))) {
             throw new IllegalArgumentException("用法: 真实客户端受控实验目录 Minecraft版本");
         }
         Path root = Path.of(args[0]);

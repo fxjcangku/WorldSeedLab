@@ -37,7 +37,7 @@ public final class P35RealFabricClientFootprintTest {
     public static void main(String[] args) throws Exception {
         if(args.length!=2) throw new IllegalArgumentException("真实客户端目录与Minecraft版本");
         String version=args[1];
-        if(!"26.1.2".equals(version) && !"26.2".equals(version)) {
+        if(!BootstrapCheck.supportsMinecraftVersion(version)) {
             throw new IllegalArgumentException("P3.5版本非法");
         }
         Path directory=Path.of(args[0]);

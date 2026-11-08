@@ -3,6 +3,8 @@ name: P3.4 Real Custom Worldgen Structure and Biome Controls
 on:
   pull_request:
     paths:
+      - 'scripts/minecraft_versions.py'
+      - 'versions/**'
       - '.github/workflows/p34-custom-worldgen.yml'
       - 'scripts/run_p34_custom_worldgen.py'
       - 'scripts/run_known_seed_server.py'
@@ -22,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        minecraft: ['26.1.2', '26.2']
+        minecraft: ['26.1.2', '26.2', '26.3']
     steps:
       - uses: actions/checkout@v4
       - name: Install JDK 25
@@ -30,10 +32,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - name: Install Gradle 9.6.1
+      - name: Install Gradle 9.9.0
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.6.1'
+          gradle-version: '9.9.0'
       - name: Launch real custom-terrain server and read generated FULL Anvil structures
         run: |
           timeout --signal=INT --kill-after=30s 680s \

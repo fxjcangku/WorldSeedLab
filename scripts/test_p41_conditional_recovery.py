@@ -126,6 +126,21 @@ class TestP41ConditionalRouting(unittest.TestCase):
         self.assertNotIn("LOW48_MODEL_CANDIDATE", output.getvalue())
         forbidden.assert_not_called()
 
+    def test_custom_recovery_accepts_26_3_and_rejects_26_2_evidence(self):
+        build_zip(self.archive, [dict(row(*point), client_version="26.3") for point in POINTS])
+        with ZipFile(self.archive, "a") as archive:
+            for index in range(3):
+                archive.writestr(f"client-auto-desert-artificial-{index}.properties", "NOT_REAL")
+        output, errors = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors), \
+                mock.patch("recover_seed.subprocess.run") as forbidden:
+            base = ["--input", str(self.archive), "--custom-model", str(self.model), "--dry-run"]
+            self.assertEqual(main(base + ["--minecraft", "26.3"]), 0)
+            self.assertEqual(main(base + ["--minecraft", "26.2"]), 2)
+        self.assertIn("RESULT=BLOCKED", errors.getvalue())
+        self.assertNotIn("LOW48_MODEL_CANDIDATE", output.getvalue())
+        forbidden.assert_not_called()
+
     def test_model_registry_conflict_exits_before_z3(self):
         self.model.write_text(json.dumps(model_config(("minecraft:forest",))), encoding="utf-8")
         output = io.StringIO()

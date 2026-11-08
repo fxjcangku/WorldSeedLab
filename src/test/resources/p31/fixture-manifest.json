@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "fixtures": {
+    "26.1.2": {
+      "file": "vanilla_26.1.2_seed2731_quart.csv",
+      "sha256": "73b8e9915d422b9632c4d411d0dcd6f0f2150e920d1a1d18630b07fb5e4e9602",
+      "provenance": "REAL_MINECRAFT_FULL_CHUNK",
+      "known_seed": "2731",
+      "sample_count": 5,
+      "source_run_url": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/38506886029"
+    },
+    "26.2": {
+      "file": "vanilla_26.2_seed2731_quart.csv",
+      "sha256": "73b8e9915d422b9632c4d411d0dcd6f0f2150e920d1a1d18630b07fb5e4e9602",
+      "provenance": "REAL_MINECRAFT_FULL_CHUNK",
+      "known_seed": "2731",
+      "sample_count": 5,
+      "source_run_url": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/38506886029"
+    },
+    "26.3": {
+      "file": "vanilla_26.3_seed2731_quart.csv",
+      "sha256": "73b8e9915d422b9632c4d411d0dcd6f0f2150e920d1a1d18630b07fb5e4e9602",
+      "provenance": "REAL_MINECRAFT_FULL_CHUNK",
+      "known_seed": "2731",
+      "sample_count": 5,
+      "source_run_url": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/42465203278",
+      "structure_starts": {
+        "file": "vanilla_26.3_seed2731_structures.csv",
+        "sha256": "dc40fe0218d7c90a8fbe06e580435e65a123d9219704dc5693968932e682115d",
+        "provenance": "REAL_MINECRAFT_STRUCTURE_START",
+        "sample_count": 4,
+        "source_run_url": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/42465203278"
+      }
+    }
+  }
+}

@@ -1,13 +1,6 @@
 name: P4.5 Official Version Calibration
 
 on:
-  push:
-    branches: ['feature/p45-minecraft-26-3']
-    paths:
-      - 'scripts/calibrate_minecraft_fixture.py'
-      - 'scripts/run_known_seed_server.py'
-      - 'scripts/minecraft_versions.py'
-      - '.github/workflows/p45-version-calibration.yml'
   workflow_dispatch:
     inputs:
       minecraft:

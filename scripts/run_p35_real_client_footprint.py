@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""P3.5 两版本真实 Minecraft GUI 客户端手动双角建筑轮廓取证。
+"""P3.5 三个目标版本真实 Minecraft GUI 客户端手动双角建筑轮廓取证。
 
 测试环境只使用公开 Seed=2731 和回环受控服务器。RCON /locate、
 /tp、/forceload 仅用于布景和受控客户端导航；客户端取证代码不含
@@ -17,6 +17,8 @@ import secrets
 import signal
 import subprocess
 import time
+
+from minecraft_versions import SUPPORTED_MINECRAFT_VERSIONS
 
 from run_known_seed_server import (
     ROOT, KNOWN_SEED, POSITION, QUERY_POINTS, STRUCTURE,
@@ -290,6 +292,6 @@ def run(version: str):
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser()
-    parser.add_argument("--minecraft",required=True,choices=("26.1.2","26.2"))
+    parser.add_argument("--minecraft",required=True,choices=SUPPORTED_MINECRAFT_VERSIONS)
     args=parser.parse_args()
     run(args.minecraft)

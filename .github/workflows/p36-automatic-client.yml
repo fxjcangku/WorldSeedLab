@@ -3,6 +3,8 @@ name: P3.6 Actual Automatic Client Structures and Terrain
 on:
   pull_request:
     paths:
+      - 'scripts/minecraft_versions.py'
+      - 'versions/**'
       - '.github/workflows/p36-automatic-client.yml'
       - 'scripts/run_p36_real_automatic_client.py'
       - 'src/client/java/io/github/fxjcangku/worldseedlab/client/probe/AutoDesertFootprintController.java'
@@ -23,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        minecraft: ['26.1.2', '26.2']
+        minecraft: ['26.1.2', '26.2', '26.3']
     steps:
       - uses: actions/checkout@v4
       - name: Java 25
@@ -31,10 +33,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - name: Gradle 9.6.1
+      - name: Gradle 9.9.0
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.6.1'
+          gradle-version: '9.9.0'
       - name: Install real virtual X11 keyboard and local Z3
         run: |
           sudo apt-get update -qq

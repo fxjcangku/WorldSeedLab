@@ -3,6 +3,8 @@ name: P3.5 Real Client-Visible Desert Temple Footprint
 on:
   pull_request:
     paths:
+      - 'scripts/minecraft_versions.py'
+      - 'versions/**'
       - '.github/workflows/p35-real-client-footprint.yml'
       - 'scripts/run_p35_real_client_footprint.py'
       - 'src/client/java/io/github/fxjcangku/worldseedlab/client/probe/ClientDesertFootprintCaptureController.java'
@@ -23,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        minecraft: ['26.1.2', '26.2']
+        minecraft: ['26.1.2', '26.2', '26.3']
     steps:
       - uses: actions/checkout@v4
       - name: Install Java 25
@@ -31,10 +33,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - name: Install Gradle 9.6.1
+      - name: Install Gradle 9.9.0
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.6.1'
+          gradle-version: '9.9.0'
       - name: Install real GUI virtual display and keyboard
         run: |
           sudo apt-get update -qq

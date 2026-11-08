@@ -11,7 +11,7 @@
 <br /><br />
 
 ![Project status](https://img.shields.io/badge/STATUS-RESEARCH_PREVIEW-13263F?style=flat-square&labelColor=07111F&color=087EA4)
-![Minecraft](https://img.shields.io/badge/MINECRAFT-26.1.2%20%2F%2026.2-13263F?style=flat-square&labelColor=07111F&color=236A99)
+![Minecraft](https://img.shields.io/badge/MINECRAFT-26.1.2%20%2F%2026.2%20%2F%2026.3-13263F?style=flat-square&labelColor=07111F&color=236A99)
 ![Fabric](https://img.shields.io/badge/PLATFORM-FABRIC-13263F?style=flat-square&labelColor=07111F&color=236A99)
 ![Java](https://img.shields.io/badge/JAVA-25-13263F?style=flat-square&labelColor=07111F&color=236A99)
 
@@ -21,7 +21,9 @@
 
 **[v0.1.0 初代研究预览 · 下载与发布说明](https://github.com/fxjcangku/WorldSeedLab/releases/tag/v0.1.0)**
 
-请选择对应 **Minecraft 26.1.2 / 26.2** 的 JAR，两个版本不要同时安装。客户端需要 **Java 25、Fabric Loader ≥0.19.5** 与对应版本的 Fabric API（本次构建使用 `0.155.3+26.1.2` / `0.161.0+26.2`）。普通安装者无需安装 Z3；它仅用于显式执行的离线研究。
+既有 v0.1.0 Release 仅提供 **Minecraft 26.1.2 / 26.2** 的 JAR；请选择与游戏一致的一份。客户端需要 **Java 25、Fabric Loader ≥0.19.5** 与对应版本的 Fabric API（本次构建使用 `0.155.3+26.1.2` / `0.161.0+26.2`）。普通安装者无需安装 Z3；它仅用于显式执行的离线研究。
+
+**26.3 开发构建：** 本次源码增加 26.3，使用 Java 25、Fabric Loader 0.20.1 与 Fabric API 0.165.2+26.3；旧版 Release 不包含26.3产物。版本适配与实际验证状态见 [P4.5记录](docs/P45_MINECRAFT_26_3.md)。
 
 ## 01 / 为什么是 WorldSeedLab
 
@@ -45,7 +47,7 @@
 - 普通客户端不能读取服务器完整生成器配置；需要跑图获取更多可观测证据，并独立验证结构分布规律。
 - 已有真实客户端受控联机实验不代表任意目标服务器已验收；本轮发行包未本机实机，未知服与高速跑图表现仍需验证。
 
-[开发及构建说明](docs/DEVELOPMENT.md) · [P1 真实群系采集](docs/P1_OBSERVATION.md) · [P2 跑图与维度日志](docs/P2_DIAGNOSTICS.md) · [开发习惯](%E5%BC%80%E5%8F%91%E4%B9%A0%E6%83%AF.md) · [双版本 CI](../../actions/workflows/build.yml)
+[开发及构建说明](docs/DEVELOPMENT.md) · [P1 真实群系采集](docs/P1_OBSERVATION.md) · [P2 跑图与维度日志](docs/P2_DIAGNOSTICS.md) · [开发习惯](%E5%BC%80%E5%8F%91%E4%B9%A0%E6%83%AF.md) · [三版本 CI](../../actions/workflows/build.yml)
 
 ### P4.4 / 恢复流程重构与本机结果接口
 
@@ -275,7 +277,7 @@ Biome Evidence   Structure Evidence
 
 | 项目 | 研究目标 |
 | :--- | :--- |
-| Minecraft Java | **26.1.2 / 26.2**（分别构建与验证） |
+| Minecraft Java | **26.1.2 / 26.2 / 26.3**（分别构建与验证） |
 | 模组平台 | Fabric 客户端，独立安装运行 |
 | 编程语言 | Java 25 |
 | 映射标准 | Mojang 官方映射（Mojmap） |

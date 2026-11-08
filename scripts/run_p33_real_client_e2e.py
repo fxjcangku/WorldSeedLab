@@ -18,6 +18,8 @@ import subprocess
 import threading
 import time
 
+from minecraft_versions import SUPPORTED_MINECRAFT_VERSIONS
+
 from run_known_seed_server import rcon, region_chunks
 from run_p34_custom_worldgen import GENERATOR
 import json
@@ -455,7 +457,7 @@ def run(version: str, custom_worldgen: bool = False):
 
 if __name__ == "__main__":
     ap=argparse.ArgumentParser()
-    ap.add_argument("--minecraft", required=True, choices=("26.1.2","26.2"))
+    ap.add_argument("--minecraft", required=True, choices=SUPPORTED_MINECRAFT_VERSIONS)
     ap.add_argument("--custom-worldgen", action="store_true",
                     help="P3.4 CI only: real Fabric client joins controlled custom flat world")
     parsed = ap.parse_args()

@@ -18,6 +18,8 @@ import signal
 import subprocess
 import time
 
+from minecraft_versions import SUPPORTED_MINECRAFT_VERSIONS
+
 from run_known_seed_server import (
     ROOT, KNOWN_SEED, POSITION, QUERY_POINTS, STRUCTURE,
     rcon, scan_structure_starts, region_chunks,
@@ -473,7 +475,7 @@ def run(version: str, p38_materials: bool = False):
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser()
-    parser.add_argument("--minecraft",required=True,choices=("26.1.2","26.2"))
+    parser.add_argument("--minecraft",required=True,choices=SUPPORTED_MINECRAFT_VERSIONS)
     parser.add_argument("--p38-materials",action="store_true",
                         help="仅受控世界：额外测试人工海底材料夹具自动识别")
     args=parser.parse_args()

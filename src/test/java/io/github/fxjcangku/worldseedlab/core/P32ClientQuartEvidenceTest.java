@@ -10,7 +10,7 @@ public final class P32ClientQuartEvidenceTest {
     private P32ClientQuartEvidenceTest() {}
 
     public static void main(String[] args) throws Exception {
-        for (String version : new String[] {"26.1.2", "26.2"}) {
+        for (String version : new String[] {"26.1.2", "26.2", "26.3"}) {
             var session = new ClientQuartEvidenceArchive.Session(
                     "a".repeat(64), version, "minecraft:overworld");
             expectFail(session::snapshot, "样本不足不能导出");
@@ -34,6 +34,14 @@ public final class P32ClientQuartEvidenceTest {
             String encoded = ClientQuartEvidenceArchive.encode(captured);
             var reconstructed = ClientQuartEvidenceArchive.decode(encoded);
             check(reconstructed.equals(captured), "证据落盘/恢复必须保持无损");
+            for (String other : new String[] {"26.1.2", "26.2", "26.3"}) {
+                if (version.equals(other)) continue;
+                expectFail(() -> ClientQuartEvidenceArchive.decodeForScope(encoded.replace(
+                        "gameVersion=" + version, "gameVersion=" + other), captured.scope()),
+                        "已支持的另一版本也不能混入当前证据作用域");
+            }
+            expectFail(() -> ClientQuartEvidenceArchive.decode(encoded.replace(
+                    "gameVersion=" + version, "gameVersion=26.4")), "未支持版本必须拒绝");
             // P3.9: 全自动P1已完成FULL区块来源必须独立于旧P3.2手动档案。
             String automaticallySampled = encoded.replace(
                     "sampling=MANUAL_ALREADY_LOADED_FULL",

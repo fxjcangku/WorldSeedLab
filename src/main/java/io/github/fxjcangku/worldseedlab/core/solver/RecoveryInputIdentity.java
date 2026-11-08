@@ -54,7 +54,7 @@ public final class RecoveryInputIdentity {
             text(out, TOKEN_PREFIX);
             text(out, request.mode().name());
             text(out, "SERVER_SEED_UNKNOWN;ORE_UNVERIFIED;NATURAL_ORIGIN_UNKNOWN;SALT_UNVERIFIED");
-            text(out, ClientStructureEvidence.CALIBRATION_ID);
+            text(out, ClientStructureEvidence.calibrationId(request.structures().version()));
             var observed = request.structures();
             text(out, observed.worldFingerprint());
             text(out, observed.version());

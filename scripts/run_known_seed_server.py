@@ -142,7 +142,7 @@ def scan_structure_starts(world: Path, located):
     # 原版主世界不再位于 world/region；使用旧路径会伪报“没有结构”。
     overworld_regions = world / "dimensions" / "minecraft" / "overworld" / "region"
     if not overworld_regions.is_dir():
-        raise RuntimeError("Minecraft 26.1+/26.2 overworld region directory missing")
+        raise RuntimeError("supported Minecraft 26.x overworld region directory missing")
     for region in sorted(overworld_regions.glob("r.*.*.mca")):
         for chunk in region_chunks(region):
             read_chunks += 1
@@ -174,7 +174,7 @@ def scan_structure_starts(world: Path, located):
                 bb = start.get("BB")
                 bb_source = "structure_start"
                 if not (isinstance(bb, list) and len(bb) == 6):
-                    # 26.1+/26.2: StructureStart NBT may omit its aggregate BB.
+                    # 三个目标26.x版本：StructureStart NBT可省略汇总BB，须独立合并真实piece边界。
                     # Full generated piece extents are in Children[].BB, not at the root.
                     piece_boxes = [piece.get("BB") for piece in pieces
                                    if isinstance(piece, dict)]

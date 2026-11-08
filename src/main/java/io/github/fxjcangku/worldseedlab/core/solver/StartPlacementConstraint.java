@@ -1,5 +1,6 @@
 package io.github.fxjcangku.worldseedlab.core.solver;
 
+import io.github.fxjcangku.worldseedlab.core.BootstrapCheck;
 import io.github.fxjcangku.worldseedlab.core.compatibility.StructureObservation.ChunkBounds;
 import java.util.HashSet;
 import java.util.List;
@@ -53,7 +54,7 @@ public record StartPlacementConstraint(
                 || structureSetId == null || !ID.matcher(structureSetId).matches()) {
             throw new IllegalArgumentException("invalid evidence world/structure-set scope");
         }
-        if (!"26.1.2".equals(gameVersion) && !"26.2".equals(gameVersion)) {
+        if (!BootstrapCheck.supportsMinecraftVersion(gameVersion)) {
             throw new IllegalArgumentException("unsupported evidence game version");
         }
         Objects.requireNonNull(possibleStartChunks);

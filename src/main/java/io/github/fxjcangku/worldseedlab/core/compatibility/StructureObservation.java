@@ -1,5 +1,6 @@
 package io.github.fxjcangku.worldseedlab.core.compatibility;
 
+import io.github.fxjcangku.worldseedlab.core.BootstrapCheck;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -34,7 +35,7 @@ public record StructureObservation(
                 throw new IllegalArgumentException("invalid namespaced identifier");
             }
         }
-        if (!"26.1.2".equals(clientVersion) && !"26.2".equals(clientVersion)) {
+        if (!BootstrapCheck.supportsMinecraftVersion(clientVersion)) {
             throw new IllegalArgumentException("unsupported evidence version");
         }
         Objects.requireNonNull(origin, "origin");

@@ -102,7 +102,7 @@ core/solver/RandomSpreadSpec + StartPlacementConstraint
                 ▼
 core/solver/LegacyLcg48 + RandomSpreadMath
                 │
-                ├─ 目标 Minecraft 26.1.2 / 26.2 本体对照
+                ├─ 目标 Minecraft 26.1.2 / 26.2 / 26.3 本体对照
                 ▼
 core/solver/CandidateSeedSearch
      FIT 搜索 → HOLDOUT 检验 → LOW48 候选
@@ -137,3 +137,7 @@ LOW48_CANDIDATE（不等于后台64位真实世界Seed）
 ```
 
 `p28SmtResearch` 只能由用户显式执行，不得自动读取玩家世界、后台 Seed、矿物 NBT 或服务器未公开参数。模型均基于已知版本与已知 Salt 的**条件假设**，不能把 SAT / UNSAT 当作自定义服真实 Seed 的证明。非二幂 nextInt 的有限拒绝路径须在报告中注明，最终候选用完整 Java RNG 二次验证。
+
+## P4.5 三版本 API 适配
+
+`src/main` 与 `src/client` 保持共用。`src/versions/<版本>/main/java` 提供worldgen接口适配，`src/versions/<版本>/java` 提供客户端GUI接口适配；Gradle只编译当前目标的两个目录。26.3独立的原版FULL/NBT夹具通过版本manifest校验，旧版实验不会自动继承为新版真值。

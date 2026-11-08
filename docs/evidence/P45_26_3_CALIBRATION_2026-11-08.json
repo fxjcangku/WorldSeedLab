@@ -1,0 +1,29 @@
+{
+  "schema": 1,
+  "minecraft": "26.3",
+  "known_seed": "2731",
+  "source_run_url": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/42465203278",
+  "source_commit": "73975ec93caa608b45dadf7774a453eb33cffd1e",
+  "official_version_url": "https://piston-meta.mojang.com/v1/packages/80608ff6753705b6a82e2cb86a5937d4d233abd4/26.3.json",
+  "official_version_sha1": "80608ff6753705b6a82e2cb86a5937d4d233abd4",
+  "official_server_url": "https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c/server.jar",
+  "official_server_sha1": "33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c",
+  "source": "saved_vanilla_FULL_chunk_NBT",
+  "quart_split": "first 3 FIT, last 2 HOLDOUT",
+  "manifest_entry": {
+    "file": "vanilla_26.3_seed2731_quart.csv",
+    "sha256": "73b8e9915d422b9632c4d411d0dcd6f0f2150e920d1a1d18630b07fb5e4e9602",
+    "provenance": "REAL_MINECRAFT_FULL_CHUNK",
+    "known_seed": "2731",
+    "sample_count": 5,
+    "source_run_url": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/42465203278",
+    "structure_starts": {
+      "file": "vanilla_26.3_seed2731_structures.csv",
+      "sha256": "dc40fe0218d7c90a8fbe06e580435e65a123d9219704dc5693968932e682115d",
+      "provenance": "REAL_MINECRAFT_STRUCTURE_START",
+      "sample_count": 4,
+      "source_run_url": "https://github.com/fxjcangku/WorldSeedLab/actions/runs/42465203278"
+    }
+  },
+  "note": "Public controlled server truth; not CLIENT_OBSERVED or an unknown server seed."
+}

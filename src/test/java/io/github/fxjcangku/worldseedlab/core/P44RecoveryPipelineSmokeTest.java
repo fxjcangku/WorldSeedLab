@@ -91,11 +91,15 @@ public final class P44RecoveryPipelineSmokeTest {
     private static void preflightGuards(SeedRecoveryService service, AtomicInteger calls,
             ClientStructureEvidence.Observation observed, String version) throws Exception {
         int before = calls.get();
-        for (var wrong : List.of(
+        var wrongScopes = new ArrayList<>(List.of(
                 archive("d".repeat(64), version, "minecraft:overworld", "minecraft:plains", 0),
-                archive(WORLD, version.equals("26.2") ? "26.1.2" : "26.2",
-                        "minecraft:overworld", "minecraft:plains", 0),
-                archive(WORLD, version, "minecraft:the_nether", "minecraft:plains", 0))) {
+                archive(WORLD, version, "minecraft:the_nether", "minecraft:plains", 0)));
+        for (String other : List.of("26.1.2", "26.2", "26.3")) {
+            if (!version.equals(other)) {
+                wrongScopes.add(archive(WORLD, other, "minecraft:overworld", "minecraft:plains", 0));
+            }
+        }
+        for (var wrong : wrongScopes) {
             rejects(() -> service.recover(new SeedRecoveryService.Request(observed, List.of(SALT),
                     0, 4096, SeedRecoveryService.High16Request.vanilla(wrong))),
                     "跨世界/版本/维度quart必须在Z3前拒绝");

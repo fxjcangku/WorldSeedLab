@@ -45,7 +45,7 @@ public final class P39RealSeedRecoverySmokeTest {
                     "三个独立FIT和一个HOLDOUT是已经划分的真实结构模型约束");
             var spec = input.models().get(ClientStructureEvidence.SET_ID);
             check(input.constraints().stream().allMatch(c -> c.matchesPlacement(2731L,spec)),
-                    "真实受控Minecraft结构起点坐标应支持2731低48候选");
+                    "公开控制坐标的算法回归应支持2731低48候选；新版实机另行验证");
             check(input.constraints().stream().anyMatch(c -> !c.matchesPlacement(2732L,spec)),
                     "错误低48种子必须被实际离散起点坐标否决");
             writeSyntheticClientFootprint(root.resolve("client-auto-desert-mismatch.properties"),

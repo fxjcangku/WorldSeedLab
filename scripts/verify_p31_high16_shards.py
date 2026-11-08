@@ -7,16 +7,56 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import re
 
-VERSIONS = ("26.1.2", "26.2")
+from minecraft_versions import SUPPORTED_MINECRAFT_VERSIONS
+
+VERSIONS = SUPPORTED_MINECRAFT_VERSIONS
 DOMAIN = 65536
 LOW48 = 2731
-INPUT_SHA = "73b8e9915d422b9632c4d411d0dcd6f0f2150e920d1a1d18630b07fb5e4e9602"
 FULL64 = 2731
 HEX16 = re.compile(r"[0-9a-f]{16}\Z")
+HEX64 = re.compile(r"[0-9a-f]{64}\Z")
+DEFAULT_FIXTURE_MANIFEST = (Path(__file__).resolve().parents[1]
+                            / "src/test/resources/p31/fixture-manifest.json")
+
+
+def controlled_fixtures(manifest: Path) -> dict[str, dict]:
+    """逐版本核对已独立保存的FULL真值身份，缺新版本时绝不借用旧版CSV。"""
+    if not manifest.is_file() or manifest.is_symlink() or manifest.stat().st_size > 65536:
+        raise ValueError("缺少安全的逐版本真实FULL夹具身份清单")
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    if (not isinstance(data, dict) or type(data.get("schema")) is not int
+            or data["schema"] != 1 or not isinstance(data.get("fixtures"), dict)):
+        raise ValueError("真实FULL夹具身份清单schema非法")
+    fixtures = {}
+    for version in VERSIONS:
+        entry = data["fixtures"].get(version)
+        expected_name = f"vanilla_{version}_seed2731_quart.csv"
+        if (not isinstance(entry, dict) or entry.get("file") != expected_name
+                or entry.get("provenance") != "REAL_MINECRAFT_FULL_CHUNK"
+                or entry.get("known_seed") != str(FULL64)
+                or type(entry.get("sample_count")) is not int or entry["sample_count"] != 5
+                or not isinstance(entry.get("sha256"), str)
+                or not HEX64.fullmatch(entry["sha256"])
+                or not isinstance(entry.get("source_run_url"), str)
+                or not re.fullmatch(r"https://github\.com/fxjcangku/WorldSeedLab/actions/runs/[0-9]+",
+                                    entry["source_run_url"])):
+            raise ValueError(version + "缺少独立真实FULL夹具身份，禁止回退到其它版本")
+        csv = manifest.parent / expected_name
+        if not csv.is_file() or csv.is_symlink() or csv.stat().st_size > 32768:
+            raise ValueError(version + "真实FULL夹具不存在或不是有界普通文件")
+        contents = csv.read_bytes()
+        if hashlib.sha256(contents).hexdigest() != entry["sha256"]:
+            raise ValueError(version + "真实FULL夹具SHA256与已审核来源清单不一致")
+        rows = contents.decode("utf-8").splitlines()
+        if len(rows) != 6 or rows[0] != "quart_x,quart_y,quart_z,biome_id":
+            raise ValueError(version + "真实FULL夹具必须保留5条独立quart原始记录")
+        fixtures[version] = entry
+    return fixtures
 
 
 def read_properties(path: Path) -> dict[str, str]:
@@ -42,15 +82,18 @@ def require_int(report: dict[str, str], name: str) -> int:
     return int(raw)
 
 
-def aggregate(root: Path, shard_count: int) -> dict:
+def aggregate(root: Path, shard_count: int,
+              fixture_manifest: Path = DEFAULT_FIXTURE_MANIFEST) -> dict:
     if shard_count < 1 or shard_count > 256:
         raise ValueError("分片数量必须位于1..256")
     if not root.is_dir() or root.is_symlink():
         raise ValueError("分片产物文件夹不存在")
+    fixtures = controlled_fixtures(fixture_manifest)
     expected_paths: set[Path] = set()
     versions: dict[str, dict] = {}
 
     for version in VERSIONS:
+        fixture = fixtures[version]
         found: dict[int, dict] = {}
         covered = 0
         seeds: set[int] = set()
@@ -66,7 +109,7 @@ def aggregate(root: Path, shard_count: int) -> dict:
                 "gameVersion": version,
                 "knownLow48": str(LOW48),
                 "biomeSource": "minecraft:vanilla_overworld",
-                "inputSha256": INPUT_SHA,
+                "inputSha256": fixture["sha256"],
                 "biomeSamples": "5",
                 "fitSamples": "3",
                 "holdoutSamples": "2",
@@ -121,7 +164,8 @@ def aggregate(root: Path, shard_count: int) -> dict:
             "modelCandidatesHex16": [f"{seed:016x}" for seed in ordered_seeds],
             "uniqueInSpecifiedModel": len(ordered_seeds) == 1,
             "aggregateWorkerMillis": elapsed_ms,
-            "evidenceSha256": INPUT_SHA,
+            "evidenceSha256": fixture["sha256"],
+            "evidenceSourceRun": fixture["source_run_url"],
             "fitSamples": 3,
             "holdoutSamples": 2,
         }
@@ -144,9 +188,11 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", required=True, type=Path)
     parser.add_argument("--shards", required=True, type=int)
+    parser.add_argument("--fixture-manifest", type=Path, default=DEFAULT_FIXTURE_MANIFEST,
+                        help="按目标版本锁定真实FULL CSV、SHA256及独立运行来源的清单")
     parser.add_argument("--output", type=Path, default=Path("build/p31-full64-summary.json"))
     args = parser.parse_args()
-    result = aggregate(args.root, args.shards)
+    result = aggregate(args.root, args.shards, args.fixture_manifest)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     tmp = args.output.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(result, ensure_ascii=False, indent=2) + "\n",
