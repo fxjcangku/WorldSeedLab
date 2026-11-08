@@ -1,0 +1,48 @@
+name: Retire superseded P45 test runs
+on:
+  push:
+    branches: ['feature/p45-retire-obsolete-runs']
+    paths: ['.github/workflows/p45-retire-obsolete.yml']
+permissions:
+  contents: read
+  actions: write
+jobs:
+  retire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Cancel only the two superseded P45 commit runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request, urllib.error
+          repository = os.environ['GITHUB_REPOSITORY']
+          if repository != 'fxjcangku/WorldSeedLab':
+              raise SystemExit('unexpected repository')
+          obsolete = {
+              '51d0308932b40aa5ec30117bb1ed8a61452da119',
+              'b6c2bf2e4c9b30b2a32d748b9887fb2bde7df41a',
+          }
+          base = 'https://api.github.com/repos/' + repository
+          headers = {'Authorization': 'Bearer ' + os.environ['GH_TOKEN'],
+                     'Accept': 'application/vnd.github+json',
+                     'X-GitHub-Api-Version': '2022-11-28'}
+          for sha in sorted(obsolete):
+              request = urllib.request.Request(base + '/actions/runs?head_sha=' + sha + '&per_page=100', headers=headers)
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  runs = json.load(response)['workflow_runs']
+              for run in runs:
+                  if (run['head_sha'] != sha or run['head_branch'] != 'feature/p45-minecraft-26-3'
+                          or run['event'] != 'pull_request' or run['status'] == 'completed'):
+                      continue
+                  request = urllib.request.Request(base + '/actions/runs/' + str(run['id']) + '/cancel',
+                                                   data=b'', headers=headers, method='POST')
+                  try:
+                      with urllib.request.urlopen(request, timeout=30) as response:
+                          print('Cancelled superseded P45 run', run['id'], sha, response.status)
+                  except urllib.error.HTTPError as error:
+                      if error.code != 409:
+                          raise
+                      print('Run completed before cancellation', run['id'])
+          PY
