@@ -3,6 +3,9 @@ name: P3.4 Actual Modified Salt StructureSet Worldgen
 on:
   pull_request:
     paths:
+      - 'src/versions/**'
+      - 'gradle.properties'
+      - 'scripts/setup_gradle_ci.py'
       - 'scripts/minecraft_versions.py'
       - 'versions/**'
       - '.github/workflows/p34-modified-salt.yml'
@@ -32,10 +35,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - name: Install Gradle 9.9.0
+      - name: Configure Gradle cache and reports
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.9.0'
+
+      - name: Install verified Gradle 9.9.0
+        run: python3 -u scripts/setup_gradle_ci.py
       - name: Check Python controlled-world launcher syntax
         run: python3 -m py_compile scripts/run_p34_custom_worldgen.py scripts/run_known_seed_server.py
       - name: Actually enable modified Salt datapack and generate real Minecraft world

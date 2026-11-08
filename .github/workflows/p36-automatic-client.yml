@@ -3,6 +3,9 @@ name: P3.6 Actual Automatic Client Structures and Terrain
 on:
   pull_request:
     paths:
+      - 'src/versions/**'
+      - 'gradle.properties'
+      - 'scripts/setup_gradle_ci.py'
       - 'scripts/minecraft_versions.py'
       - 'versions/**'
       - '.github/workflows/p36-automatic-client.yml'
@@ -33,10 +36,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - name: Gradle 9.9.0
+      - name: Configure Gradle cache and reports
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.9.0'
+
+      - name: Install verified Gradle 9.9.0
+        run: python3 -u scripts/setup_gradle_ci.py
       - name: Install real virtual X11 keyboard and local Z3
         run: |
           sudo apt-get update -qq

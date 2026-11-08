@@ -3,6 +3,8 @@ name: P3.7 Custom Worldgen Offline Evidence Research
 on:
   pull_request:
     paths:
+      - 'src/versions/**'
+      - 'gradle.properties'
       - 'scripts/minecraft_versions.py'
       - '.github/workflows/p37-evidence-audit.yml'
       - 'scripts/research_p37_custom_worldgen.py'

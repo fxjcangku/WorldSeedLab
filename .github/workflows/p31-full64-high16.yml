@@ -3,6 +3,9 @@ name: P3.1 Exhaustive Vanilla Full64 High16
 on:
   pull_request:
     paths:
+      - 'src/versions/**'
+      - 'gradle.properties'
+      - 'scripts/setup_gradle_ci.py'
       - 'scripts/minecraft_versions.py'
       - 'versions/**'
       - '.github/workflows/p31-full64-high16.yml'
@@ -42,10 +45,11 @@ jobs:
           distribution: temurin
           java-version: '25'
 
-      - name: Gradle 9.9.0
+      - name: Configure Gradle cache and reports
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.9.0'
+
+      - name: Install verified Gradle 9.9.0
+        run: python3 -u scripts/setup_gradle_ci.py
 
       - name: Evaluate actual vanilla Overworld biome model for exact high16 shard
         run: |

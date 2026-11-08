@@ -3,6 +3,9 @@ name: P2.9 Real Known-Seed Worldgen
 on:
   pull_request:
     paths:
+      - 'src/versions/**'
+      - 'gradle.properties'
+      - 'scripts/setup_gradle_ci.py'
       - 'scripts/minecraft_versions.py'
       - 'versions/**'
       - 'build.gradle'
@@ -34,10 +37,11 @@ jobs:
           distribution: temurin
           java-version: '25'
 
-      - name: Gradle 9.9.0
+      - name: Configure Gradle cache and reports
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.9.0'
+
+      - name: Install verified Gradle 9.9.0
+        run: python3 -u scripts/setup_gradle_ci.py
 
       - name: Install local Z3 for exact controlled-world inverse checks
         run: |

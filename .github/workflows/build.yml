@@ -27,10 +27,11 @@ jobs:
           distribution: temurin
           java-version: '25'
 
-      - name: Install Gradle 9.9.0
+      - name: Configure Gradle cache and reports
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.9.0'
+
+      - name: Install verified Gradle 9.9.0
+        run: python3 -u scripts/setup_gradle_ci.py
 
       - name: Install bounded local SMT backend for P2.8 tests
         run: |

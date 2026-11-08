@@ -3,6 +3,9 @@ name: P3.4 Real Fabric Client Custom Terrain Quart E2E
 on:
   pull_request:
     paths:
+      - 'src/versions/**'
+      - 'gradle.properties'
+      - 'scripts/setup_gradle_ci.py'
       - 'scripts/minecraft_versions.py'
       - 'versions/**'
       - '.github/workflows/p34-real-custom-client.yml'
@@ -32,10 +35,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - name: Install Gradle 9.9.0
+      - name: Configure Gradle cache and reports
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.9.0'
+
+      - name: Install verified Gradle 9.9.0
+        run: python3 -u scripts/setup_gradle_ci.py
       - name: Install isolated X11 and actual keyboard interface
         run: |
           sudo apt-get update -qq
