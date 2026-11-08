@@ -94,6 +94,23 @@ def xcmd(*args, env):
                                    text=True, timeout=15).strip()
 
 
+def controlled_gui_environment(version: str, *, display: str = ":97",
+                               base_env: dict | None = None) -> dict:
+    """真实 CI 客户端共用 X11/软件 OpenGL；不改玩家配置或伪报图形能力。"""
+    if version not in SUPPORTED_MINECRAFT_VERSIONS:
+        raise ValueError("不支持的真实客户端测试版本")
+    env = dict(os.environ if base_env is None else base_env)
+    env.update({"DISPLAY": display, "XDG_SESSION_TYPE": "x11", "LIBGL_ALWAYS_SOFTWARE": "1"})
+    env.pop("WAYLAND_DISPLAY", None)
+    env.pop("WAYLAND_SOCKET", None)
+    if version == "26.3":
+        # 26.3 RenderPearl 的 SDL3 窗口要求 sRGB；Xvfb 的 GLX visual 不足时，
+        # 使用 SDL3 官方 EGL 路径创建同一真实 OpenGL 上下文，不降级功能要求。
+        env["SDL_VIDEO_DRIVER"] = "x11"
+        env["SDL_VIDEO_FORCE_EGL"] = "1"
+    return env
+
+
 def client_display_environments(base_env):
     """Fabric Loom's runClient uses nested xvfb-run, potentially DISPLAY=:99.
 
@@ -251,12 +268,7 @@ def run(version: str, custom_worldgen: bool = False):
     client_options.write_text(
         "onboardAccessibility:false\nnarrator:0\npauseOnLostFocus:false\n",
         encoding="utf-8")
-    env = os.environ.copy()
-    env["DISPLAY"] = ":97"
-    env["XDG_SESSION_TYPE"] = "x11"
-    env.pop("WAYLAND_DISPLAY", None)
-    env.pop("WAYLAND_SOCKET", None)
-    env["LIBGL_ALWAYS_SOFTWARE"] = "1"
+    env = controlled_gui_environment(version)
     display = subprocess.Popen(
         ["Xvfb",":97","-screen","0","1280x720x24","-nolisten","tcp"],
         cwd=ROOT, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,

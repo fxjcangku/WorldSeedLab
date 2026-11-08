@@ -3,6 +3,7 @@ name: P3.8 Real Automatic Multi-Structure Material Evidence
 on:
   pull_request:
     paths:
+      - 'scripts/run_p33_real_client_e2e.py'
       - 'src/versions/**'
       - 'gradle.properties'
       - 'scripts/setup_gradle_ci.py'
@@ -51,7 +52,7 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
-            xvfb xauth xdotool scrot x11-utils openbox libgl1-mesa-dri mesa-utils z3
+            xvfb xauth xdotool scrot x11-utils openbox libgl1-mesa-dri libegl1 libegl-mesa0 mesa-utils z3
       - name: Real GUI auto detection of controlled artificial aquatic materials (not natural origins)
         run: |
           timeout --signal=INT --kill-after=30s 1100s \

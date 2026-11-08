@@ -6,6 +6,8 @@ on:
       - 'src/versions/**'
       - 'gradle.properties'
       - 'scripts/setup_gradle_ci.py'
+      - 'scripts/run_p32_client_startup.py'
+      - 'scripts/run_p33_real_client_e2e.py'
       - 'scripts/minecraft_versions.py'
       - 'versions/**'
       - 'build.gradle'
@@ -38,40 +40,22 @@ jobs:
 
       - name: Install verified Gradle 9.9.0
         run: python3 -u scripts/setup_gradle_ci.py
-      - name: Install isolated virtual display + software OpenGL
+      - name: Install isolated virtual display + software OpenGL and EGL
         run: |
           sudo apt-get update -qq
-          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq xvfb xauth libgl1-mesa-dri mesa-utils
-      - name: Boot actual Fabric Minecraft client until WorldSeedLab initializes
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+            xvfb xauth xdotool scrot x11-utils openbox python3-pil \
+            libgl1-mesa-dri libegl1 libegl-mesa0 mesa-utils
+      - name: Verify actual Fabric window, texture atlas and rendered frame
         shell: bash
         run: |
-          set +e
-          timeout --signal=INT --kill-after=15s 180s \
-            xvfb-run -a -s '-screen 0 1600x900x24' \
-            gradle --no-daemon --console=plain -PmcVersion=${{ matrix.minecraft }} runClient \
-            > p32-client-startup.log 2>&1
-          exit_code=$?
-          set -e
-          tail -n 120 p32-client-startup.log
-          if ! grep -q 'WorldSeedLab P1 ready for Minecraft' p32-client-startup.log; then
-            echo 'FAILED: real Fabric client never initialized WorldSeedLab entrypoint'
-            exit 1
-          fi
-          if grep -E 'Exception in thread "Render thread"|ModLoadingException|WorldSeedLab bootstrap rejected' p32-client-startup.log; then
-            echo 'FAILED: client crashed during initialization'
-            exit 1
-          fi
-          if [[ "$exit_code" != '0' && "$exit_code" != '124' ]]; then
-            echo "FAILED: runClient exited unexpectedly: $exit_code"
-            exit 1
-          fi
-          echo 'P3.2 actual runClient startup reached WorldSeedLab ClientModInitializer.'
-          echo 'Note: this is a GUI startup test, NOT an interactive singleplayer world quart sample test.'
-      - name: Upload startup log (no private game data)
+          timeout --signal=INT --kill-after=30s 330s \
+            /usr/bin/python3 -u scripts/run_p32_client_startup.py --minecraft=${{ matrix.minecraft }}
+      - name: Upload controlled startup log and actual window evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: P32-RunClient-Startup-${{ matrix.minecraft }}
-          path: p32-client-startup.log
+          path: build/p32-client-startup/${{ matrix.minecraft }}/
           retention-days: 7
           if-no-files-found: warn

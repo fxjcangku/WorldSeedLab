@@ -27,6 +27,7 @@ from run_known_seed_server import (
 from run_p34_custom_worldgen import GENERATOR, scan_custom_terrain
 from run_p33_real_client_e2e import (
     ManagedProcess, wait_until, visible_minecraft_window, xcmd, chat, screenshot,
+    controlled_gui_environment,
 )
 
 TARGET_COUNT = 4
@@ -76,10 +77,7 @@ def run(version: str, p38_materials: bool = False):
     options.write_text(
         "onboardAccessibility:false\nnarrator:0\npauseOnLostFocus:false\n",
         encoding="utf-8")
-    env = os.environ.copy()
-    env.update({"DISPLAY":":97","XDG_SESSION_TYPE":"x11","LIBGL_ALWAYS_SOFTWARE":"1"})
-    env.pop("WAYLAND_DISPLAY",None)
-    env.pop("WAYLAND_SOCKET",None)
+    env = controlled_gui_environment(version)
     display = subprocess.Popen(
         ["Xvfb",":97","-screen","0","1280x720x24","-nolisten","tcp"],
         cwd=ROOT,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,

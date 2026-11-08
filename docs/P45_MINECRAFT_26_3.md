@@ -47,3 +47,9 @@
 ## CI 下载故障与修复
 
 初轮Actions遇到官方Gradle分发ZIP间歇性HTTP504，多个任务在编译前失败。现使用统一 `scripts/setup_gradle_ci.py`，锁定9.9.0及官方SHA256，在180秒下载预算内最多6次尝试两个官方入口；摘要、归档和实际版本全部验证后才向后续步骤提供Gradle。`setup-gradle`继续配置原有缓存和报告，不再重复安装分发包，GitHub令牌及缓存权限不变。重试仍失败的任务保持失败，不跳过游戏或求解验收。
+
+## 26.3 真实图形启动修复
+
+真实CI发现两个独立兼容问题：键盘枚举从KEYSYM变为KEYBOARD，客户端改用三版官方均存在且默认键盘语义一致的三参KeyMapping构造；26.3 RenderPearl/SDL3的OpenGL窗口要求sRGB，在Xvfb默认GLX路径下未能选中visual。26.3受控GUI启动改用[SDL官方EGL路径](https://wiki.libsdl.org/SDL3/SDL_HINT_VIDEO_FORCE_EGL)，显式安装Mesa EGL，不改变实际OpenGL版本或游戏的sRGB要求；旧两版保留原路径。
+
+原P3.2只检查模组初始化与超时退出，曾在26.3窗口创建失败时误判成功。这类旧结果不作为26.3图形验收。新门禁同时检查默认采集关闭、真实映射窗口、渲染线程atlas创建、26.3实际SDL主窗口、聚焦游戏窗口的非单色中央截图；崩溃或超时均失败。真正联机取证仍须独立通过P3.3/P3.5/P3.6/P3.9，不能由启动截图替代。
