@@ -10,6 +10,7 @@ import io.github.fxjcangku.worldseedlab.core.map.MapQuery;
 import io.github.fxjcangku.worldseedlab.core.map.MapView;
 import io.github.fxjcangku.worldseedlab.core.map.MapTileArchive;
 import io.github.fxjcangku.worldseedlab.core.map.ObservedMapRepository;
+import io.github.fxjcangku.worldseedlab.core.map.ObservedMapLoaderRegression;
 import io.github.fxjcangku.worldseedlab.core.probe.ChunkKey;
 import io.github.fxjcangku.worldseedlab.core.probe.CompletedChunkStore;
 import java.nio.file.Files;
@@ -88,29 +89,38 @@ public final class P25MapSmokeTest {
             expectFail(() -> new MapQuery(0, 0, 20, 20,
                     MapLayer.ALTITUDE_BIOME, 9000), "invalid Y must fail");
 
-            // 本地地图瓦片损坏时必须显式拒绝，不能用错误数据渲染假群系。
+            // 坏瓦片必须拒绝；相邻通过校验的瓦片仍可显示，同时显式标记不完整。
             String damagedWorld = "c".repeat(64);
             Path damagedScope = store.scopedFolder(damagedWorld, dim);
+            store.appendChunk(damagedWorld, dim, new ChunkKey(-1, 3, 8), List.of(
+                    new EvidenceRecord(UUID.randomUUID(), damagedWorld, dim, "26.2",
+                            EvidenceKind.BIOME_OBSERVATION, "minecraft:plains",
+                            -14, 66, 50, EvidenceOrigin.CLIENT_OBSERVATION, time, "controlled test")));
             Path damagedTile = MapTileArchive.root(damagedScope)
                     .resolve("biomes/r.-1.0/b.-2.3.8.wsl.gz");
             Files.createDirectories(damagedTile.getParent());
             Files.writeString(damagedTile, "not a gzip encoded biome observation");
-            boolean corruptedRejected = false;
-            try {
-                new ObservedMapRepository(damagedScope).query(
-                        new MapQuery(-30, 50, 40, 28, MapLayer.ALTITUDE_BIOME, 66));
-            } catch (java.io.IOException expected) {
-                corruptedRejected = true;
-            }
-            check(corruptedRejected, "corrupted map tile must fail rather than invent data");
+            MapView damaged = new ObservedMapRepository(damagedScope).query(
+                    new MapQuery(-30, 50, 40, 28, MapLayer.ALTITUDE_BIOME, 66));
+            check(damaged.incomplete() && damaged.message().contains("部分地图索引读取失败"),
+                    "corrupt tile must be explicitly reported");
+            check(damaged.cells().size() == 1 && damaged.cells().get(0).quartX() == -4,
+                    "corrupt tile remains unknown while validated neighbor survives");
 
-            // 旧版 JSONL 仍存在时，若没有新地图索引，界面明确说明需补采。
+            // 旧完成索引会阻止重扫；不能再提示用户重复跑图或删除历史证据。
             Path legacy = store.scopedFolder(world, "minecraft:the_end");
             Files.createDirectories(legacy);
             Files.writeString(legacy.resolve("evidence.jsonl"), "legacy");
             MapView old = new ObservedMapRepository(legacy).query(
                     new MapQuery(0, 0, 16, 12, MapLayer.ALTITUDE_BIOME, 64));
             check(old.message().contains("旧版证据"), "legacy data must not silently vanish");
+            check(old.message().contains("不会重扫"), "legacy hint must describe completed-index behavior");
+            check(Files.readString(legacy.resolve("evidence.jsonl")).equals("legacy"),
+                    "map query must not rewrite legacy evidence");
+
+            checkMissingLayersAndSurfaceY(store, time);
+            ObservedMapLoaderRegression.run();
+            io.github.fxjcangku.worldseedlab.core.map.SurfaceMapRegression.run();
         } finally {
             try (var walk = Files.walk(root)) {
                 for (Path file : walk.sorted(Comparator.reverseOrder()).toList()) {
@@ -119,6 +129,68 @@ public final class P25MapSmokeTest {
             }
         }
         System.out.println("WorldSeedLab P2.5 observed map smoke checks passed.");
+    }
+
+    /** 缺失图层不补假数据；表面高度使用已验证的两版 ChunkAccess.getHeight 语义。 */
+    private static void checkMissingLayersAndSurfaceY(CompletedChunkStore store, Instant time)
+            throws Exception {
+        String world = "d".repeat(64), dim = "minecraft:overworld";
+        var low = new EvidenceRecord(UUID.randomUUID(), world, dim, "26.2",
+                EvidenceKind.BIOME_OBSERVATION, "minecraft:dripstone_caves",
+                2, 62, 2, EvidenceOrigin.CLIENT_OBSERVATION, time, "controlled test");
+        var high = new EvidenceRecord(UUID.randomUUID(), world, dim, "26.2",
+                EvidenceKind.BIOME_OBSERVATION, "minecraft:plains",
+                2, 66, 2, EvidenceOrigin.CLIENT_OBSERVATION, time, "controlled test");
+        store.appendChunk(world, dim, new ChunkKey(0, 0, 4), List.of(low, high));
+        var viewer = new ObservedMapRepository(store.scopedFolder(world, dim));
+        MapQuery query = new MapQuery(8, 8, 4, 4, MapLayer.SURFACE_BIOME, 66);
+        MapView noHeight = viewer.query(query);
+        check(noHeight.cells().isEmpty() && noHeight.message().contains("缺少地表高度"),
+                "biome-only evidence may not invent surface heights");
+        check(viewer.query(query.withLayer(MapLayer.ALTITUDE_BIOME)).cells().size() == 1,
+                "biome-only evidence remains accessible through altitude layer");
+        MapView wrongY = viewer.query(query.withLayer(MapLayer.ALTITUDE_BIOME).withY(200));
+        check(wrongY.cells().isEmpty() && wrongY.message().contains("目标高度"),
+                "wrong altitude must explain why observed columns remain blank");
+
+        store.appendTerrain(new TerrainChunkSample(world, dim, "26.2", 0, 0,
+                -64, 320, 63, java.util.Collections.nCopies(16, 65), time));
+        MapView surface = viewer.query(query);
+        check(surface.cells().size() == 1 && surface.cells().get(0).observedY() == 66,
+                "stored top-block Y must not be decremented a second time");
+        check(surface.cells().get(0).biomeId().equals("minecraft:plains"),
+                "surface near quart boundary must use the nearest observed biome");
+
+        // 同样存在高度瓦片，但从未采群系的相邻区块只能画高度层。
+        store.appendTerrain(new TerrainChunkSample(world, dim, "26.2", 1, 0,
+                -64, 320, 63, java.util.Collections.nCopies(16, 70), time));
+        MapView noBiomes = viewer.query(query.moved(16, 0));
+        check(noBiomes.cells().isEmpty() && noBiomes.message().contains("地形高度"),
+                "height-only evidence must direct users to the real available layer");
+        check(viewer.query(query.moved(16, 0).withLayer(MapLayer.TERRAIN_HEIGHT)).cells().size() == 16,
+                "height-only cells remain available without guessed biomes");
+
+        Path tileRoot = MapTileArchive.root(store.scopedFolder(world, dim));
+        corruptPayloadInteger(tileRoot.resolve("biomes/r.0.0/b.0.0.4.wsl.gz"), 27, Integer.MIN_VALUE);
+        MapView invalidY = viewer.query(query.withLayer(MapLayer.ALTITUDE_BIOME));
+        check(invalidY.incomplete() && invalidY.cells().isEmpty(),
+                "corrupted sample Y cannot overflow distance and become a visible biome");
+        corruptPayloadInteger(tileRoot.resolve("heights/r.0.0/h.0.0.wsl.gz"), 17, Integer.MAX_VALUE);
+        MapView invalidHeight = viewer.query(query.withLayer(MapLayer.TERRAIN_HEIGHT));
+        check(invalidHeight.incomplete() && invalidHeight.cells().isEmpty(),
+                "corrupted height cannot be rendered as a genuine mountain");
+    }
+
+    /** 在合法瓦片中仅破坏一个整数，确保校验不只是识别 gzip 文件头失败。 */
+    private static void corruptPayloadInteger(Path file, int offset, int replacement) throws Exception {
+        byte[] payload;
+        try (var in = new java.util.zip.GZIPInputStream(Files.newInputStream(file))) {
+            payload = in.readAllBytes();
+        }
+        java.nio.ByteBuffer.wrap(payload).putInt(offset, replacement);
+        try (var out = new java.util.zip.GZIPOutputStream(Files.newOutputStream(file))) {
+            out.write(payload);
+        }
     }
 
     private static void check(boolean okay, String message) {

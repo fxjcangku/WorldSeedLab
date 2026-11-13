@@ -224,6 +224,11 @@ tasks.register('p39RealSeedRecovery', JavaExec) {
     dependsOn tasks.named('classes')
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'io.github.fxjcangku.worldseedlab.core.solver.RealClientSeedRecoveryCli'
+    if (providers.gradleProperty('recoverySaltMode').orElse('EXPLICIT_SALT_HYPOTHESIS').get()
+            == 'EFFECTIVE_STRUCTURE_STATE_ONLY'
+            && providers.gradleProperty('recoverySalts').isPresent()) {
+        throw new GradleException('Unknown Salt mode cannot also specify recoverySalts')
+    }
     def evidenceArgs = [
             providers.gradleProperty('recoveryEvidence').orElse('NO_CLIENT_EVIDENCE').get(),
             providers.gradleProperty('recoverySalts').orElse('14357617').get()]
@@ -244,6 +249,8 @@ tasks.register('p39RealSeedRecovery', JavaExec) {
     }
     args evidenceArgs
     systemProperty 'mcVersion', targetMinecraft
+    systemProperty 'recoverySaltMode', providers.gradleProperty('recoverySaltMode')
+            .orElse('EXPLICIT_SALT_HYPOTHESIS').get()
     systemProperty 'recoveryStart', providers.gradleProperty('recoveryStart').orElse('0').get()
     systemProperty 'recoveryEnd', providers.gradleProperty('recoveryEnd')
             .orElse('281474976710656').get()
@@ -704,4 +711,17 @@ tasks.register('p42HeightAndVanillaReferenceSmokeTest', JavaExec) {
 }
 tasks.named('check') {
     dependsOn tasks.named('p42HeightAndVanillaReferenceSmokeTest')
+}
+
+// P4.4 独立随机分支对照与高16完整枚举；不等于真实FULL方块/客户端取证验收。
+tasks.register('p44BedrockMinecraftParityTest', JavaExec) {
+    group = 'verification'
+    description = 'Compare original bedrock random math and all high16 candidates with target Minecraft.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'io.github.fxjcangku.worldseedlab.core.P44BedrockMinecraftParityTest'
+    systemProperty 'mcVersion', targetMinecraft
+}
+tasks.named('check') {
+    dependsOn tasks.named('p44BedrockMinecraftParityTest')
 }

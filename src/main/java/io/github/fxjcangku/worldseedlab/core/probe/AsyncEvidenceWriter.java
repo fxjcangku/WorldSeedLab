@@ -20,20 +20,27 @@ public final class AsyncEvidenceWriter implements AutoCloseable {
     private final CompletedChunkStore store;
     private final String fingerprint;
     private final String dimension;
+    private final String clientVersion;
     private final ThreadPoolExecutor io;
     private final AtomicReference<String> failure = new AtomicReference<>();
     private final AtomicLong writtenChunks = new AtomicLong();
     private final AtomicLong writtenSamples = new AtomicLong();
     private final AtomicLong writtenManualMarks = new AtomicLong();
     private final AtomicLong writtenTerrainChunks = new AtomicLong();
+    private final AtomicLong writtenSurfaceChunks = new AtomicLong();
     private final AtomicLong writtenDetailChunks = new AtomicLong();
     private final AtomicLong writtenStructureScans = new AtomicLong();
     private final AtomicLong writtenStructureCandidates = new AtomicLong();
 
     public AsyncEvidenceWriter(CompletedChunkStore store, String fingerprint, String dimension) {
+        this(store, fingerprint, dimension, null);
+    }
+
+    public AsyncEvidenceWriter(CompletedChunkStore store, String fingerprint, String dimension, String clientVersion) {
         this.store = store;
         this.fingerprint = fingerprint;
         this.dimension = dimension;
+        this.clientVersion = clientVersion;
         this.io = new ThreadPoolExecutor(1, 1, 0, TimeUnit.MILLISECONDS,
                 new ArrayBlockingQueue<>(16), job -> {
                     Thread worker = new Thread(job, "WorldSeedLab-EvidenceIO");
@@ -157,6 +164,27 @@ public final class AsyncEvidenceWriter implements AutoCloseable {
             return false;
         }
     }
+
+    /** 地表瓦片复用原有有界写入队列，同时要求世界、维度和游戏版本一致。 */
+    public boolean offerSurface(io.github.fxjcangku.worldseedlab.core.map.SurfaceChunkSample surface) {
+        if (io.isShutdown() || failure.get() != null || !fingerprint.equals(surface.worldFingerprint())
+                || !dimension.equals(surface.dimension()) || !surface.clientVersion().equals(clientVersion)) return false;
+        try {
+            io.execute(() -> {
+                try {
+                    store.appendSurface(surface);
+                    writtenSurfaceChunks.incrementAndGet();
+                } catch (IOException | RuntimeException problem) {
+                    failure.compareAndSet(null, "逐方块地表写入失败：" + problem.getClass().getSimpleName());
+                }
+            });
+            return true;
+        } catch (RejectedExecutionException full) {
+            return false;
+        }
+    }
+
+    public long writtenSurfaceChunks() { return writtenSurfaceChunks.get(); }
 
     /** 有界单线程写入，主线程不执行文件操作；按世界维度严格鉴权。 */
     public boolean offerDetail(

@@ -2,6 +2,7 @@ package io.github.fxjcangku.worldseedlab.core;
 
 import io.github.fxjcangku.worldseedlab.core.solver.RandomSpreadMath;
 import io.github.fxjcangku.worldseedlab.core.solver.RandomSpreadSpec;
+import io.github.fxjcangku.worldseedlab.core.solver.EffectiveStructureStateSearch;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadStructurePlacement;
 import net.minecraft.world.level.levelgen.structure.placement.RandomSpreadType;
 import net.minecraft.server.Bootstrap;
@@ -38,8 +39,14 @@ public final class P27MinecraftParityTest {
                             : RandomSpreadType.TRIANGULAR;
             RandomSpreadStructurePlacement minecraft = new RandomSpreadStructurePlacement(
                     spec.spacing(), spec.separation(), spreadType, spec.salt());
+            // 真Minecraft自身对照：未知Salt可吸收入有效状态，但不能反向唯一拆分。
+            RandomSpreadStructurePlacement zeroSaltMinecraft = new RandomSpreadStructurePlacement(
+                    spec.spacing(), spec.separation(), spreadType, 0);
+            var zeroSaltSpec = new RandomSpreadSpec(spec.structureSetId(),
+                    spec.spacing(), spec.separation(), spec.distribution(), 0);
             for (long seed : new long[] {
-                    0L, 1L, -1L, Long.MIN_VALUE, 12_345L, 0x123456789ABCDEF0L
+                    0L, 1L, -1L, Long.MIN_VALUE, Long.MAX_VALUE,
+                    12_345L, 0x123456789ABCDEF0L
             }) {
                 for (int[] region : new int[][] {
                         {-101, -99}, {-19, 13}, {-1, -1}, {-1, 0}, {0, -1},
@@ -59,11 +66,21 @@ public final class P27MinecraftParityTest {
                                 + " vanilla=" + trueCandidate
                                 + " ours=" + originalCandidate);
                     }
+                    long effective = EffectiveStructureStateSearch.effectiveState(seed, spec.salt());
+                    var normalizedMinecraft = zeroSaltMinecraft.getPotentialStructureChunk(
+                            effective, sourceX, sourceZ);
+                    var normalizedOurs = RandomSpreadMath.potentialFromSourceChunk(
+                            effective, sourceX, sourceZ, zeroSaltSpec);
+                    if (!normalizedMinecraft.equals(trueCandidate)
+                            || normalizedOurs.x() != trueCandidate.x()
+                            || normalizedOurs.z() != trueCandidate.z()) {
+                        throw new AssertionError("真实Minecraft的Seed+Salt有效状态关系不一致");
+                    }
                     inspected++;
                 }
             }
         }
         System.out.println("WorldSeedLab P2.7 actual Minecraft random-spread parity passed: "
-                + inspected + " candidate placements.");
+                + inspected + " candidate placements and unknown-Salt E48 equivalences.");
     }
 }

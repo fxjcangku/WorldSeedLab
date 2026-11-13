@@ -9,12 +9,17 @@ import io.github.fxjcangku.worldseedlab.core.compatibility.P34WorldgenCompatibil
 import io.github.fxjcangku.worldseedlab.core.compatibility.P34WorldgenCompatibilityAudit.Verdict;
 import io.github.fxjcangku.worldseedlab.core.solver.RandomSpreadSpec;
 import io.github.fxjcangku.worldseedlab.core.solver.StartPlacementConstraint;
+import io.github.fxjcangku.worldseedlab.core.solver.CandidateSeedSearch;
+import io.github.fxjcangku.worldseedlab.core.solver.EffectiveStructureStateSearch;
+import io.github.fxjcangku.worldseedlab.core.solver.SolverResearchInput;
+import io.github.fxjcangku.worldseedlab.core.solver.SymbolicRandomSpread;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
 
 /**
  * P3.4.1 修改 Salt 的真实 Minecraft 世界生成对照。
@@ -107,6 +112,35 @@ public final class P34ModifiedSaltWorldTest {
         require(!anonymous.contains(WORLD) && !anonymous.contains("2731"),
                 "审计结果不能公开种子或世界指纹");
 
+        // 输入仍为真实受控服务端已保存的StructureStart，不改成CLIENT_OBSERVED。
+        // 65536状态窗口只验证未知Salt模式可执行；不是全48域逆向性能证明。
+        var effectiveSpec = new RandomSpreadSpec(SET, 32, 8,
+                RandomSpreadSpec.Distribution.LINEAR, 0);
+        long expectedEffective = EffectiveStructureStateSearch.effectiveState(CONTROL_SEED, MODIFIED_SALT);
+        long effectiveFrom = (expectedEffective >>> 16) << 16;
+        var actualConstraints = evidence.stream().map(StructureEvidence::constraint).toList();
+        var effectiveInput = new SolverResearchInput(Map.of(SET, effectiveSpec), actualConstraints,
+                new CandidateSeedSearch.SearchWindow(
+                        effectiveFrom, effectiveFrom + 65536, 65536, 16, 90_000));
+        var recovered = EffectiveStructureStateSearch.search(effectiveInput,
+                new SymbolicRandomSpread.Options(3, 90_000, 64), "z3", 16);
+        require(recovered.candidates().stream().anyMatch(candidate ->
+                        candidate.effectiveState48() == expectedEffective
+                                && candidate.fitMatches() == 2
+                                && candidate.holdoutMatches() == evidence.size() - 2),
+                "真实修改Salt存档必须经Z3恢复E48并通过未参与求解的HOLDOUT");
+        require(recovered.rejectedByExactModel() == 0,
+                "真实NBT有效结构状态必须通过精确Java RNG复核");
+        var wrongEffective = new SolverResearchInput(Map.of(SET, effectiveSpec), actualConstraints,
+                new CandidateSeedSearch.SearchWindow(CONTROL_SEED, CONTROL_SEED + 1, 1, 2, 20_000));
+        require(EffectiveStructureStateSearch.search(wrongEffective,
+                        new SymbolicRandomSpread.Options(3, 20_000, 64), "z3", 2)
+                        .candidates().isEmpty(),
+                "真实世界Seed不能被当作未知Salt的E48状态");
+        require(EffectiveStructureStateSearch.effectiveState(CONTROL_SEED - 227,
+                        MODIFIED_SALT + 227) == expectedEffective,
+                "相反偏移的Seed/Salt仍属同一E48等价类，不得伪称唯一恢复Salt或Seed");
+
         System.out.println("WorldSeedLab P3.4 REAL modified-Salt datapack Minecraft "
                 + version + ": " + evidence.size()
                 + " actual FULL Anvil StructureStarts match changed Salt=" + MODIFIED_SALT
@@ -115,6 +149,8 @@ public final class P34ModifiedSaltWorldTest {
                 + ", unknown Salt remains GENERATOR_UNKNOWN.");
         System.out.println("来源：隔离受控世界服务端确实加载数据包，真实保存NBT验证；"
                 + "非客户端观测、非未知服务器Seed、非真实服Salt认证。");
+        System.out.println("EFFECTIVE_STRUCTURE_STATE_ONLY：真实修改Salt控制世界通过有界65536状态Z3反演；"
+                + "WORLD_LOW48=UNKNOWN | FULL64=UNKNOWN；未做全48位穷举。");
     }
 
     private static void require(boolean valid, String message) {

@@ -5,6 +5,7 @@ import io.github.fxjcangku.worldseedlab.core.evidence.EvidenceOrigin;
 import io.github.fxjcangku.worldseedlab.core.evidence.EvidenceRecord;
 import io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkSample;
 import io.github.fxjcangku.worldseedlab.core.probe.ChunkKey;
+import io.github.fxjcangku.worldseedlab.core.privacy.WorldFingerprint;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -16,10 +17,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
@@ -36,9 +39,11 @@ public final class MapTileArchive {
     private static final int BIOME = 1;
     private static final int HEIGHT = 2;
     private static final int MARKER = 3;
+    private static final int SURFACE = 4;
     // 极高自定义维度允许最多 1024 个垂直层 × 16 个水平 quart 样本。
     private static final int MAX_BIOME_SAMPLES = 16384;
     private static final int MAX_FILE = 256 * 1024;
+    private static final Pattern RESOURCE_ID = Pattern.compile("[a-z0-9_.-]+:[a-z0-9_./-]+");
 
     private MapTileArchive() {}
 
@@ -58,6 +63,73 @@ public final class MapTileArchive {
     private static Path heightPath(Path root, int chunkX, int chunkZ) {
         return root.resolve("heights").resolve(region(chunkX, chunkZ))
                 .resolve("h." + chunkX + "." + chunkZ + ".wsl.gz");
+    }
+
+    private static Path surfaceVersionRoot(Path root, String version) {
+        if (!"26.1.2".equals(version) && !"26.2".equals(version)) {
+            throw new IllegalArgumentException("unsupported surface map game version");
+        }
+        return root.resolve("surface").resolve(version);
+    }
+
+    private static Path surfacePath(Path root, int chunkX, int chunkZ, String version) {
+        return surfaceVersionRoot(root, version).resolve(region(chunkX, chunkZ))
+                .resolve("s." + chunkX + "." + chunkZ + ".wsl.gz");
+    }
+
+    /** 同一地图归档内的新增图层进度，与旧 P1/P2 完成记录互不阻塞。 */
+    public static Path surfaceCompletedJournal(Path root, String version) {
+        return surfaceVersionRoot(root, version).resolve("completed-chunks.csv");
+    }
+
+    public static void writeSurface(Path root, SurfaceChunkSample sample) throws IOException {
+        byte[] bytes = encode(out -> {
+            header(out, SURFACE);
+            out.writeUTF(sample.worldFingerprint());
+            out.writeUTF(sample.dimension());
+            out.writeUTF(sample.clientVersion());
+            out.writeInt(sample.chunkX());
+            out.writeInt(sample.chunkZ());
+            out.writeInt(sample.minY());
+            out.writeInt(sample.maxYExclusive());
+            out.writeLong(sample.observedAt().toEpochMilli());
+            for (int i = 0; i < 256; i++) {
+                out.writeInt(sample.heights().get(i));
+                out.writeInt(sample.argb().get(i));
+            }
+        });
+        atomicWrite(surfacePath(root, sample.chunkX(), sample.chunkZ(), sample.clientVersion()), bytes);
+    }
+
+    /** 同时校验版本与目录的 HMAC/维度身份，复制错作用域的瓦片不能显示。 */
+    public static SurfaceChunkSample readSurface(Path root, int chunkX, int chunkZ, String version)
+            throws IOException {
+        Path path = surfacePath(root, chunkX, chunkZ, version);
+        if (!Files.exists(path)) return null;
+        try (DataInputStream in = open(path, SURFACE)) {
+            String world = in.readUTF(), dimension = in.readUTF(), actualVersion = in.readUTF();
+            int x = in.readInt(), z = in.readInt(), minY = in.readInt(), maxY = in.readInt();
+            Instant observed = Instant.ofEpochMilli(in.readLong());
+            Path scope = root.toAbsolutePath().normalize().getParent();
+            if (!version.equals(actualVersion) || x != chunkX || z != chunkZ
+                    || scope == null || scope.getParent() == null || scope.getParent().getParent() == null
+                    || !scope.getFileName().toString().equals(WorldFingerprint.dimensionLabel(dimension))
+                    || !scope.getParent().getParent().getFileName().toString().equals(world)) {
+                throw new IOException("surface map tile scope or version mismatch");
+            }
+            List<Integer> heights = new ArrayList<>(256), colors = new ArrayList<>(256);
+            for (int i = 0; i < 256; i++) {
+                heights.add(in.readInt());
+                colors.add(in.readInt());
+            }
+            verifyFinished(in);
+            try {
+                return new SurfaceChunkSample(world, dimension, actualVersion, x, z,
+                        minY, maxY, heights, colors, observed);
+            } catch (RuntimeException invalid) {
+                throw new IOException("invalid observed surface map tile", invalid);
+            }
+        }
     }
 
     private static Path markerDir(Path root, int chunkX, int chunkZ) {
@@ -137,7 +209,8 @@ public final class MapTileArchive {
                 int y = in.readInt();
                 String id = in.readUTF();
                 if (dx >= 16 || dz >= 16 || dx % 4 != 2 || dz % 4 != 2
-                        || id.length() > 256 || !id.contains(":")) {
+                        || y < -4096 || y >= 8192
+                        || id.length() > 256 || !RESOURCE_ID.matcher(id).matches()) {
                     throw new IOException("invalid biome map tile observation");
                 }
                 found.add(new BiomePoint(chunkX * 16 + dx, y, chunkZ * 16 + dz, id));
@@ -155,7 +228,13 @@ public final class MapTileArchive {
                 throw new IOException("height map tile metadata mismatch");
             }
             int[] h = new int[16];
-            for (int i = 0; i < h.length; i++) h[i] = in.readInt();
+            for (int i = 0; i < h.length; i++) {
+                h[i] = in.readInt();
+                // 与 TerrainChunkSample 的已支持维度范围一致；损坏整数不得涂成真实高山或海底。
+                if (h[i] < -4097 || h[i] > 8193) {
+                    throw new IOException("invalid map height observation");
+                }
+            }
             verifyFinished(in);
             return h;
         }

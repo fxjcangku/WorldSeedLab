@@ -137,6 +137,35 @@ public final class CompletedChunkStore {
                 terrain.chunkX() + "," + terrain.chunkZ() + "\n");
     }
 
+    /** 地表色完整瓦片先原子落盘，再记同版本完成状态，旧群系进度不参与此判断。 */
+    public void appendSurface(io.github.fxjcangku.worldseedlab.core.map.SurfaceChunkSample sample)
+            throws IOException {
+        Path root = MapTileArchive.root(base(sample.worldFingerprint(), sample.dimension()));
+        MapTileArchive.writeSurface(root, sample);
+        writeAndForce(MapTileArchive.surfaceCompletedJournal(root, sample.clientVersion()),
+                sample.chunkX() + "," + sample.chunkZ() + "\n");
+    }
+
+    public Set<io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkKey> loadSurfaceCompleted(
+            String fingerprint, String dimension, String version) throws IOException {
+        Path journal = MapTileArchive.surfaceCompletedJournal(MapTileArchive.root(base(fingerprint, dimension)), version);
+        Set<io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkKey> completed = new HashSet<>();
+        if (!Files.exists(journal)) return completed;
+        try (BufferedReader reader = Files.newBufferedReader(journal, StandardCharsets.UTF_8)) {
+            String line;
+            int rows = 0;
+            while ((line = reader.readLine()) != null) {
+                if (++rows > MAX_JOURNAL_ROWS || line.length() > 64) throw new IOException("surface progress exceeds safe limit");
+                try {
+                    completed.add(io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkKey.parse(line));
+                } catch (RuntimeException invalid) {
+                    throw new IOException("invalid surface map completion journal", invalid);
+                }
+            }
+        }
+        return completed;
+    }
+
     /** 从独立地形完成索引恢复，避免新阶段漏掉 P1 已扫过的区块。 */
     public Set<io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkKey>
     loadTerrainCompleted(String fingerprint, String dimension) throws IOException {

@@ -8,8 +8,10 @@ package io.github.fxjcangku.worldseedlab.core.solver;
  */
 public final class LegacyLcg48 {
     public static final long MASK = (1L << 48) - 1;
-    private static final long MULTIPLIER = 0x5DEECE66DL;
-    private static final long ADDEND = 0xBL;
+    /** 目标 Java Legacy 随机源的乘数；前向和原创逆向模型共用同一常量。 */
+    public static final long MULTIPLIER = 0x5DEECE66DL;
+    /** 目标 Java Legacy 随机源的增量。 */
+    public static final long ADDEND = 0xBL;
     private long state;
 
     public LegacyLcg48(long externalSeed) {

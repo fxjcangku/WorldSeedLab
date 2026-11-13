@@ -30,6 +30,13 @@ public final class WorldSeedLabClient implements ClientModInitializer {
     private ClientQuartCaptureController quart;
     private ClientDesertFootprintCaptureController footprint;
     private AutoDesertFootprintController automatic;
+    /** 页面请求只在客户端游戏线程读写；同一 Tick 内保留最后一次请求。 */
+    private RequestedScreen requestedScreen;
+
+    private enum RequestedScreen {
+        DASHBOARD,
+        MAP
+    }
 
     @Override
     public void onInitializeClient() {
@@ -56,9 +63,10 @@ public final class WorldSeedLabClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(minecraft -> {
             while (panelKey.consumeClick()) {
                 if (minecraft.player != null) {
-                    PlatformScreens.open(minecraft, probe, automatic);
+                    requestedScreen = RequestedScreen.DASHBOARD;
                 }
             }
+            openRequestedScreen(minecraft);
             probe.tick(minecraft);
             quart.tick(minecraft);
             footprint.tick(minecraft);
@@ -67,6 +75,7 @@ public final class WorldSeedLabClient implements ClientModInitializer {
 
         // 客户端退出时有限等待落盘，不阻塞正常运行中的 UI。
         ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+            requestedScreen = null;
             automatic.onClientStopping();
             quart.clear("客户端退出，未导出的手动群系样本已丢弃");
             footprint.clear("客户端退出，未导出的建筑轮廓已丢弃");
@@ -159,11 +168,11 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                     }));
             dispatcher.register(ClientCommands.literal("wsl")
                     .executes(context -> {
-                        PlatformScreens.open(Minecraft.getInstance(), probe, automatic);
+                        requestedScreen = RequestedScreen.DASHBOARD;
                         return 1;
                     })
                     .then(ClientCommands.literal("gui").executes(context -> {
-                        PlatformScreens.open(Minecraft.getInstance(), probe, automatic);
+                        requestedScreen = RequestedScreen.DASHBOARD;
                         return 1;
                     }))
                     .then(ClientCommands.literal("help").executes(context -> {
@@ -171,7 +180,7 @@ public final class WorldSeedLabClient implements ClientModInitializer {
                         return 1;
                     }))
                     .then(ClientCommands.literal("map").executes(context -> {
-                        PlatformScreens.openMap(Minecraft.getInstance(), probe);
+                        requestedScreen = RequestedScreen.MAP;
                         return 1;
                     }))
                     .then(ClientCommands.literal("status").executes(context -> {
@@ -242,5 +251,25 @@ public final class WorldSeedLabClient implements ClientModInitializer {
         });
         LOGGER.info("WorldSeedLab P1 ready for Minecraft {}: biome capture disabled until manual activation.",
                 gameVersion);
+    }
+
+    /**
+     * 等聊天提交调用栈返回后，再在客户端 Tick 末尾打开页面。
+     *
+     * <p>两版原版 ChatScreen 都先执行指令，再关闭聊天页面；指令回调内
+     * 直接打开的新页面也会被紧随其后的关闭覆盖。F8 与指令统一登记请求，
+     * 此处只消费一次，继续复用原有页面入口和唯一自动取证控制器。
+     * 若玩家已离开世界则丢弃请求，避免下次进入世界时重新弹出旧页面。
+     */
+    private void openRequestedScreen(Minecraft minecraft) {
+        RequestedScreen target = requestedScreen;
+        requestedScreen = null;
+        if (target == null || minecraft.player == null) {
+            return;
+        }
+        switch (target) {
+            case DASHBOARD -> PlatformScreens.open(minecraft, probe, automatic);
+            case MAP -> PlatformScreens.openMap(minecraft, probe);
+        }
     }
 }

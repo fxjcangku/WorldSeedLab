@@ -18,6 +18,7 @@ import io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkKey;
 import io.github.fxjcangku.worldseedlab.core.generation.TerrainDetailKey;
 import io.github.fxjcangku.worldseedlab.core.probe.DetailMode;
 import io.github.fxjcangku.worldseedlab.core.generation.TerrainChunkSample;
+import io.github.fxjcangku.worldseedlab.core.map.SurfaceSamplingCursor;
 import io.github.fxjcangku.worldseedlab.core.generation.WorldgenReport;
 import io.github.fxjcangku.worldseedlab.core.privacy.LocalSecret;
 import io.github.fxjcangku.worldseedlab.core.privacy.WorldFingerprint;
@@ -67,6 +68,10 @@ public final class WorldProbeController {
     private final Set<ChunkKey> seen = new HashSet<>();
     // P2 使用独立区块索引：P1 旧数据不会阻止地形补采。
     private final Set<TerrainChunkKey> terrainSeen = new HashSet<>();
+    /** 新地表色独立完成进度：已有群系/高度样本也需要逐方块补采。 */
+    private final Set<TerrainChunkKey> surfaceSeen = new HashSet<>();
+    private SurfaceSamplingCursor surfaceCursor;
+    private long surfaceCompletedAtStart;
     /** 与 P1 群系及 P2 高度图分离，升级档位仍可补采旧区块。 */
     private final Set<TerrainDetailKey> detailSeen = new HashSet<>();
     private TerrainDetailCursor detailCursor;
@@ -116,6 +121,7 @@ public final class WorldProbeController {
     }
 
     public boolean active() { return gate.isActive(); }
+    public String gameVersion() { return gameVersion; }
     public String status() { return status; }
     public ProbeSettings settings() { return settings; }
     public DetailMode effectiveDetailMode() {
@@ -224,6 +230,11 @@ public final class WorldProbeController {
 
     public long terrainChunksWritten() {
         return terrainCompletedAtStart + (writer == null ? 0 : writer.writtenTerrainChunks());
+    }
+
+    /** 只有完整地表瓦片实际写盘后才计数，供地图刷新使用。 */
+    public long surfaceChunksWritten() {
+        return surfaceCompletedAtStart + (writer == null ? 0 : writer.writtenSurfaceChunks());
     }
 
     /**
@@ -481,6 +492,7 @@ public final class WorldProbeController {
             CompletedChunkStore nextStore = new CompletedChunkStore(dataRoot());
             Set<ChunkKey> resume = nextStore.loadCompleted(f, d);
             Set<TerrainChunkKey> terrainResume = nextStore.loadTerrainCompleted(f, d);
+            Set<TerrainChunkKey> surfaceResume = nextStore.loadSurfaceCompleted(f, d, gameVersion);
             Set<TerrainDetailKey> detailsResume = nextStore.loadDetailCompleted(f, d);
             DimensionProfile nextProfile =
                     TerrainObserver.dimensionProfile(client.level, f, gameVersion);
@@ -491,6 +503,10 @@ public final class WorldProbeController {
             seen.addAll(resume);
             terrainSeen.clear();
             terrainSeen.addAll(terrainResume);
+            surfaceSeen.clear();
+            surfaceSeen.addAll(surfaceResume);
+            surfaceCursor = null;
+            surfaceCompletedAtStart = surfaceResume.size();
             detailSeen.clear();
             detailSeen.addAll(detailsResume);
             detailCursor = null;
@@ -525,7 +541,7 @@ public final class WorldProbeController {
             fingerprint = f;
             dimension = d;
             store = nextStore;
-            writer = new AsyncEvidenceWriter(store, f, d);
+            writer = new AsyncEvidenceWriter(store, f, d, gameVersion);
             if (!writer.offerDimension(nextProfile)
                     || !writer.offerAdvertisedDimensions(registry)) {
                 throw new IOException("维度档案或维度清单无法进入写盘队列，拒绝采集");
@@ -550,6 +566,7 @@ public final class WorldProbeController {
         chunk = null;
         samples = null;
         detailCursor = null;
+        surfaceCursor = null;
         scopeLevel = null;
         scopeName = null;
         if (writer != null) writer.close(); // drains accepted chunks asynchronously
@@ -594,6 +611,8 @@ public final class WorldProbeController {
             }
             // 附加方块扫描每 Tick 最多 24 次 BlockState 读取，独立于群系预算。
             advanceDetail(client, 24);
+            // 地表地图每 Tick 最多额外 32 次 BlockState 与 32 次高度图读取，不在 GUI 中扫描。
+            advanceSurface(client, 32);
             if (structureScanEnabled) advanceStructureScan(client);
             int budget = settings.samplesPerTick();
             while (budget > 0) {
@@ -666,6 +685,38 @@ public final class WorldProbeController {
                     accepted++;
                 }
             }
+        }
+    }
+
+    /** 只有已有采集授权时进入，完整256列后复用单一有界写盘队列；背压不虚报完成。 */
+    private void advanceSurface(Minecraft client, int budget) {
+        if (dimensionProfile == null || writer.pending() >= 12) return;
+        if (surfaceCursor == null) {
+            int centerX = client.player.blockPosition().getX() >> 4;
+            int centerZ = client.player.blockPosition().getZ() >> 4;
+            int radius = settings.radiusChunks();
+            outer:
+            for (int ring = 0; ring <= radius; ring++) {
+                for (int dx = -ring; dx <= ring; dx++) {
+                    for (int dz = -ring; dz <= ring; dz++) {
+                        if (Math.max(Math.abs(dx), Math.abs(dz)) != ring) continue;
+                        TerrainChunkKey key = new TerrainChunkKey(centerX + dx, centerZ + dz);
+                        if (surfaceSeen.contains(key)) continue;
+                        surfaceCursor = LoadedSurfaceMapCursor.create(client.level, dimensionProfile, key);
+                        if (surfaceCursor != null) break outer;
+                    }
+                }
+            }
+            if (surfaceCursor == null) return;
+        }
+        if (!surfaceCursor.isStillLoaded()) {
+            surfaceCursor = null;
+            return;
+        }
+        surfaceCursor.advance(budget);
+        if (surfaceCursor.isComplete() && writer.offerSurface(surfaceCursor.result())) {
+            surfaceSeen.add(surfaceCursor.key());
+            surfaceCursor = null;
         }
     }
 

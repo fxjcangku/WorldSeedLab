@@ -2,7 +2,6 @@ package io.github.fxjcangku.worldseedlab.client;
 
 import io.github.fxjcangku.worldseedlab.client.ui.GlassDashboard;
 import io.github.fxjcangku.worldseedlab.client.probe.AutoDesertFootprintController;
-import io.github.fxjcangku.worldseedlab.client.ui.ObservedWorldMapScreen;
 import io.github.fxjcangku.worldseedlab.client.probe.WorldProbeController;
 import net.minecraft.client.Minecraft;
 
@@ -31,6 +30,6 @@ public final class PlatformScreens {
 
     /** 26.2 原生 GUI 入口。 */
     public static void openMap(Minecraft client, WorldProbeController controller) {
-        client.gui.setScreen(new ObservedWorldMapScreen(controller));
+        open(client, controller);
     }
 }

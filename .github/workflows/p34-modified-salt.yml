@@ -8,6 +8,7 @@ on:
       - 'scripts/run_known_seed_server.py'
       - 'src/test/java/io/github/fxjcangku/worldseedlab/core/P34ModifiedSaltWorldTest.java'
       - 'src/main/java/io/github/fxjcangku/worldseedlab/core/compatibility/P34WorldgenCompatibilityAudit.java'
+      - 'src/main/java/io/github/fxjcangku/worldseedlab/core/solver/**'
       - 'build.gradle'
   workflow_dispatch:
 
@@ -36,6 +37,8 @@ jobs:
           gradle-version: '9.6.1'
       - name: Check Python controlled-world launcher syntax
         run: python3 -m py_compile scripts/run_p34_custom_worldgen.py scripts/run_known_seed_server.py
+      - name: Install Z3 for effective structure state recovery
+        run: sudo apt-get update && sudo apt-get install -y z3
       - name: Actually enable modified Salt datapack and generate real Minecraft world
         run: |
           timeout --signal=INT --kill-after=30s 640s \

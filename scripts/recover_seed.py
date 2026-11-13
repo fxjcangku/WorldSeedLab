@@ -133,8 +133,10 @@ def main(argv=None):
     parser.add_argument("--input", required=True, type=Path,
                         help="原始observations.zip、P3.5/P3.6受控档案ZIP或单一证据目录")
     parser.add_argument("--minecraft", required=True, choices=["26.1.2", "26.2"])
-    parser.add_argument("--salts", default="14357617",
+    parser.add_argument("--salts",
                         help="最多四个明确研究假设Salt；默认原版沙漠神殿14357617")
+    parser.add_argument("--unknown-salt", action="store_true",
+                        help="只恢复单结构有效状态E48=(Seed+Salt) mod 2^48，不恢复世界low48或高16")
     parser.add_argument("--vanilla-high16", action="store_true",
                         help="仅显式原版Overworld假设；自定义群系出现时安全拒绝")
     parser.add_argument("--custom-model", type=Path,
@@ -150,11 +152,16 @@ def main(argv=None):
     parser.add_argument("--high16-expected-digest",
                         help="续算时前次输出的P4.1_INPUT_SHA256，防止不同来源间断点混用")
     parser.add_argument("--window-end", type=int, default=1 << 48,
-                        help="低48搜索上界；仅受控实验可用4096，默认完整48位")
+                        help="48位搜索上界；unknown-salt时为E48域，其余为世界low48假设域")
     parser.add_argument("--dry-run", action="store_true",
                         help="只检查是否存在足够完整客户端结构轮廓，不启动Z3")
     args = parser.parse_args(argv)
     try:
+        if args.unknown_salt and (args.salts is not None or args.vanilla_high16
+                                 or args.custom_model is not None
+                                 or args.high16_evaluations != 128):
+            raise EvidenceError("未知Salt的E48模式不能同时指定Salt假设或任何高16位模型")
+        salt_hypotheses = args.salts if args.salts is not None else "14357617"
         if args.custom_model is not None and args.vanilla_high16:
             raise EvidenceError("原版高16与自定义模型条件高16不能同时执行")
         if not 1 <= args.high16_shards <= 256 or not 0 <= args.high16_shard < args.high16_shards:
@@ -185,19 +192,27 @@ def main(argv=None):
             print("RESULT=STRUCTURE_FILES_PRESENT_UNVERIFIED")
             return 0
         if not (1 <= args.window_end <= 1 << 48):
-            raise EvidenceError("低48窗口必须在1..2^48范围")
-        for value in args.salts.split(","):
+            raise EvidenceError("48位搜索窗口必须在1..2^48范围")
+        for value in salt_hypotheses.split(","):
             if not re.fullmatch(r"-?\d{1,11}", value.strip()):
                 raise EvidenceError("非法结构Salt，只允许整数研究假设")
-        if not shutil.which("gradle") or not shutil.which("z3"):
+        # Windows CreateProcess 不会为裸命令自动尝试PATHEXT中的.bat；
+        # 使用which已解析的实际程序路径，确保命令行入口与环境检查一致。
+        gradle = shutil.which("gradle") or shutil.which("gradle.bat")
+        if gradle is None or not shutil.which("z3"):
             raise EvidenceError("缺少本机Java25/Gradle9.6.1或Z3命令，无法实际运行反演")
 
         root = Path(__file__).resolve().parents[1]
-        cmd = ["gradle", "--no-daemon", "--console=plain",
+        cmd = [gradle, "--no-daemon", "--console=plain",
                "-PmcVersion="+args.minecraft,
                "-PrecoveryEvidence="+str(args.input.resolve()),
-               "-PrecoverySalts="+args.salts,
                "-PrecoveryEnd="+str(args.window_end)]
+        if args.unknown_salt:
+            cmd += ["-PrecoverySaltMode=EFFECTIVE_STRUCTURE_STATE_ONLY"]
+            print("RESULT_KIND=EFFECTIVE_STRUCTURE_STATE_ONLY；搜索窗口属于E48有效状态域")
+            print("WORLD_LOW48=UNKNOWN STRUCTURE_SALT=UNKNOWN FULL64=UNKNOWN")
+        else:
+            cmd += ["-PrecoverySalts="+salt_hypotheses]
         with tempfile.TemporaryDirectory(prefix="wsl-p39-quart-") as d:
             if args.vanilla_high16:
                 text, count = _sample_rows(args.input, args.minecraft)

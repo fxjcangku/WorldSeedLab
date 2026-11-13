@@ -26,6 +26,28 @@ python scripts/recover_seed.py --input "D:\WorldSeedLabData\observations.zip" --
 
 **真正跑遍低48位模型域**是默认目标：上界 `2^48`，Z3内部仍设置90秒、至多16模型/有限拒绝抽样展开的单轮安全上限，可能需要重试并改进剪枝。若结果为 `TIMEOUT`、`RESULT_CAP` 或 `BACKEND_UNAVAILABLE`，绝不能说已穷举。研究者可用 `--window-end 4096` 在**受控已知Seed**中验证管线，但4096窗口不代表全48位被破解。
 
+## Salt 未知：显式恢复单结构有效状态 E48
+
+```powershell
+python scripts/recover_seed.py --input "D:\WorldSeedLabData\observations.zip" --minecraft 26.2 --unknown-salt
+```
+
+此模式在原有完整21×21轮廓审计、同世界/版本/维度、独立Region和至少2FIT+1HOLDOUT通过后，实际调用原有本地Z3与精确Java RNG。它保留 `spacing=32 / separation=8 / LINEAR` 及零偏移神殿模板假设，只将结构随机输入表达为 `E48=(worldSeed+structureSalt) mod 2^48`，无需猜一个Salt再重复求解。
+
+归零模型Salt是变量变换，不表示目标服Salt为零。单一结构集合的所有位置只能约束这个和；`Seed-d` 与 `Salt+d` 可产生相同的E48。因此输出明确为：
+
+```text
+RESULT_KIND=EFFECTIVE_STRUCTURE_STATE_ONLY
+EFFECTIVE_STRUCTURE_STATE_CANDIDATE=...
+WORLD_LOW48=UNKNOWN | STRUCTURE_SALT=UNKNOWN | FULL64=UNKNOWN
+```
+
+`--unknown-salt` 与 `--salts`、`--vanilla-high16`、`--custom-model` 互斥；E48使用独立结果类型，不能作为世界low48候选接入高16搜索。`--window-end` 在此模式下表示 **E48有效状态域** 的半开上界，而不是世界Seed低48上界。原先不带此参数的明确Salt假设流程保持原样。
+
+这个模式扩大了可研究的修改Salt模型范围，但仍要求完整可信轮廓和实际适用的RandomSpread规则。至少3座轮廓只是输入门槛，不能保证全48求解成功；只有2个FIT时会留下大量条件候选，90秒/16模型上限可能先耗尽。所有候选保留自然来源、生成器、Salt及世界Seed未知状态。
+
+新增验收分层：P27用两版真实Minecraft `getPotentialStructureChunk` 检查正负Seed、long溢出、不同分布/负Salt的E48等价关系；P28实际Z3检查合成控制的有效状态正反例；P39检查几何、作用域、独立HOLDOUT和禁止高16串接；P34修改Salt真实世界任务从已启用数据包、FULL存档、独立保存的StructureStart NBT做65536状态窗口Z3正反验收。后者仍是**受控服务端真值**，绝不改标为普通客户端观测；通过有限窗口不代表完成全48或破解未知服务器。
+
 ## 完整64位：使用实际quart和经过验证的前向生成器
 
 如果且仅如果研究目标适用原版Overworld气候生成器，可以**显式**加：

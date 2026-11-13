@@ -40,6 +40,20 @@ public final class RealClientSeedRecoveryCli {
     private static final int MAX_ARCHIVES = 64;
     private static final int MAX_ARCHIVE_BYTES = 320_000;
 
+    /** 两种结果域必须显式区分；未知Salt有效状态永远不是世界low48候选。 */
+    public enum RecoveryMode {
+        EXPLICIT_SALT_HYPOTHESIS,
+        EFFECTIVE_STRUCTURE_STATE_ONLY;
+
+        public static RecoveryMode parse(String value, boolean high16Requested) {
+            RecoveryMode mode = RecoveryMode.valueOf(value);
+            if (mode == EFFECTIVE_STRUCTURE_STATE_ONLY && high16Requested) {
+                throw new IllegalArgumentException("未知Salt的E48不能接入任何原版或自定义高16位搜索");
+            }
+            return mode;
+        }
+    }
+
     public record Site(ClientVisibleDesertPyramidRaster raster,
                        StructureFootprintInverter.BlockBounds outline,
                        int chunkX, int chunkZ) {}
@@ -231,6 +245,36 @@ public final class RealClientSeedRecoveryCli {
     }
 
     /**
+     * 显式未知Salt入口：原有21×21几何、作用域和独立留出全部保留，
+     * 只有随机输入变量改为E48。搜索窗口与结果均不得解释为世界Seed低48位。
+     */
+    private static void recoverEffectiveState(Observation observed,
+                                              long startInclusive, long endExclusive)
+            throws IOException {
+        var input = constraints(observed, 0, startInclusive, endExclusive);
+        System.out.println("RESULT_KIND=" + EffectiveStructureStateSearch.RESULT_KIND);
+        System.out.println("结构模型假设：spacing=32 separation=8 LINEAR；"
+                + "结构Salt=UNKNOWN；Salt归零仅用于求E48=(Seed+Salt) mod 2^48");
+        var result = EffectiveStructureStateSearch.search(input,
+                new SymbolicRandomSpread.Options(3, 90_000, 64), "z3", 16);
+        System.out.println("E48_SOLVER_STATUS=" + result.status()
+                + " | 候选=" + result.candidates().size()
+                + " | 留出拒绝=" + result.rejectedByHoldout()
+                + " | Java精确拒绝=" + result.rejectedByExactModel());
+        System.out.println("E48_WINDOW=" + startInclusive + ".." + endExclusive
+                + " | 非二幂拒绝路径完整性未证明=" + result.incompleteRejectionPaths());
+        for (var candidate : result.candidates()) {
+            System.out.println("EFFECTIVE_STRUCTURE_STATE_CANDIDATE=0x" + candidate.hex12()
+                    + " | FIT=" + candidate.fitMatches()
+                    + " | HOLDOUT=" + candidate.holdoutMatches()
+                    + " | NATURAL_ORIGIN=UNKNOWN");
+        }
+        System.out.println("WORLD_LOW48=UNKNOWN | STRUCTURE_SALT=UNKNOWN | FULL64=UNKNOWN");
+        System.out.println("E48仅约束单结构集合的Seed与Salt之和；不生成世界low48，"
+                + "不运行高16位搜索，有限窗口/超时/模型上限不能表示全域完成。");
+    }
+
+    /**
      * 续算输入签名：包含low48候选集合、真实quart坐标/留出角色、假设参数表和世界作用域。
      * 只输出SHA256摘要，不输出服务器地址、坐标、世界HMAC或本机密钥；
      * 换任何一份证据或配置都拒绝按旧索引继续。
@@ -333,6 +377,9 @@ public final class RealClientSeedRecoveryCli {
                     + "EXPLICIT_VANILLA_OVERWORLD_HYPOTHESIS或EXPLICIT_CUSTOM_CLIMATE_HYPOTHESIS "
                     + "-PrecoveryCustomModel=climate.json]");
         }
+        RecoveryMode recoveryMode = RecoveryMode.parse(
+                System.getProperty("recoverySaltMode", "EXPLICIT_SALT_HYPOTHESIS"),
+                args.length > 2);
         String version = System.getProperty("mcVersion", "26.2");
         Observation observed = inspect(Path.of(args[0]), version);
         System.out.println("WorldSeedLab P3.9 · 真实客户端证据离线种子反演");
@@ -349,6 +396,13 @@ public final class RealClientSeedRecoveryCli {
             return;
         }
 
+        long startInclusive = Long.parseLong(System.getProperty("recoveryStart", "0"));
+        long endExclusive = Long.parseLong(System.getProperty("recoveryEnd",
+                Long.toString(CandidateSeedSearch.TOTAL_48)));
+        if (recoveryMode == RecoveryMode.EFFECTIVE_STRUCTURE_STATE_ONLY) {
+            recoverEffectiveState(observed, startInclusive, endExclusive);
+            return;
+        }
         List<Integer> hypotheses = salts(args.length >= 2 ? args[1] : "14357617");
         boolean vanillaHigh16 = args.length == 4
                 && "EXPLICIT_VANILLA_OVERWORLD_HYPOTHESIS".equals(args[3]);
@@ -358,9 +412,6 @@ public final class RealClientSeedRecoveryCli {
                 && !vanillaHigh16 && !conditionalCustom)) {
             throw new IllegalArgumentException("quart、高16生成器模型和参数文件必须同时明确授权");
         }
-        long startInclusive = Long.parseLong(System.getProperty("recoveryStart", "0"));
-        long endExclusive = Long.parseLong(System.getProperty("recoveryEnd",
-                Long.toString(CandidateSeedSearch.TOTAL_48)));
         for (int salt : hypotheses) {
             var input = constraints(observed, salt, startInclusive, endExclusive);
             System.out.println("结构模型假设：spacing=32 separation=8 LINEAR Salt=" + salt
