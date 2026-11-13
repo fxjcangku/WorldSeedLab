@@ -1,0 +1,2 @@
+# 真实控制世界夹具按原始字节校验SHA256，Windows检出也必须保留LF。
+src/test/resources/p31/*.csv text eol=lf

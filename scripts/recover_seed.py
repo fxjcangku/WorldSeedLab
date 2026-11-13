@@ -80,8 +80,10 @@ def parse_args(argv=None):
     parser.add_argument("--input", required=True, type=Path,
                         help="原始observations.zip、P3.5/P3.6受控档案ZIP或单一证据目录")
     parser.add_argument("--minecraft", required=True, choices=SUPPORTED_MINECRAFT_VERSIONS)
-    parser.add_argument("--salts", default="14357617",
+    parser.add_argument("--salts",
                         help="最多四个不重复的int32研究假设Salt；默认原版沙漠神殿14357617")
+    parser.add_argument("--unknown-salt", action="store_true",
+                        help="只研究E48=(Seed+Salt) mod 2^48；不输出世界low48或完整Seed")
     parser.add_argument("--vanilla-high16", action="store_true",
                         help="仅显式原版Overworld假设；自定义群系出现时安全拒绝")
     parser.add_argument("--custom-model", type=Path,
@@ -97,7 +99,7 @@ def parse_args(argv=None):
     parser.add_argument("--high16-expected-digest",
                         help="续算时前次输出的RECOVERY_RESUME_TOKEN（wsl-p44-v1:SHA256）；旧裸摘要不可复用")
     parser.add_argument("--window-end", type=int, default=1 << 48,
-                        help="低48搜索上界；仅受控实验可用4096，默认完整48位")
+                        help="48位搜索上界；unknown-salt时为E48域，其余为世界low48假设域")
     parser.add_argument("--report", type=Path,
                         help="可选本机新JSON文件；仅实际Java求解写入，不能覆盖现有文件")
     parser.add_argument("--dry-run", action="store_true",
@@ -147,6 +149,14 @@ def _read_model_biomes(path: Path) -> frozenset[str]:
 
 def validate_options(args) -> frozenset[str] | None:
     """所有模式（包括dry-run）先校验，避免忽略无效或无效力的参数。"""
+    if args.unknown_salt and (args.salts is not None or args.vanilla_high16
+            or args.custom_model is not None or args.report is not None
+            or any(value is not None for value in (
+                args.high16_shard, args.high16_shards, args.high16_evaluations,
+                args.high16_resume, args.high16_expected_digest))):
+        raise EvidenceError("未知Salt的E48不能与Salt假设、高16参数或世界Seed报告混用")
+    # 此默认值仅供明确Salt路径使用；E48的进程参数不发送recoverySalts。
+    args.salts = "14357617" if args.salts is None else args.salts
     if args.custom_model is not None and args.vanilla_high16:
         raise EvidenceError("原版高16与自定义模型条件高16不能同时执行")
     if not 1 <= args.window_end <= 1 << 48:
@@ -222,8 +232,11 @@ def build_command(args, quart: Path | None = None) -> list[str]:
     command = ["gradle", "--no-daemon", "--console=plain",
                "-PmcVersion=" + args.minecraft,
                "-PrecoveryEvidence=" + str(args.input.resolve()),
-               "-PrecoverySalts=" + args.salts,
                "-PrecoveryEnd=" + str(args.window_end)]
+    if args.unknown_salt:
+        command.append("-PrecoverySaltMode=EFFECTIVE_STRUCTURE_STATE_ONLY")
+    else:
+        command.append("-PrecoverySalts=" + args.salts)
     if args.report is not None:
         command.append("-PrecoveryReport=" + str(args.report))
     if quart is not None:
@@ -244,7 +257,8 @@ def build_command(args, quart: Path | None = None) -> list[str]:
 
 def run_recovery(args, prepared: PreparedQuart | None) -> int:
     """显式运行本机求解器；含私有quart的临时目录无论成功失败都会销毁。"""
-    if not shutil.which("gradle") or not shutil.which("z3"):
+    gradle = shutil.which("gradle") or shutil.which("gradle.bat")
+    if not gradle or not shutil.which("z3"):
         raise EvidenceError("缺少本机Java25/Gradle9.9.0或Z3命令，无法实际运行反演")
     root = Path(__file__).resolve().parents[1]
     with tempfile.TemporaryDirectory(prefix="wsl-p39-quart-") as directory:
@@ -253,6 +267,7 @@ def run_recovery(args, prepared: PreparedQuart | None) -> int:
             quart = Path(directory) / "client-quart.csv"
             quart.write_text(prepared.contents, encoding="utf-8")
         command = build_command(args, quart)
+        command[0] = gradle
         print("运行本机原版Java RNG/Z3真求解；结果为模型候选，Salt/自然来源未确认")
         return subprocess.run(command, cwd=root, check=False).returncode
 
@@ -264,6 +279,9 @@ def main(argv=None):
         possible_biomes = validate_options(args)
         footprints, _ = inspect(args.input)
         print("WorldSeedLab · 实际客户端 Seed 反演")
+        if args.unknown_salt:
+            print("RESULT_KIND=EFFECTIVE_STRUCTURE_STATE_ONLY")
+            print("WORLD_LOW48=UNKNOWN | STRUCTURE_SALT=UNKNOWN | FULL64=UNKNOWN")
         print(f"可用轮廓存档文件: {len(footprints)}（需至少3个独立RandomSpread区域）")
         if len(footprints) < 3:
             print("RESULT=INSUFFICIENT_GEOMETRY_EVIDENCE")

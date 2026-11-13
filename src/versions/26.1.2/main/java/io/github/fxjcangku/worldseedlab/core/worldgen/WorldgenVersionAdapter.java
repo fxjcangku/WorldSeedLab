@@ -38,6 +38,12 @@ public final class WorldgenVersionAdapter {
         return VanillaRegistries.createLookup();
     }
 
+    /** 基岩随机对照复用目标版本的真实RandomState，隔离三版构造参数差异。 */
+    public static RandomState createRandomState(HolderLookup.Provider registries,
+                                                NoiseGeneratorSettings settings, long seed) {
+        return RandomState.create(settings, registries.lookupOrThrow(Registries.NOISE), seed);
+    }
+
     /** 一份注册表上下文供多候选使用；每个完整Seed仍单独创建RandomState。 */
     public static LongFunction<Climate.Sampler> createClimateFactory(String expectedVersion) {
         return climateFactory(createWorldLookup(expectedVersion));

@@ -3,7 +3,6 @@ package io.github.fxjcangku.worldseedlab.client;
 import io.github.fxjcangku.worldseedlab.client.probe.AutoDesertFootprintController;
 import io.github.fxjcangku.worldseedlab.client.probe.WorldProbeController;
 import io.github.fxjcangku.worldseedlab.client.ui.GlassDashboard;
-import io.github.fxjcangku.worldseedlab.client.ui.ObservedWorldMapScreen;
 import net.minecraft.client.Minecraft;
 
 /**
@@ -34,8 +33,8 @@ public final class PlatformScreens {
         minecraft.gui.setScreen(new GlassDashboard(controller, automatic));
     }
 
-    /** 通过 26.3 原生 GUI 宿主打开已探索地图。 */
+    /** 地图与工作台使用同一玻璃面板，复用自动取证状态。 */
     public static void openMap(Minecraft client, WorldProbeController controller) {
-        client.gui.setScreen(new ObservedWorldMapScreen(controller));
+        open(client, controller);
     }
 }

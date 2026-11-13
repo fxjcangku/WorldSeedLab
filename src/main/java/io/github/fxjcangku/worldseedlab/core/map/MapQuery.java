@@ -7,9 +7,19 @@ import java.util.Objects;
  * 不把视野以外或从未采样到的区域当作已知。
  */
 public record MapQuery(int centerX, int centerZ, int widthCells, int heightCells,
-                       MapLayer layer, int targetY) {
+                       MapLayer layer, int targetY, String clientVersion) {
+    /** 旧群系/高度查询兼容入口；逐方块地表查询必须显式提供游戏版本。 */
+    public MapQuery(int centerX, int centerZ, int widthCells, int heightCells,
+                    MapLayer layer, int targetY) {
+        this(centerX, centerZ, widthCells, heightCells, layer, targetY, "");
+    }
+
     public MapQuery {
         Objects.requireNonNull(layer);
+        Objects.requireNonNull(clientVersion);
+        if (!clientVersion.isEmpty() && !clientVersion.equals("26.1.2") && !clientVersion.equals("26.2")) {
+            throw new IllegalArgumentException("unsupported map game version");
+        }
         if (widthCells < 1 || widthCells > 128
                 || heightCells < 1 || heightCells > 96) {
             throw new IllegalArgumentException("map viewport out of safe bounds");
@@ -39,15 +49,15 @@ public record MapQuery(int centerX, int centerZ, int widthCells, int heightCells
 
     public MapQuery moved(int dxBlocks, int dzBlocks) {
         return new MapQuery(centerX + dxBlocks, centerZ + dzBlocks,
-                widthCells, heightCells, layer, targetY);
+                widthCells, heightCells, layer, targetY, clientVersion);
     }
 
     public MapQuery withLayer(MapLayer next) {
-        return new MapQuery(centerX, centerZ, widthCells, heightCells, next, targetY);
+        return new MapQuery(centerX, centerZ, widthCells, heightCells, next, targetY, clientVersion);
     }
 
     public MapQuery withY(int nextY) {
         return new MapQuery(centerX, centerZ, widthCells, heightCells,
-                layer, Math.max(-4096, Math.min(8192, nextY)));
+                layer, Math.max(-4096, Math.min(8192, nextY)), clientVersion);
     }
 }

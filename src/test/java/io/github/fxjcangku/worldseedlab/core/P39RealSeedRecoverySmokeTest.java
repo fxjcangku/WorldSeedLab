@@ -2,11 +2,19 @@ package io.github.fxjcangku.worldseedlab.core;
 
 import io.github.fxjcangku.worldseedlab.core.geometry.ClientVisibleDesertPyramidRaster;
 import io.github.fxjcangku.worldseedlab.core.geometry.StructureFootprintInverter;
+import io.github.fxjcangku.worldseedlab.core.solver.RealClientSeedRecoveryCli;
+import io.github.fxjcangku.worldseedlab.core.solver.EffectiveStructureStateSearch;
+import io.github.fxjcangku.worldseedlab.core.solver.SymbolicRandomSpread;
+import io.github.fxjcangku.worldseedlab.core.solver.SolverResearchInput;
+import io.github.fxjcangku.worldseedlab.core.solver.StartPlacementConstraint;
+import io.github.fxjcangku.worldseedlab.core.solver.RandomSpreadSpec;
 import io.github.fxjcangku.worldseedlab.core.solver.ClientStructureEvidence;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.ArrayList;
 
 /**
  * P3.9 离线导入、客户端作用域、严格可见轮廓、独立region正反例。
@@ -48,6 +56,51 @@ public final class P39RealSeedRecoverySmokeTest {
                     "公开控制坐标的算法回归应支持2731低48候选；新版实机另行验证");
             check(input.constraints().stream().anyMatch(c -> !c.matchesPlacement(2732L,spec)),
                     "错误低48种子必须被实际离散起点坐标否决");
+            var effectiveInput = ClientStructureEvidence.constraints(actual, 0);
+            var effectiveSpec = effectiveInput.models().get(ClientStructureEvidence.SET_ID);
+            long effectiveState = EffectiveStructureStateSearch.effectiveState(2731L, 14357617);
+            check(effectiveInput.constraints().stream().allMatch(c ->
+                            c.matchesPlacement(effectiveState, effectiveSpec)),
+                    "Salt归零时相同轮廓约束的是Seed加Salt的有效状态");
+            check(effectiveInput.constraints().stream().anyMatch(c ->
+                            !c.matchesPlacement(2731L, effectiveSpec)),
+                    "有效结构状态不能伪称原世界low48");
+            check(effectiveInput.constraints().equals(input.constraints()),
+                    "未知Salt模式不得改变几何集合、FIT/HOLDOUT或世界作用域");
+            boolean nonzeroSaltRejected = false;
+            try {
+                EffectiveStructureStateSearch.search(input,
+                        SymbolicRandomSpread.Options.DEFAULT, "z3", 4);
+            } catch (IllegalArgumentException expected) { nonzeroSaltRejected = true; }
+            check(nonzeroSaltRejected, "E48接口拒绝把非零Salt模型误当成归零状态域");
+            check(RealClientSeedRecoveryCli.RecoveryMode.parse(
+                            "EXPLICIT_SALT_HYPOTHESIS", true)
+                            == RealClientSeedRecoveryCli.RecoveryMode.EXPLICIT_SALT_HYPOTHESIS,
+                    "原有明确Salt条件下的高16入口保持不变");
+            boolean high16Rejected = false;
+            try {
+                RealClientSeedRecoveryCli.RecoveryMode.parse(
+                        EffectiveStructureStateSearch.RESULT_KIND, true);
+            } catch (IllegalArgumentException expected) { high16Rejected = true; }
+            check(high16Rejected, "未知Salt的E48不得接入任何高16搜索");
+            rejectEffective(new SolverResearchInput(effectiveInput.models(),
+                            effectiveInput.constraints().subList(0, 3), effectiveInput.searchWindow()),
+                    "E48模式不能移除独立HOLDOUT");
+            var mixed = new ArrayList<>(effectiveInput.constraints());
+            var holdout = mixed.getLast();
+            mixed.set(mixed.size() - 1, new StartPlacementConstraint("c".repeat(64),
+                    holdout.gameVersion(), holdout.dimension(), holdout.structureSetId(),
+                    holdout.possibleStartChunks(), holdout.origin(), holdout.split(),
+                    holdout.alternativeStartChunks()));
+            rejectEffective(new SolverResearchInput(effectiveInput.models(), mixed,
+                            effectiveInput.searchWindow()),
+                    "E48模式必须拒绝跨世界HOLDOUT");
+            var unrelatedSet = new RandomSpreadSpec("minecraft:unrelated_set", 32, 8,
+                    RandomSpreadSpec.Distribution.LINEAR, 0);
+            rejectEffective(new SolverResearchInput(Map.of(effectiveSpec.structureSetId(), effectiveSpec,
+                            unrelatedSet.structureSetId(), unrelatedSet), effectiveInput.constraints(),
+                            effectiveInput.searchWindow()),
+                    "不同结构集合的未知Salt不能共用一个E48状态");
             writeSyntheticClientFootprint(root.resolve("client-auto-desert-mismatch.properties"),
                     1024,1024,"b".repeat(64),version);
             boolean rejected=false;
@@ -107,5 +160,15 @@ public final class P39RealSeedRecoverySmokeTest {
 
     private static void check(boolean condition,String why) {
         if(!condition)throw new AssertionError(why);
+    }
+
+    /** 错误输入必须在启动外部Z3前失败，不能靠后端缺失来伪造门控测试成功。 */
+    private static void rejectEffective(SolverResearchInput input, String why) throws Exception {
+        try {
+            EffectiveStructureStateSearch.search(input, SymbolicRandomSpread.Options.DEFAULT, "z3", 2);
+        } catch (IllegalArgumentException expected) {
+            return;
+        }
+        throw new AssertionError(why);
     }
 }

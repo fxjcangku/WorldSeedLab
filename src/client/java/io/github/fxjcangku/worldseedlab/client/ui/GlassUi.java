@@ -1,44 +1,112 @@
 package io.github.fxjcangku.worldseedlab.client.ui;
 
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FontDescription;
+import net.minecraft.resources.Identifier;
 
-/**
- * Lightweight liquid-glass approximation based solely on standard GUI shapes:
- * no raw OpenGL, blur shaders, custom pipelines, texture packs or framebuffers.
- */
+/** 统一玻璃表面与独立中文字体；所有测量、裁切、绘制使用相同的字体样式。 */
 public final class GlassUi {
-    public static final int TEXT = 0xFFEAF6FF;
-    public static final int MUTED = 0xFFA0BBD0;
-    public static final int CYAN = 0xFF7EE5FF;
-    public static final int MINT = 0xFF6DE9C6;
-    public static final int AMBER = 0xFFFFD37C;
-    public static final int ROSE = 0xFFFF8B9A;
+    public static final int TEXT = 0xFFF1EFF7;
+    public static final int MUTED = 0xFFB6BACD;
+    public static final int CYAN = 0xFFC3A4FF;
+    public static final int MINT = 0xFF83DCC0;
+    public static final int AMBER = 0xFFE4C58B;
+    public static final int ROSE = 0xFFF19AAB;
+    public static final int LINE = 0x28D7DDF2;
+    public static final int FONT_HEIGHT = 14;
+    private static final FontDescription UI_FONT = new FontDescription.Resource(
+            Identifier.fromNamespaceAndPath("worldseedlab", "ui"));
+    private static final FontDescription TITLE_FONT = new FontDescription.Resource(
+            Identifier.fromNamespaceAndPath("worldseedlab", "title"));
 
-    private GlassUi() {}
+    private GlassUi() { }
+
+    /** 用不重叠的水平扫描线构造圆角，避免透明矩形重复叠加成过亮的十字。 */
+    public static void rounded(GuiGraphicsExtractor g, int x, int y, int w, int h,
+                               int radius, int color) {
+        if (w <= 0 || h <= 0) return;
+        int r = Math.min(radius, Math.min(w, h) / 2);
+        g.fill(x, y + r, x + w, y + h - r, color);
+        for (int row = 0; row < r; row++) {
+            double dy = r - row - 0.5;
+            int inset = (int) Math.ceil(r - Math.sqrt(r * r - dy * dy));
+            g.fill(x + inset, y + row, x + w - inset, y + row + 1, color);
+            g.fill(x + inset, y + h - row - 1, x + w - inset, y + h - row, color);
+        }
+    }
 
     public static void glass(GuiGraphicsExtractor g, int x, int y, int w, int h, boolean vivid) {
-        if (w < 12 || h < 12) return;
-        int top = vivid ? 0xDF25384C : 0xCC1D2B40;
-        int bottom = vivid ? 0xDB0A1629 : 0xCC0B1424;
-        // 5px rounded-corner illusion, inexpensive even with Vulkan.
-        g.fillGradient(x + 5, y, x + w - 5, y + h, top, bottom);
-        g.fillGradient(x + 2, y + 2, x + w - 2, y + h - 2, top, bottom);
-        g.fillGradient(x, y + 5, x + w, y + h - 5, top, bottom);
-        g.fill(x + 8, y, x + w - 8, y + 1, 0x6BC5F4FF);
-        g.fill(x + 5, y + 1, x + w - 5, y + 2, 0x2AFFFFFF);
-        g.fill(x + 1, y + 6, x + 2, y + h - 6, 0x3858C8E8);
-        g.fill(x + w - 2, y + 6, x + w - 1, y + h - 6, 0x3258C8E8);
-        g.fill(x + 7, y + h - 2, x + w - 7, y + h - 1, 0x2558C8E8);
+        int radius = vivid ? 13 : 8;
+        rounded(g, x, y, w, h, radius, vivid ? 0xAF202532 : 0x302B3043);
+        outline(g, x, y, w, h, radius, vivid ? 0x68D3DCF5 : LINE);
+        // 高光只叠加薄薄一层；边框不先铺满内部，避免透明度累加成不透明面板。
+        if (vivid) for (int row = 1; row < 42 && row < h / 2; row++) {
+            int inset = row < radius ? radius : 1;
+            int alpha = Math.max(0, 13 - row / 3);
+            g.fill(x + inset, y + row, x + w - inset, y + row + 1, (alpha << 24) | 0xD6DDFB);
+        }
+    }
+
+    public static void outline(GuiGraphicsExtractor g, int x, int y, int w, int h, int radius, int color) {
+        int r = Math.min(radius, Math.min(w, h) / 2);
+        for (int row = 0; row < h; row++) {
+            int edge = Math.min(row, h - row - 1);
+            double dy = r - edge - 0.5;
+            int inset = edge >= r ? 0 : (int) Math.ceil(r - Math.sqrt(r * r - dy * dy));
+            if (row == 0 || row == h - 1) g.fill(x + inset, y + row, x + w - inset, y + row + 1, color);
+            else {
+                g.fill(x + inset, y + row, x + inset + 1, y + row + 1, color);
+                g.fill(x + w - inset - 1, y + row, x + w - inset, y + row + 1, color);
+            }
+        }
     }
 
     public static void badge(GuiGraphicsExtractor g, int x, int y, int w, int h, int color) {
-        g.fill(x + 3, y, x + w - 3, y + h, color);
-        g.fill(x, y + 3, x + w, y + h - 3, color);
-        g.fill(x + 3, y, x + w - 3, y + 1, 0x3AFFFFFF);
+        rounded(g, x, y, w, h, h / 2, color);
     }
 
-    public static String compact(String value, int maxChars) {
-        if (value == null) return "";
-        return value.length() <= maxChars ? value : value.substring(0, Math.max(1, maxChars - 2)) + "..";
+    /** 中英文宽度不同；操作标签都以字体实际像素宽度截断。 */
+    public static String fit(Font font, String value, int width) {
+        if (value == null || width <= 0) return "";
+        if (width(font, value) <= width) return value;
+        if (width(font, "…") > width) return "";
+        int end = value.length();
+        while (end > 0 && width(font, value.substring(0, end) + "…") > width)
+            end = value.offsetByCodePoints(end, -1);
+        return value.substring(0, end) + "…";
+    }
+
+    public static Component styled(String value) {
+        return Component.literal(value).withStyle(style -> style.withFont(UI_FONT));
+    }
+
+    public static int width(Font font, String value) { return font.width(styled(value)); }
+
+    public static void text(GuiGraphicsExtractor g, Font font, String value,
+                            int x, int y, int width, int color) {
+        // 原生GlyphBitmap使用7-bearingTop定位；当前TTF的14px墨迹需下移6px才对应排版顶边。
+        g.text(font, styled(fit(font, value, width)), x, y + 6, color, false);
+    }
+
+    public static void title(GuiGraphicsExtractor g, Font font, String value, int x, int y, int color) {
+        g.text(font, Component.literal(value).withStyle(style -> style.withFont(TITLE_FONT)), x, y + 11, color, false);
+    }
+
+    /** 原版 wordWrap 的行距是9；独立14像素字体必须明确使用更大的行距。 */
+    public static int wrap(GuiGraphicsExtractor g, Font font, String value, int x, int y,
+                           int width, int color, int maxLines) {
+        var wrapped = font.split(styled(value), width);
+        int count = Math.min(maxLines, wrapped.size());
+        for (int index = 0; index < count; index++) {
+            var line = wrapped.get(index);
+            if (index == count - 1 && wrapped.size() > count) {
+                StringBuilder tail = new StringBuilder();
+                line.accept((position, style, codePoint) -> { tail.appendCodePoint(codePoint); return true; });
+                text(g, font, tail + "…", x, y + index * 19, width, color);
+            } else g.text(font, line, x, y + 6 + index * 19, color, false);
+        }
+        return count * 19;
     }
 }

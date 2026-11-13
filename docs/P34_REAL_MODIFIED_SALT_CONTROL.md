@@ -50,6 +50,15 @@ python3 scripts/run_p34_custom_worldgen.py --minecraft=26.2 --modified-salt
 gradle --no-daemon -PmcVersion=26.2 p34ModifiedSaltWorldTest
 ```
 
+本机已有客户端运行时，使用独立、尚不存在或为空的目录，避免共用 `run/logs`、配置及世界存档：
+
+```powershell
+python scripts/run_p34_custom_worldgen.py --minecraft=26.2 --modified-salt --run-dir "D:\WorldSeedLabControls\p34-salt-26.2"
+gradle --no-daemon -PmcVersion=26.2 p34ModifiedSaltWorldTest
+```
+
+另一版本须使用不同的空目录并串行执行。运行器通过 `shutil.which` 解析当前PATH中的 `gradle` / `gradle.bat`，以临时Gradle初始化脚本调用Loom的 `server.runDir(String)`；不修改 `build.gradle`、客户端配置或已有存档。只读取指定运行目录下本轮已知世界的 `level.dat`，不递归搜索其它世界。默认不传 `--run-dir` 时仍使用CI原有 `run` 目录；显式指定非空目录会在启动服务端和写配置前拒绝。测试仍绑定本机固定25565/25575端口，两轮实验不可并行。
+
 GitHub Actions：`.github/workflows/p34-modified-salt.yml`，双版本独立执行；
 失败日志必须真实保留，不得以合成测试替代。
 

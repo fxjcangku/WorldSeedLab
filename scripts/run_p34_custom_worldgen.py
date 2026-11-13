@@ -11,7 +11,9 @@ import argparse
 import json
 from pathlib import Path
 import secrets
+import shutil
 import subprocess
+import tempfile
 import threading
 import time
 
@@ -102,15 +104,44 @@ def scan_custom_terrain(world: Path):
             "sand_sections": sand_sections}
 
 
-def main():
+def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--minecraft", choices=SUPPORTED_MINECRAFT_VERSIONS, required=True)
     parser.add_argument("--modified-salt", action="store_true",
                         help="仅受控实验：在全新世界真实替换神殿结构集Salt")
-    args = parser.parse_args()
+    parser.add_argument("--run-dir", type=Path,
+                        help="显式隔离服务端运行目录，必须不存在或为空；默认保留CI的run目录")
+    args = parser.parse_args(argv)
+    gradle = shutil.which("gradle") or shutil.which("gradle.bat")
+    if gradle is None:
+        raise RuntimeError("没有可执行的Gradle，请将gradle或gradle.bat所在目录加入PATH")
+    root = (args.run_dir if args.run_dir is not None else ROOT / "run").resolve()
+    if args.run_dir is not None and root.exists() and (not root.is_dir() or any(root.iterdir())):
+        raise RuntimeError("显式隔离运行目录必须为空，拒绝覆盖已有客户端/服务端配置或存档")
+    root.mkdir(parents=True, exist_ok=True)
+
+    # 使用真实Loom RunConfigSettings.runDir(String)只改本次server运行配置。
+    # 路径通过JVM属性传入固定脚本，避免空格、引号或Windows盘符被当作Groovy代码。
+    # 临时脚本生命周期覆盖整个服务端进程，退出后清理，不修改仓库build.gradle。
+    with tempfile.TemporaryDirectory(prefix="worldseedlab-p34-init-") as temporary:
+        init_script = Path(temporary) / "isolated-server.gradle"
+        init_script.write_text(
+            "gradle.projectsEvaluated {\n"
+            "    def targetProject = gradle.rootProject\n"
+            "    targetProject.extensions.getByName('loom').getRuns().named('server') {\n"
+            "        runDir(System.getProperty('worldseedlab.controlRunDir'))\n"
+            "    }\n"
+            "}\n", encoding="utf-8")
+        command = [gradle, "--no-daemon", "--console=plain",
+                   "--init-script", str(init_script),
+                   "-Dworldseedlab.controlRunDir=" + str(root),
+                   "-PmcVersion=" + args.minecraft, "runServer", "--args=nogui"]
+        run_control(args, root, command)
+
+
+def run_control(args, root: Path, command: list[str]):
+    """仅在指定服务端目录生成控制世界；不扫描仓库其它存档或客户端运行目录。"""
     version = args.minecraft
-    root = ROOT / "run"
-    root.mkdir(exist_ok=True)
     name = ("worldseedlab_p34_changed_salt_" if args.modified_salt
             else "worldseedlab_p34_custom_flat_") + version.replace(".", "_")
     if (root / name).exists():
@@ -140,10 +171,9 @@ def main():
     (root / "server.properties").write_text(
         "".join(f"{k}={v}\n" for k, v in props.items()), encoding="utf-8")
     process = subprocess.Popen(
-        ["gradle", "--no-daemon", "--console=plain",
-         "-PmcVersion=" + version, "runServer", "--args=nogui"],
+        command,
         cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-        text=True, bufsize=1,
+        text=True, encoding="utf-8", errors="replace", bufsize=1,
     )
     recent = []
     ready = threading.Event()
@@ -198,10 +228,9 @@ def main():
         process.wait(timeout=110)
         if process.returncode != 0:
             raise RuntimeError(f"runServer退出码{process.returncode}")
-        worlds = [x.parent for x in ROOT.rglob("level.dat") if x.parent.name == name]
-        if len(worlds) != 1:
-            raise RuntimeError("受控世界目录歧义/缺失: " + str(worlds))
-        world = worlds[0]
+        world = root / name
+        if not (world / "level.dat").is_file():
+            raise RuntimeError("指定隔离运行目录中缺少受控世界level.dat")
         terrain = scan_custom_terrain(world)
         starts, scanned = scan_structure_starts(world, found)
         if len(starts) < 3:
