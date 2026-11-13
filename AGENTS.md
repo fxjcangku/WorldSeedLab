@@ -2,11 +2,11 @@
 
 先阅读根目录 [《开发习惯.md》](%E5%BC%80%E5%8F%91%E4%B9%A0%E6%83%AF.md)、[架构说明](docs/ARCHITECTURE.md)及对应阶段的研发文档，再开始修改源码。
 
-本项目唯一源码仓库为 `fxjcangku/WorldSeedLab`。禁止访问、复制或公开 yiyiaddon 私有业务实现。两版 Minecraft（26.1.2 / 26.2）必须独立编译和测试；使用 Java 25、Mojmap、最新实际依赖，不套用旧 Yarn API。JavaDoc/关键代码注释中文化，文件和包目录清晰、禁止无用代码。
+本项目唯一源码仓库为 `fxjcangku/WorldSeedLab`。禁止访问、复制或公开 yiyiaddon 私有业务实现。三版 Minecraft（26.1.2 / 26.2 / 26.3）必须独立编译和测试；使用 Java 25、Mojmap、最新实际依赖，不套用旧 Yarn API。JavaDoc/关键代码注释中文化，文件和包目录清晰、禁止无用代码。
 
 WorldSeedLab 仅是普通 Fabric 客户端的世界生成研究工具：默认无采集、无主动加载区块、无联网上传、无虚构种子结果。原版结构的人工观察位置不得冒充真实结构生成起点。新的证据格式和兼容性结论必须通过独立正反测试。
 
-每次提交先检查最新远端状态，使用研发分支、PR、GitHub Actions 双版本构建；真实 runClient 未完成时如实说明。未经用户要求不发 Release、不强推覆盖既有分支。
+每次提交先检查最新远端状态，使用研发分支、PR、GitHub Actions 三版本构建；真实 runClient 未完成时如实说明。未经用户要求不发 Release、不强推覆盖既有分支。
 
 在开始 P2.5 结构反推之前先阅读 [结构生成兼容性研究方案](docs/P2_5_STRUCTURE_COMPATIBILITY.md)。人工观察位置不能直接当作结构起点，必须先用已知 Seed 世界确认版本随机放置规则。
 
@@ -14,7 +14,7 @@ WorldSeedLab 仅是普通 Fabric 客户端的世界生成研究工具：默认�
 
 P2.6 材料结构候选需要先看 [docs/P26_STRUCTURE_RECOGNITION.md](docs/P26_STRUCTURE_RECOGNITION.md)。矿石、假矿不得成为结构证据；客户端观察点和候选材料永远不能冒充原版真实 structure start。
 
-P2.7 研发请先阅读 [docs/P27_RANDOM_SPREAD_SOLVER.md](docs/P27_RANDOM_SPREAD_SOLVER.md)，禁止把结构候选模型的“potential chunk”解释为结构真实生成。修改 RNG、Salt、随机 spread、Region 计算或约束求解时，必须运行目标 Minecraft 26.1.2 与 26.2 本体对照，不复制 SeedCrackerX 或其依赖中的求解算法。
+P2.7 研发请先阅读 [docs/P27_RANDOM_SPREAD_SOLVER.md](docs/P27_RANDOM_SPREAD_SOLVER.md)，禁止把结构候选模型的“potential chunk”解释为结构真实生成。修改 RNG、Salt、随机 spread、Region 计算或约束求解时，必须运行目标 Minecraft 26.1.2、26.2 与 26.3 本体对照，不复制 SeedCrackerX 或其依赖中的求解算法。
 
 P2.8/P3 符号求解请阅读 [docs/P28_SYMBOLIC_SOLVER_AND_ORE_POLICY.md](docs/P28_SYMBOLIC_SOLVER_AND_ORE_POLICY.md)：SMT 的拒绝重抽路径有界，UNSAT 不代表服务器没有 Seed；SAT 候选也只能算有参数前提的 low48。矿石显示受到假矿干扰，不能以可见 ore 作为自然生成真值，完全 Seed 与原版矿点必须独立验证。
 
@@ -28,20 +28,22 @@ P3.2 客户端 quart 证据与负数64位世界对照必须阅读 [docs/P32_CLIE
 
 P3.3 真实客户端联机回归必须阅读 [docs/P33_REAL_FABRIC_CLIENT_E2E.md](docs/P33_REAL_FABRIC_CLIENT_E2E.md)：验证须通过真正 Fabric GUI 联机及手动命令取得 CLIENT_OBSERVED quart CSV，和独立 FULL 区块存档真值复核。不得将虚拟 GUI 启动、模拟传输、服务端 StructureStart 或未完成分片混为一谈；受控 Seed 正反例不代表未知自定义服务器 Seed 恢复。CI 特定 options.txt 只跳过首次欢迎页，不修改用户配置或任何种子证据。
 
-P3.4 自定义生成器研究先读 [docs/P34_CUSTOM_WORLDGEN_COMPATIBILITY.md](docs/P34_CUSTOM_WORLDGEN_COMPATIBILITY.md)。结构与群系双轴判定必须区分模型一致/证据不足/模型冲突/生成器未知；未知 Salt、历史区块或人工建筑必须降级。真实受控存档的 FULL Anvil 与 StructureStart 不能标记为普通客户端 CLIENT_OBSERVED；只有两版实测全通过才可合并。
+P3.4 自定义生成器研究先读 [docs/P34_CUSTOM_WORLDGEN_COMPATIBILITY.md](docs/P34_CUSTOM_WORLDGEN_COMPATIBILITY.md)。结构与群系双轴判定必须区分模型一致/证据不足/模型冲突/生成器未知；未知 Salt、历史区块或人工建筑必须降级。真实受控存档的 FULL Anvil 与 StructureStart 不能标记为普通客户端 CLIENT_OBSERVED；只有三版实测全通过才可合并。
 
 P3.4.1 修改 Salt 研究必须先读 [docs/P34_REAL_MODIFIED_SALT_CONTROL.md](docs/P34_REAL_MODIFIED_SALT_CONTROL.md)。将真实受控 Minecraft 数据包 enabled、FULL Anvil 及保存的 StructureStart 作为三项独立验收条件；仅校验 JSON 文件存在不能声称实际自定义结构规则生效。普通客户端不能访问这些服务端真值。
 
-P3.6 自动世界生成证据研发必须先阅读 [docs/P36_AUTOMATIC_CUSTOM_WORLD_EVIDENCE.md](docs/P36_AUTOMATIC_CUSTOM_WORLD_EVIDENCE.md)。一键手动授权只检查已加载 FULL 区块，发现材料候选不得冒充自然生成 StructureStart；仅完整21×21外沿可以成为条件几何候选，且生成器和Salt未知时不得直接运行 low48/完整64位求解。群系/地形与结构证据必须保持独立来源，默认关闭、失败关闭、单次有界、局部异步保存、仅本机原始坐标，双版独立编译及真实 Fabric GUI 自动取证验收，不能用P3.5手动双角成功替代自动功能成功。
+P3.6 自动世界生成证据研发必须先阅读 [docs/P36_AUTOMATIC_CUSTOM_WORLD_EVIDENCE.md](docs/P36_AUTOMATIC_CUSTOM_WORLD_EVIDENCE.md)。一键手动授权只检查已加载 FULL 区块，发现材料候选不得冒充自然生成 StructureStart；仅完整21×21外沿可以成为条件几何候选，且生成器和Salt未知时不得直接运行 low48/完整64位求解。群系/地形与结构证据必须保持独立来源，默认关闭、失败关闭、单次有界、局部异步保存、仅本机原始坐标，三版独立编译及真实 Fabric GUI 自动取证验收，不能用P3.5手动双角成功替代自动功能成功。
 
-P3.7 新增离线证据兼容性分析，必须先阅读 [docs/P37_CUSTOM_WORLDGEN_IDENTIFIABILITY.md](docs/P37_CUSTOM_WORLDGEN_IDENTIFIABILITY.md)。只能在用户显式操作下只读已保存的真实客户端 P1/P2/STRATA；不得混合同一压缩包中的不同世界/维度，不能上传或记录原始服务器地址、坐标、HMAC私钥。非原版群系ID仅说明原样原版注册表模型不能直接解释，不等于已识别自定义生成器。没有可验证模型和独立FIT/HOLDOUT时，Salt、自然结构起点、完整64位Seed保持UNKNOWN。P3.7 的纯Python正反例与 Fabric 双版本真实GUI验收分开执行。
-P3.8 自动多结构和中文界面变更必须阅读 [docs/P38_AUTOMATIC_MULTISTRUCTURE_EVIDENCE.md](docs/P38_AUTOMATIC_MULTISTRUCTURE_EVIDENCE.md)。新结构只从已加载FULL BlockState取得材料/局部候选，自动写入HMAC作用域v2索引，保留v1归档；海洋神殿、冷暖海底遗迹、沉船、废弃传送门等没有独立几何真值时不得标自然起点或接入low48。UI命令、F8与地图返回必须复用同一AutoController，中文分行彩色不刷屏。CI必须包含双版真正Fabric GUI与明确标为CONTROLLED_ARTIFICIAL的海底材料布景负自然来源验收；不得以人工材料假造天然结构Seed。
+P3.7 新增离线证据兼容性分析，必须先阅读 [docs/P37_CUSTOM_WORLDGEN_IDENTIFIABILITY.md](docs/P37_CUSTOM_WORLDGEN_IDENTIFIABILITY.md)。只能在用户显式操作下只读已保存的真实客户端 P1/P2/STRATA；不得混合同一压缩包中的不同世界/维度，不能上传或记录原始服务器地址、坐标、HMAC私钥。非原版群系ID仅说明原样原版注册表模型不能直接解释，不等于已识别自定义生成器。没有可验证模型和独立FIT/HOLDOUT时，Salt、自然结构起点、完整64位Seed保持UNKNOWN。P3.7 的纯Python正反例与 Fabric 三版本真实GUI验收分开执行。
+P3.8 自动多结构和中文界面变更必须阅读 [docs/P38_AUTOMATIC_MULTISTRUCTURE_EVIDENCE.md](docs/P38_AUTOMATIC_MULTISTRUCTURE_EVIDENCE.md)。新结构只从已加载FULL BlockState取得材料/局部候选，自动写入HMAC作用域v2索引，保留v1归档；海洋神殿、冷暖海底遗迹、沉船、废弃传送门等没有独立几何真值时不得标自然起点或接入low48。UI命令、F8与地图返回必须复用同一AutoController，中文分行彩色不刷屏。CI必须包含三版真正Fabric GUI与明确标为CONTROLLED_ARTIFICIAL的海底材料布景负自然来源验收；不得以人工材料假造天然结构Seed。
 
-P3.8地形核心研究在自动多结构候选基础上还须阅读 [docs/P38_CUSTOM_TERRAIN_AND_STRUCTURES.md](docs/P38_CUSTOM_TERRAIN_AND_STRUCTURES.md)。一次auto on应暂时启用STRATA真实已加载方块，退出后恢复玩家配置；必须在真实双版本Fabric GUI明确核查地下详情已落盘。离线候选模型不得只靠3个合成高度猜后台生成器，需独立真实前向实现与同一HMAC/维度/版本的2FIT+1HOLDOUT，任何一致只可叫CONDITIONAL_MATCH_UNVERIFIED，未知Seed/Salt仍未知。禁止覆盖本轮多结构材料识别和中文UI分支已有改动。
+P3.8地形核心研究在自动多结构候选基础上还须阅读 [docs/P38_CUSTOM_TERRAIN_AND_STRUCTURES.md](docs/P38_CUSTOM_TERRAIN_AND_STRUCTURES.md)。一次auto on应暂时启用STRATA真实已加载方块，退出后恢复玩家配置；必须在真实三版本Fabric GUI明确核查地下详情已落盘。离线候选模型不得只靠3个合成高度猜后台生成器，需独立真实前向实现与同一HMAC/维度/版本的2FIT+1HOLDOUT，任何一致只可叫CONDITIONAL_MATCH_UNVERIFIED，未知Seed/Salt仍未知。禁止覆盖本轮多结构材料识别和中文UI分支已有改动。
 P3.9真实客户端种子反演前必须阅读[docs/P39_REAL_CLIENT_SEED_RECOVERY.md](docs/P39_REAL_CLIENT_SEED_RECOVERY.md)。未经完全可见轮廓审计与不同RandomSpreadRegion的至少2FIT+1HOLDOUT，不得启动低48求解；不能把人工材料候选/服务器真NBT输入伪装成普通客户端观测。真实CLI允许本机Z3和Java RNG受控假设匹配，但UNKNOWN生成器、Salt、天然来源及完整64位不得因受控2731结果自动宣称已破解。真实客户端受控ZIP必须由真正Minecraft Fabric产生，并通过独立后验FULL+StructureStart验收；跨世界/维度/版本必须失败关闭，原始私人数据不上公开仓库。
 
-P4.0 自定义气候前向模型研发必须先阅读 [docs/P40_CUSTOM_CLIMATE_FORWARD.md](docs/P40_CUSTOM_CLIMATE_FORWARD.md)。只能使用真实Minecraft目标版本RandomState与研究者独立提供、经过合法授权的六维MultiNoise参数假设；未知Terralith/NoiseRouter不能由群系名字推断。客户端已存P1只读流式抽取≥1024方块间隔的3FIT/2HOLDOUT；真实坐标和HMAC仅保留本机临时文件。模型注册表冲突或缺少参数时不能运行伪种子求解。显式候选至多32个，条件匹配不能冒充已知Salt、结构low48或后台完整64位Seed。两版本必须在真实Minecraft FULL世界的已保存群系真值上跑受控正反验收，不以合成CSV替代。
+P4.0 自定义气候前向模型研发必须先阅读 [docs/P40_CUSTOM_CLIMATE_FORWARD.md](docs/P40_CUSTOM_CLIMATE_FORWARD.md)。只能使用真实Minecraft目标版本RandomState与研究者独立提供、经过合法授权的六维MultiNoise参数假设；未知Terralith/NoiseRouter不能由群系名字推断。客户端已存P1只读流式抽取≥1024方块间隔的3FIT/2HOLDOUT；真实坐标和HMAC仅保留本机临时文件。模型注册表冲突或缺少参数时不能运行伪种子求解。显式候选至多32个，条件匹配不能冒充已知Salt、结构low48或后台完整64位Seed。三版本必须在真实Minecraft FULL世界的已保存群系真值上跑受控正反验收，不以合成CSV替代。
 
-P4.1 自定义生成器条件高16反演必须阅读 [docs/P41_CONDITIONAL_CUSTOM_HIGH16.md](docs/P41_CONDITIONAL_CUSTOM_HIGH16.md)。只有先由P3.9真实客户端完整轮廓→Z3→Java独立FIT/HOLDOUT得到low48候选，且具备同HMAC/版本/维度至少3FIT+2HOLDOUT真实quart及独立提供的气候参数模型，才能以模型假设逐个枚举high16。禁止任意整数冒充来源证明。跨次续算须检查完整证据模型SHA256和稳定low48集合，分片必须无重复/遗漏，任何预算未完成不宣称全域。自定义NoiseRouter、Salt、结构自然来源或历史未知时，完整64位Seed始终UNKNOWN。双版本真实Minecraft FULL存档真值与GUI/Z3回归全通过后方可合并。
+P4.1 自定义生成器条件高16反演必须阅读 [docs/P41_CONDITIONAL_CUSTOM_HIGH16.md](docs/P41_CONDITIONAL_CUSTOM_HIGH16.md)。只有先由P3.9真实客户端完整轮廓→Z3→Java独立FIT/HOLDOUT得到low48候选，且具备同HMAC/版本/维度至少3FIT+2HOLDOUT真实quart及独立提供的气候参数模型，才能以模型假设逐个枚举high16。禁止任意整数冒充来源证明。跨次续算须检查完整证据模型SHA256和稳定low48集合，分片必须无重复/遗漏，任何预算未完成不宣称全域。自定义NoiseRouter、Salt、结构自然来源或历史未知时，完整64位Seed始终UNKNOWN。三版本真实Minecraft FULL存档真值与GUI/Z3回归全通过后方可合并。
 
-P4.2开始生成器身份、模型可证伪与有效世界高度研究必须先阅读 [docs/P42_GENERATOR_IDENTIFIABILITY.md](docs/P42_GENERATOR_IDENTIFIABILITY.md)。真实P1/P2/STRATA仅本机只读单世界回放；旧26.1.2/26.2 Mojmap ClientLevel.getMaxY()是含上界，DimensionProfile.maxBuildYExclusive必须使用minY+getHeight()。旧P2证据仅在离线审计中依16格对齐归一化，绝不覆盖原件。完整性未证明的候选注册表不能用缺失条目判为模型矛盾，匹配不能冒充已识别后台生成器。双版本JDK25/Gradle9.6.1真实Mojmap高度和默认Overworld注册表真值对照，保留P3.9真实Fabric GUI→Z3回归。Terralith等受限第三方代码、配置、资源包不可复制或上传。
+P4.2开始生成器身份、模型可证伪与有效世界高度研究必须先阅读 [docs/P42_GENERATOR_IDENTIFIABILITY.md](docs/P42_GENERATOR_IDENTIFIABILITY.md)。真实P1/P2/STRATA仅本机只读单世界回放；旧26.1.2/26.2 Mojmap ClientLevel.getMaxY()是含上界，DimensionProfile.maxBuildYExclusive必须使用minY+getHeight()。旧P2证据仅在离线审计中依16格对齐归一化，绝不覆盖原件。完整性未证明的候选注册表不能用缺失条目判为模型矛盾，匹配不能冒充已识别后台生成器。三版本JDK25/Gradle9.9.0真实Mojmap高度和默认Overworld注册表真值对照，保留P3.9真实Fabric GUI→Z3回归。Terralith等受限第三方代码、配置、资源包不可复制或上传。
+
+P4.5 依用户明确要求新增 26.3，同时维护 26.1.2 / 26.2。三版核心共用；仅 Mojmap API 差异放入对应版本适配层。26.3 的 FULL quart 与 StructureStart 夹具必须由官方 26.3 真实服务器独立生成、记录来源和 SHA256，不能重命名旧版夹具。历史双版本报告保留其原有范围；新验收要求见 [P4.5 版本适配](docs/P45_MINECRAFT_26_3.md)。

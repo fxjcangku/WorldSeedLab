@@ -11,7 +11,7 @@
 <br /><br />
 
 ![Project status](https://img.shields.io/badge/STATUS-RESEARCH_PREVIEW-13263F?style=flat-square&labelColor=07111F&color=087EA4)
-![Minecraft](https://img.shields.io/badge/MINECRAFT-26.1.2%20%2F%2026.2-13263F?style=flat-square&labelColor=07111F&color=236A99)
+![Minecraft](https://img.shields.io/badge/MINECRAFT-26.1.2%20%2F%2026.2%20%2F%2026.3-13263F?style=flat-square&labelColor=07111F&color=236A99)
 ![Fabric](https://img.shields.io/badge/PLATFORM-FABRIC-13263F?style=flat-square&labelColor=07111F&color=236A99)
 ![Java](https://img.shields.io/badge/JAVA-25-13263F?style=flat-square&labelColor=07111F&color=236A99)
 
@@ -21,7 +21,9 @@
 
 **[v0.1.0 初代研究预览 · 下载与发布说明](https://github.com/fxjcangku/WorldSeedLab/releases/tag/v0.1.0)**
 
-请选择对应 **Minecraft 26.1.2 / 26.2** 的 JAR，两个版本不要同时安装。客户端需要 **Java 25、Fabric Loader ≥0.19.5** 与对应版本的 Fabric API（本次构建使用 `0.155.3+26.1.2` / `0.161.0+26.2`）。普通安装者无需安装 Z3；它仅用于显式执行的离线研究。
+既有 v0.1.0 Release 仅提供 **Minecraft 26.1.2 / 26.2** 的 JAR；请选择与游戏一致的一份。客户端需要 **Java 25、Fabric Loader ≥0.19.5** 与对应版本的 Fabric API（本次构建使用 `0.155.3+26.1.2` / `0.161.0+26.2`）。普通安装者无需安装 Z3；它仅用于显式执行的离线研究。
+
+**26.3 开发构建：** 本次源码增加 26.3，使用 Java 25、Fabric Loader 0.20.1 与 Fabric API 0.165.2+26.3；旧版 Release 不包含26.3产物。版本适配与实际验证状态见 [P4.5记录](docs/P45_MINECRAFT_26_3.md)。
 
 ## 01 / 为什么是 WorldSeedLab
 
@@ -45,7 +47,13 @@
 - 普通客户端不能读取服务器完整生成器配置；需要跑图获取更多可观测证据，并独立验证结构分布规律。
 - 已有真实客户端受控联机实验不代表任意目标服务器已验收；本轮发行包未本机实机，未知服与高速跑图表现仍需验证。
 
-[开发及构建说明](docs/DEVELOPMENT.md) · [P1 真实群系采集](docs/P1_OBSERVATION.md) · [P2 跑图与维度日志](docs/P2_DIAGNOSTICS.md) · [开发习惯](%E5%BC%80%E5%8F%91%E4%B9%A0%E6%83%AF.md) · [双版本 CI](../../actions/workflows/build.yml)
+[开发及构建说明](docs/DEVELOPMENT.md) · [P1 真实群系采集](docs/P1_OBSERVATION.md) · [P2 跑图与维度日志](docs/P2_DIAGNOSTICS.md) · [开发习惯](%E5%BC%80%E5%8F%91%E4%B9%A0%E6%83%AF.md) · [三版本 CI](../../actions/workflows/build.yml)
+
+### P4.4 / 恢复流程重构与本机结果接口
+
+离线恢复现在按参数、证据、求解调度和结果输出分层，继续使用已有原创 Z3/Java RNG 与高16模型。26.2 的原有命令仍可使用，增加 `--report <新文件.json>` 后可读取每个 Salt 假设的低48/条件64位候选、独立验证和搜索进度，方便后续工具接入。
+
+原版和自定义气候模式共用严格 P1 校验；续算 token 升级后绑定完整结构规则、证据和分片，旧断点须从对应分片起点重新计算。报告始终区分模型候选与真实服务器种子，当前 `ready_for_mining=false`：自定义矿物生成规则尚需独立验证。使用方法见 [恢复入口与 JSON 结果](docs/P39_REAL_CLIENT_SEED_RECOVERY.md) 和 [续算迁移](docs/P41_CONDITIONAL_CUSTOM_HIGH16.md)。
 
 ## 01.6 / 更细的地形与地下剖面研究
 
@@ -190,7 +198,7 @@ python scripts/recover_seed.py --input "D:\WorldSeedLabData\observations.zip" --
 
 **界面重做**：F8液态玻璃面板把“一键自动取证”置顶，区分群系、建筑候选、完整轮廓和真正落盘；新增 `/wsl help`、`/wsl structures`、`/wsl auto status` 的中文加粗、彩色、逐行播报，绿色成功/青色结构/黄色警告，避免一大串白色状态。用户可正常探索自定义地形，P1/P2/STRATA的独立群系、地表、地下证据仍是完整64位生成器研究的核心。
 
-P3.8 **正在进行双版实际验证**，以 [研发PR #32](https://github.com/fxjcangku/WorldSeedLab/pull/32) 最新CI为准；受控材料自动识别不等于未知目标服务器种子被破解。不开新Release、不支持26.3。
+P3.8 当期的双版实际验证见 [研发PR #32](https://github.com/fxjcangku/WorldSeedLab/pull/32)；受控材料自动识别不等于未知目标服务器种子被破解。后续26.3支持及验收单独见 [P4.5记录](docs/P45_MINECRAFT_26_3.md)，不会反向改变既有Release的版本范围。
 
 ## P3.7 / 自定义地形生成器与完整64位可辨识性（P3.7.0 离线审计已验收）
 
@@ -283,7 +291,7 @@ Biome Evidence   Structure Evidence
 
 | 项目 | 研究目标 |
 | :--- | :--- |
-| Minecraft Java | **26.1.2 / 26.2**（分别构建与验证） |
+| Minecraft Java | **26.1.2 / 26.2 / 26.3**（分别构建与验证） |
 | 模组平台 | Fabric 客户端，独立安装运行 |
 | 编程语言 | Java 25 |
 | 映射标准 | Mojang 官方映射（Mojmap） |

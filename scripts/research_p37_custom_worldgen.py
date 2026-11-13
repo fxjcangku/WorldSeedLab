@@ -12,10 +12,12 @@ import re
 import sys
 import zipfile
 
+from minecraft_versions import SUPPORTED_MINECRAFT_VERSIONS
+
 SCOPE_PATH = re.compile(r"^worlds/[a-f0-9]{64}/dimensions/[a-f0-9]{24}/(evidence\.jsonl|terrain\.jsonl|terrain-detail\.jsonl)$")
 FINGERPRINT = re.compile(r"^[a-f0-9]{64}$")
 DIMENSION = re.compile(r"^[a-z0-9_.-]+:[a-z0-9_./-]+$")
-ALLOWED_VERSIONS = {"26.1.2", "26.2"}
+ALLOWED_VERSIONS = frozenset(SUPPORTED_MINECRAFT_VERSIONS)
 FILES = ("evidence.jsonl", "terrain.jsonl", "terrain-detail.jsonl")
 MAX_FILE_BYTES = 2_147_483_648
 MAX_ROW_BYTES = 65_536

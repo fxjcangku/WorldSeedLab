@@ -57,8 +57,7 @@ public final class WorldSeedLabClient implements ClientModInitializer {
         KeyMapping.Category category = KeyMapping.Category.register(
                 Identifier.fromNamespaceAndPath("worldseedlab", "general"));
         KeyMapping panelKey = KeyMappingHelper.registerKeyMapping(
-                new KeyMapping("key.worldseedlab.panel", InputConstants.Type.KEYSYM,
-                        InputConstants.KEY_F8, category));
+                new KeyMapping("key.worldseedlab.panel", InputConstants.KEY_F8, category));
 
         ClientTickEvents.END_CLIENT_TICK.register(minecraft -> {
             while (panelKey.consumeClick()) {

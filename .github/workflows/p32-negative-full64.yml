@@ -3,6 +3,11 @@ name: P3.2 Real Negative Signed Full64 Control World
 on:
   pull_request:
     paths:
+      - 'src/versions/**'
+      - 'gradle.properties'
+      - 'scripts/setup_gradle_ci.py'
+      - 'scripts/minecraft_versions.py'
+      - 'versions/**'
       - 'scripts/run_known_seed_server.py'
       - 'src/test/java/io/github/fxjcangku/worldseedlab/core/P32NegativeRealWorldTest.java'
       - '.github/workflows/p32-negative-full64.yml'
@@ -20,7 +25,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        minecraft: ['26.1.2','26.2']
+        minecraft: ['26.1.2', '26.2', '26.3']
 
     steps:
       - uses: actions/checkout@v4
@@ -29,10 +34,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '25'
-      - name: Install Gradle 9.6.1
+      - name: Configure Gradle cache and reports
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.6.1'
+
+      - name: Install verified Gradle 9.9.0
+        run: python3 -u scripts/setup_gradle_ci.py
 
       - name: Run isolated true Minecraft negative signed full64 seed and serialize FULL chunks
         run: |

@@ -145,6 +145,21 @@ class P37AuditTest(unittest.TestCase):
         with self.assertRaisesRegex(EvidenceRejected, "跨世界"):
             verify_zip(self.path)
 
+    def test_three_version_replay_accepts_only_one_version_per_archive(self):
+        for version in ("26.1.2", "26.2", "26.3"):
+            with self.subTest(version=version):
+                rows = self.controlled()
+                for records in rows.values():
+                    for record in records:
+                        record["client_version"] = version
+                build_zip(self.path, rows)
+                self.assertEqual(verify_zip(self.path)["game_version"], version)
+                rows["terrain.jsonl"][0]["client_version"] = (
+                    "26.2" if version == "26.3" else "26.3")
+                build_zip(self.path, rows)
+                with self.assertRaisesRegex(EvidenceRejected, "跨世界"):
+                    verify_zip(self.path)
+
     def test_zip_folder_hash_must_match_record_scope(self):
         rows = self.controlled()
         rows["evidence.jsonl"] = [biome(0, 0, hash_value=OTHER_HASH)]

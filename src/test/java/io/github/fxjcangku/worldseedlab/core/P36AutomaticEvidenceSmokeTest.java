@@ -41,7 +41,7 @@ public final class P36AutomaticEvidenceSmokeTest {
                         && recent.remember(-1L) && recent.remember(0L),
                 "新世界必须清空历史；负数和零区块键不能发生碰撞");
 
-        for (String version : List.of("26.1.2", "26.2")) {
+        for (String version : List.of("26.1.2", "26.2", "26.3")) {
             // 先前以玩家Y决定材料探测带，在鞘翅高空会错过地表蓝陶瓦。
             var surfaceBand = AutoDesertFootprintPlan.aroundObservedSurface(79, -64, 320);
             check(surfaceBand.equals(new AutoDesertFootprintPlan.ScanBand(55, 86))

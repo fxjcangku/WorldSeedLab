@@ -6,13 +6,29 @@
 
 ## 一条命令开始真实求解
 
-在独立公开 WorldSeedLab 仓库目录下（Minecraft 26.1.2或26.2；Java25、Gradle9.6.1，本机Z3 CLI）：
+在独立公开 WorldSeedLab 仓库目录下（Minecraft 26.1.2、26.2或26.3；Java25、Gradle9.9.0，本机Z3 CLI）：
 
 ```powershell
 python scripts/recover_seed.py --input "D:\WorldSeedLabData\observations.zip" --minecraft 26.2
 ```
 
 也可以提供 `/config/worldseedlab/observations/worlds/<HMAC>/dimensions/<维度hash>` 的单一原始世界目录。**文件仅在本机读取、不上传；客户端永不自动启动Seed暴力搜索。**
+
+### P4.4：可复用恢复服务与本机 JSON 结果
+
+入口与原有求解模型保留，参数校验、证据导入、恢复调度和结果展示已经分层。原版和自定义气候模式共用严格 P1 检查：完整 HMAC、版本、维度、三轴 quart 中心及普通客户端来源必须一致；`--dry-run` 也会拒绝非法窗口、Salt、模型及续算参数。预检查仅检查文件和所选模式的输入条件，不能替代 Java 完整轮廓审计或 SMT 求解。
+
+可显式输出供其它本机工具读取的结果：
+
+```powershell
+python scripts/recover_seed.py --input "D:\WorldSeedLabData\observations.zip" --minecraft 26.2 --report "D:\WorldSeedLabData\recovery-26.2.json"
+```
+
+父目录必须已存在，目标文件必须不存在；程序不会覆盖旧结果。未运行 Java 恢复服务的预检查、`--dry-run` 或参数失败不创建报告。直接使用 Gradle 时，对应参数是 `-PrecoveryReport=<新文件路径>`。
+
+报告格式为 `format=WorldSeedLabRecovery`、`schema=1`，每个 Salt 假设分别记录低48候选、条件高16候选、FIT/HOLDOUT 和计算完整性。所有完整64位种子用十六进制及十进制字符串保存，不能转成不精确的 JavaScript `Number`。报告不含原始坐标、HMAC、服务器地址或输入路径。
+
+**挖矿接入必须另行完成生成规则验证。** 当前报告固定保留 `server_seed_status=UNKNOWN`、`ore_prediction_status=UNVERIFIED`、`ready_for_mining=false`。低48候选、条件完整64位匹配或 Gradle 退出成功均不能被下游解释为“目标服务器已破解、矿点可用”。
 
 本流程直接读取 `p36-automatic-footprint/client-auto-desert-*.properties` 或 `client-footprint-*.properties`，并用 **原有真正方块栅格的完整21×21四边审计**检验每个观测点。相同位置/跨世界或版本混合/人工材料候选/不完整轮廓不能变成约束。至少取得3座不重合RandomSpread区域的完整可见沙漠神殿后，自动建立2+ FIT与独立HOLDOUT，并调用**真的本机Z3位向量求解器**寻找Low48候选，再由原始Java RandomSpread逐个复核。
 
@@ -42,7 +58,7 @@ EFFECTIVE_STRUCTURE_STATE_CANDIDATE=...
 WORLD_LOW48=UNKNOWN | STRUCTURE_SALT=UNKNOWN | FULL64=UNKNOWN
 ```
 
-`--unknown-salt` 与 `--salts`、`--vanilla-high16`、`--custom-model` 互斥；E48使用独立结果类型，不能作为世界low48候选接入高16搜索。`--window-end` 在此模式下表示 **E48有效状态域** 的半开上界，而不是世界Seed低48上界。原先不带此参数的明确Salt假设流程保持原样。
+`--unknown-salt` 与 `--salts`、所有高16模式/分片/续算参数及 `--report` 互斥；E48使用独立结果类型和文本输出，不能作为世界low48候选接入高16搜索，也不能写入世界Seed结果报告。`--window-end` 在此模式下表示 **E48有效状态域** 的半开上界，而不是世界Seed低48上界。原先不带此参数的明确Salt假设流程保持原样，包括本机JSON报告和绑定证据的断点续算。
 
 这个模式扩大了可研究的修改Salt模型范围，但仍要求完整可信轮廓和实际适用的RandomSpread规则。至少3座轮廓只是输入门槛，不能保证全48求解成功；只有2个FIT时会留下大量条件候选，90秒/16模型上限可能先耗尽。所有候选保留自然来源、生成器、Salt及世界Seed未知状态。
 

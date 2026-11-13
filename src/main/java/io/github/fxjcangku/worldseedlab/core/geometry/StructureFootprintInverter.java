@@ -1,5 +1,6 @@
 package io.github.fxjcangku.worldseedlab.core.geometry;
 
+import io.github.fxjcangku.worldseedlab.core.BootstrapCheck;
 import io.github.fxjcangku.worldseedlab.core.compatibility.StructureObservation.ChunkBounds;
 import io.github.fxjcangku.worldseedlab.core.solver.StartPlacementConstraint;
 import java.util.ArrayList;
@@ -48,7 +49,7 @@ public final class StructureFootprintInverter {
     ) {
         public ObservedFootprint {
             if (worldFingerprint == null || !WORLD.matcher(worldFingerprint).matches()
-                    || !supported(gameVersion) || !validId(dimension)
+                    || !BootstrapCheck.supportsMinecraftVersion(gameVersion) || !validId(dimension)
                     || !validId(structureSetId) || !validId(structureId)) {
                 throw new IllegalArgumentException("轮廓的世界、版本或结构集合身份非法");
             }
@@ -69,7 +70,7 @@ public final class StructureFootprintInverter {
         public Calibration {
             if (referenceId == null || !REFERENCE.matcher(referenceId).matches()
                     || variant == null || !REFERENCE.matcher(variant).matches()
-                    || !supported(gameVersion) || !validId(dimension)
+                    || !BootstrapCheck.supportsMinecraftVersion(gameVersion) || !validId(dimension)
                     || !validId(structureSetId) || !validId(structureId)) {
                 throw new IllegalArgumentException("校准来源、版本或结构集合非法");
             }
@@ -216,10 +217,6 @@ public final class StructureFootprintInverter {
 
     private static boolean offsetInRange(int offset) {
         return offset >= -4096 && offset <= 4096;
-    }
-
-    private static boolean supported(String version) {
-        return "26.1.2".equals(version) || "26.2".equals(version);
     }
 
     private static boolean validId(String id) {

@@ -24,18 +24,18 @@ def biome(x, z, y=66, name="minecraft:plains", fp=HASH, version="26.2"):
                 position={"x":x,"y":y,"z":z})
 
 
-def terrain(cx, cz, ymax=320):
+def terrain(cx, cz, ymax=320, version="26.2"):
     return dict(schema=2, type="terrain_chunk", world_fingerprint=HASH,
-                dimension="minecraft:overworld", client_version="26.2",
+                dimension="minecraft:overworld", client_version=version,
                 chunk_x=cx, chunk_z=cz, min_build_y=-64,
                 max_build_y_exclusive=ymax, sea_level=63,
                 heightmap="WORLD_SURFACE", sample_grid="4x4_quart_centers",
                 surface_y=[68]*16)
 
 
-def strata(cx, cz, mode="STRATA", floor=-65):
+def strata(cx, cz, mode="STRATA", floor=-65, version="26.2"):
     return dict(schema=4, type="terrain_detail", world_fingerprint=HASH,
-                dimension="minecraft:overworld", client_version="26.2",
+                dimension="minecraft:overworld", client_version=version,
                 chunk_x=cx, chunk_z=cz, mode=mode,
                 provenance="client_loaded_block_states",
                 generation_origin_verified=False,
@@ -84,6 +84,21 @@ class P42AuditTests(unittest.TestCase):
         self.assertEqual(r["independence"]["p1_p2_strata_overlap_macroregions"],1)
         self.assertEqual(r["identifiability"]["low48"],"NOT_DERIVED")
         self.assertNotIn(HASH,json.dumps(r))
+
+    def test_three_versions_preserve_tri_source_scope_and_reject_mixed_version(self):
+        for version in ("26.1.2", "26.2", "26.3"):
+            with self.subTest(version=version):
+                p1 = [biome(2 + 2048 * i, 2, version=version) for i in range(5)]
+                p2 = [terrain(128 * i, 0, version=version) for i in range(5)]
+                p22 = [strata(0, 0, version=version)]
+                write_evidence(self.input, p1, p2, p22)
+                report = audit_result(self.inspect())
+                self.assertEqual(report["minecraft_version"], version)
+                self.assertEqual(report["identifiability"]["full64"], "UNKNOWN_CUSTOM_WORLDGEN")
+                p22[0]["client_version"] = "26.2" if version == "26.3" else "26.3"
+                write_evidence(self.input, p1, p2, p22)
+                with self.assertRaises(EvidenceRejected):
+                    self.inspect()
 
     def test_duplicate_identical_is_not_second_constraint(self):
         write_evidence(self.input,p1=[biome(2,2),biome(2,2),biome(2050,2050)])

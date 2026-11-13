@@ -1,5 +1,6 @@
 package io.github.fxjcangku.worldseedlab.core.geometry;
 
+import io.github.fxjcangku.worldseedlab.core.BootstrapCheck;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -34,7 +35,7 @@ public final class ClientVisibleDesertPyramidRaster {
     public record Scope(String worldFingerprint, String gameVersion, String dimension) {
         public Scope {
             if (worldFingerprint == null || !WORLD.matcher(worldFingerprint).matches()
-                    || (!"26.1.2".equals(gameVersion) && !"26.2".equals(gameVersion))
+                    || (!BootstrapCheck.supportsMinecraftVersion(gameVersion))
                     || dimension == null || !ID.matcher(dimension).matches()) {
                 throw new IllegalArgumentException("P3.5 世界指纹、版本或维度非法");
             }

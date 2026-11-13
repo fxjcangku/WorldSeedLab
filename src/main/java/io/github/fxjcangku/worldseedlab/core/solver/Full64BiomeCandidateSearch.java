@@ -1,5 +1,6 @@
 package io.github.fxjcangku.worldseedlab.core.solver;
 
+import io.github.fxjcangku.worldseedlab.core.BootstrapCheck;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -29,7 +30,7 @@ public final class Full64BiomeCandidateSearch {
                         String dimension, String generatorProfile) {
         public Scope {
             if (worldFingerprint == null || !HASH.matcher(worldFingerprint).matches()
-                    || (!"26.1.2".equals(gameVersion) && !"26.2".equals(gameVersion))
+                    || (!BootstrapCheck.supportsMinecraftVersion(gameVersion))
                     || !id(dimension) || !id(generatorProfile)) {
                 throw new IllegalArgumentException("无效世界、版本、维度或生成器指纹");
             }

@@ -2,21 +2,27 @@
 
 > 2026-10-14 状态：P3.6 正式验收及 P3.6.1 实服漏检修复已合并 `main`，最新功能 PR #28 合并 `e8d2c03d`。26.1.2/26.2 同一最新功能提交的真实 Fabric GUI 自动取证、4座受控神殿、后验 FULL + Z3/Java 均成功；未知服务器 Seed 尚未确定。
 
+## 当前版本适配
+
+P4.4 双版本重构已通过11条工作流并合并 [PR #40](https://github.com/fxjcangku/WorldSeedLab/pull/40)。P4.5 在同一源码增加26.3；26.3的独立FULL真值、worldgen API与三版本验收见 [P4.5记录](P45_MINECRAFT_26_3.md)。上方及后文带日期的旧实验仍只证明当时两版。
+
 ## 项目环境
 
-- Minecraft 26.1.2 / 26.2，Fabric 纯客户端模组
-- Java 25，Gradle 9.6.1，Fabric Loom 1.17.21（`net.fabricmc.fabric-loom`）
-- Fabric Loader 0.19.5；26.1.2 Fabric API 0.155.3+26.1.2；26.2 Fabric API 0.161.0+26.2
+- Minecraft 26.1.2 / 26.2 / 26.3，Fabric 纯客户端模组
+- Java 25，Gradle 9.9.0，Fabric Loom 1.19.4（`net.fabricmc.fabric-loom`）
+- 26.1.2 / 26.2：Fabric Loader 0.19.5；Fabric API 分别为 0.155.3+26.1.2 / 0.161.0+26.2
+- 26.3：Fabric Loader 0.20.1；Fabric API 0.165.2+26.3
 - Mojang 官方映射；不引入 Yarn 或迁移现有 SeedCracker 源码
 - 独立包 `io.github.fxjcangku.worldseedlab`
 
 ## 本地构建
 
-仓库不包含 Gradle Wrapper 二进制；请安装 JDK 25 和 Gradle 9.6.1。
+仓库不包含 Gradle Wrapper 二进制；请安装 JDK 25 和 Gradle 9.9.0。
 
 ```bash
 gradle -PmcVersion=26.1.2 clean build
 gradle -PmcVersion=26.2 clean build
+gradle -PmcVersion=26.3 clean build
 ```
 
 完整 `clean build` 会执行依赖本机 `z3` 命令的真实 SMT 回归；若当前只需生成可装载 Fabric JAR、尚未准备 Z3，可使用 `gradle --no-daemon -PmcVersion=26.2 clean assemble`（**跳过独立回归，不可据此声称测试通过**）。正常 `.jar` 位于 `build/libs/`，排除 `-sources.jar` 和开发专用 `-dev.jar`。
@@ -26,6 +32,17 @@ gradle -PmcVersion=26.2 clean build
 ```bash
 gradle -PmcVersion=26.2 runClient
 ```
+
+### P4.4 恢复流程回归与机器结果
+
+离线入口仍为 `scripts/recover_seed.py`，新增可选 `--report <新文件>`。直接 Gradle 调用对应 `-PrecoveryReport=<新文件>`；数据协议及种子/矿物验证边界见 [P3.9 使用说明](P39_REAL_CLIENT_SEED_RECOVERY.md)。
+
+```bash
+python3 -m unittest discover -s scripts -p 'test_*.py' -v
+gradle --no-daemon -PmcVersion=26.2 p44RecoveryPipelineSmokeTest
+```
+
+`p44RecoveryPipelineSmokeTest` 已加入三个目标版本 `check`。它检验恢复调度、跨作用域拒绝、续算身份、结果隐私及禁止覆盖，不能替代真正 GUI 联机验收。P3.9 工作流继续从真实 Fabric 客户端获得受控轮廓，并让本机 Z3 求解；现在同时检验 JSON 中的受控候选与未认证状态。只有该工作流实际通过后才能报告本轮真实客户端端到端成功。
 
 全部 `build` 将执行：
 

@@ -1,5 +1,6 @@
 package io.github.fxjcangku.worldseedlab.core.compatibility;
 
+import io.github.fxjcangku.worldseedlab.core.BootstrapCheck;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -33,7 +34,7 @@ public record KnownSeedReference(
                 || !ID.matcher(structureId).matches()) {
             throw new IllegalArgumentException("invalid namespaced ID");
         }
-        if (!"26.1.2".equals(gameVersion) && !"26.2".equals(gameVersion)) {
+        if (!BootstrapCheck.supportsMinecraftVersion(gameVersion)) {
             throw new IllegalArgumentException("unsupported Minecraft reference version");
         }
         Objects.requireNonNull(expectedStart, "expectedStart");

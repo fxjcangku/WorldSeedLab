@@ -7,9 +7,7 @@ import io.github.fxjcangku.worldseedlab.core.solver.VanillaOverworldBiomeModel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.security.MessageDigest;
 import java.util.ArrayList;
-import java.util.HexFormat;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -26,8 +24,6 @@ import java.util.Set;
  * 65536 个 high16 位在指定原版模型和观测下得到检查。
  */
 public final class P31Full64ShardRunner {
-    private static final String CONTROL_HASH =
-            "73b8e9915d422b9632c4d411d0dcd6f0f2150e920d1a1d18630b07fb5e4e9602";
     private static final String WORLD = "e".repeat(64);
     private static final long CONTROL_LOW48 = 2731L;
 
@@ -43,19 +39,11 @@ public final class P31Full64ShardRunner {
         Full64High16ShardPlan.Partition shard =
                 Full64High16ShardPlan.partition(1, index, count);
         String version = System.getProperty("mcVersion", "26.2");
-        if (!"26.1.2".equals(version) && !"26.2".equals(version)) {
+        if (!BootstrapCheck.supportsMinecraftVersion(version)) {
             throw new IllegalArgumentException("不支持的 Minecraft 版本");
         }
         Path input = Path.of(args[2]);
-        if (!Files.isRegularFile(input) || Files.isSymbolicLink(input)
-                || Files.size(input) > 8192) {
-            throw new IllegalArgumentException("缺少受控存档样本或样本文件不安全");
-        }
-        byte[] raw = Files.readAllBytes(input);
-        String digest = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(raw));
-        if (!CONTROL_HASH.equals(digest)) {
-            throw new IllegalArgumentException("真实 Minecraft 存档群系证据 SHA-256 不一致");
-        }
+        String digest = P31ControlledFixture.verify(version, input);
 
         Full64BiomeCandidateSearch.Scope scope =
                 new Full64BiomeCandidateSearch.Scope(
@@ -146,7 +134,7 @@ public final class P31Full64ShardRunner {
     public static List<Full64BiomeCandidateSearch.BiomeSample> readControlledSamples(
             Path csv, Full64BiomeCandidateSearch.Scope scope
     ) throws Exception {
-        List<String> lines = Files.readAllLines(csv);
+        List<String> lines = P31ControlledFixture.readLines(scope.gameVersion(), csv);
         if (lines.size() != 6
                 || !lines.getFirst().equals("quart_x,quart_y,quart_z,biome_id")) {
             throw new IllegalArgumentException("固定受控世界须精确包含5条实际 quart 群系观测");

@@ -30,7 +30,7 @@ public final class P34RealCustomWorldTest {
     private P34RealCustomWorldTest() {}
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 2 || (!"26.1.2".equals(args[1]) && !"26.2".equals(args[1]))) {
+        if (args.length != 2 || (!BootstrapCheck.supportsMinecraftVersion(args[1]))) {
             throw new IllegalArgumentException("用法: 受控真实世界目录 Minecraft版本");
         }
         String version = args[1];

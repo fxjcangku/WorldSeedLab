@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""P3.5 两版本真实 Minecraft GUI 客户端手动双角建筑轮廓取证。
+"""P3.5 三个目标版本真实 Minecraft GUI 客户端手动双角建筑轮廓取证。
 
 测试环境只使用公开 Seed=2731 和回环受控服务器。RCON /locate、
 /tp、/forceload 仅用于布景和受控客户端导航；客户端取证代码不含
@@ -18,6 +18,8 @@ import signal
 import subprocess
 import time
 
+from minecraft_versions import SUPPORTED_MINECRAFT_VERSIONS
+
 from run_known_seed_server import (
     ROOT, KNOWN_SEED, POSITION, QUERY_POINTS, STRUCTURE,
     rcon, scan_structure_starts, region_chunks,
@@ -25,6 +27,7 @@ from run_known_seed_server import (
 from run_p34_custom_worldgen import GENERATOR, scan_custom_terrain
 from run_p33_real_client_e2e import (
     ManagedProcess, wait_until, visible_minecraft_window, xcmd, chat, screenshot,
+    controlled_gui_environment,
 )
 
 TARGET_COUNT = 4
@@ -50,6 +53,7 @@ def run(version: str):
         "generate-structures": "true",
         "online-mode": "false",
         "server-ip": "127.0.0.1",
+        "white-list": "false",  # 26.3 默认开启；此服务器仅供隔离本机 GUI 实验。
         "server-port": PORT,
         "enable-rcon": "true",
         "rcon.port": "25575",
@@ -74,10 +78,7 @@ def run(version: str):
     options.write_text(
         "onboardAccessibility:false\nnarrator:0\npauseOnLostFocus:false\n",
         encoding="utf-8")
-    env = os.environ.copy()
-    env.update({"DISPLAY":":97","XDG_SESSION_TYPE":"x11","LIBGL_ALWAYS_SOFTWARE":"1"})
-    env.pop("WAYLAND_DISPLAY",None)
-    env.pop("WAYLAND_SOCKET",None)
+    env = controlled_gui_environment(version)
     display = subprocess.Popen(
         ["Xvfb",":97","-screen","0","1280x720x24","-nolisten","tcp"],
         cwd=ROOT,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
@@ -290,6 +291,6 @@ def run(version: str):
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser()
-    parser.add_argument("--minecraft",required=True,choices=("26.1.2","26.2"))
+    parser.add_argument("--minecraft",required=True,choices=SUPPORTED_MINECRAFT_VERSIONS)
     args=parser.parse_args()
     run(args.minecraft)

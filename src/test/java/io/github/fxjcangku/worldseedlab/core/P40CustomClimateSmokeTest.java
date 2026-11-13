@@ -6,13 +6,11 @@ import io.github.fxjcangku.worldseedlab.core.solver.P40CustomClimateAuditCli;
 import io.github.fxjcangku.worldseedlab.core.solver.P40CustomClimateModel;
 import io.github.fxjcangku.worldseedlab.core.solver.VanillaOverworldBiomeModel;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 
 /**
  * 独立已生成 FULL 存档群系的受控真值，验证可插拔 climate 参数表
- * 与目标 Minecraft 自身的 VanillaOverworldBiomeModel 在两个版本完全一致。
+ * 与目标 Minecraft 自身的 VanillaOverworldBiomeModel 在每个目标版本一致。
  * 不把受控 vanilla 命中冒充未知 Terralith 服务端恢复。
  */
 public final class P40CustomClimateSmokeTest {
@@ -23,8 +21,7 @@ public final class P40CustomClimateSmokeTest {
         String version = System.getProperty("mcVersion", "26.2");
         var archiveSession = new ClientQuartEvidenceArchive.Session(
                 HASH, version, "minecraft:overworld");
-        var saved = Files.readAllLines(Path.of("src", "test", "resources", "p31",
-                "vanilla_" + version + "_seed2731_quart.csv"));
+        var saved = P31ControlledFixture.readLines(version);
         if (saved.size() != 6 || !saved.getFirst().equals("quart_x,quart_y,quart_z,biome_id")) {
             throw new AssertionError("真实 FULL 区块生成样本缺失");
         }

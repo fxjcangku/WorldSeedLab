@@ -7,14 +7,12 @@ import io.github.fxjcangku.worldseedlab.core.solver.BedrockRandomModel.PositiveB
 import io.github.fxjcangku.worldseedlab.core.solver.BedrockHigh16Search;
 import io.github.fxjcangku.worldseedlab.core.solver.Full64BiomeCandidateSearch;
 import io.github.fxjcangku.worldseedlab.core.solver.LegacyLcg48;
+import io.github.fxjcangku.worldseedlab.core.worldgen.WorldgenVersionAdapter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CancellationException;
-import net.minecraft.SharedConstants;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.data.registries.VanillaRegistries;
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.Bootstrap;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.levelgen.LegacyRandomSource;
@@ -24,7 +22,7 @@ import net.minecraft.world.level.levelgen.RandomState;
 import net.minecraft.world.level.levelgen.XoroshiroRandomSource;
 
 /**
- * P4.4 原创基岩随机分支与两版实际 Mojmap RandomState 的独立对照。
+ * P4.4 原创基岩随机分支与目标版本实际 Mojmap RandomState 的独立对照。
  *
  * <p>这是原生随机类/命名工厂/梯度浮点语义验收；未生成真实世界、未采客户端
  * 方块，绝不能当作真实基岩自然来源或全 48/64 位逆解成功。公开控制 Seed
@@ -45,11 +43,8 @@ public final class P44BedrockMinecraftParityTest {
     }
 
     public static void main(String[] args) {
-        SharedConstants.tryDetectVersion();
-        Bootstrap.bootStrap();
-        var registries = VanillaRegistries.createLookup();
+        var registries = WorldgenVersionAdapter.createWorldLookup();
         var noiseSettings = registries.lookupOrThrow(Registries.NOISE_SETTINGS);
-        var noises = registries.lookupOrThrow(Registries.NOISE);
         int inspected = 0;
         for (Algorithm algorithm : Algorithm.values()) {
             var key = algorithm == Algorithm.LEGACY
@@ -59,7 +54,7 @@ public final class P44BedrockMinecraftParityTest {
                     "目标版本原版下界/主世界随机算法与声明模型不同");
             for (long seed : SEEDS) {
                 // 实际 RandomState 是主预言机：不只检查手写的 fork 链自洽。
-                RandomState state = RandomState.create(settings, noises, seed);
+                RandomState state = WorldgenVersionAdapter.createRandomState(registries, settings, seed);
                 for (String name : NAMES) {
                     PositionalRandomFactory factory = state.getOrCreateRandomFactory(Identifier.parse(name));
                     PositionalRandomFactory direct = nativeSource(algorithm, seed)

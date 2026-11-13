@@ -18,6 +18,8 @@ import signal
 import subprocess
 import time
 
+from minecraft_versions import SUPPORTED_MINECRAFT_VERSIONS
+
 from run_known_seed_server import (
     ROOT, KNOWN_SEED, POSITION, QUERY_POINTS, STRUCTURE,
     rcon, scan_structure_starts, region_chunks,
@@ -25,6 +27,7 @@ from run_known_seed_server import (
 from run_p34_custom_worldgen import GENERATOR, scan_custom_terrain
 from run_p33_real_client_e2e import (
     ManagedProcess, wait_until, visible_minecraft_window, xcmd, chat, screenshot,
+    controlled_gui_environment,
 )
 
 TARGET_COUNT = 4
@@ -50,6 +53,7 @@ def run(version: str, p38_materials: bool = False):
         "generate-structures": "true",
         "online-mode": "false",
         "server-ip": "127.0.0.1",
+        "white-list": "false",  # 26.3 默认开启；此服务器仅供隔离本机 GUI 实验。
         "server-port": PORT,
         "enable-rcon": "true",
         "rcon.port": "25575",
@@ -74,10 +78,7 @@ def run(version: str, p38_materials: bool = False):
     options.write_text(
         "onboardAccessibility:false\nnarrator:0\npauseOnLostFocus:false\n",
         encoding="utf-8")
-    env = os.environ.copy()
-    env.update({"DISPLAY":":97","XDG_SESSION_TYPE":"x11","LIBGL_ALWAYS_SOFTWARE":"1"})
-    env.pop("WAYLAND_DISPLAY",None)
-    env.pop("WAYLAND_SOCKET",None)
+    env = controlled_gui_environment(version)
     display = subprocess.Popen(
         ["Xvfb",":97","-screen","0","1280x720x24","-nolisten","tcp"],
         cwd=ROOT,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
@@ -473,7 +474,7 @@ def run(version: str, p38_materials: bool = False):
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser()
-    parser.add_argument("--minecraft",required=True,choices=("26.1.2","26.2"))
+    parser.add_argument("--minecraft",required=True,choices=SUPPORTED_MINECRAFT_VERSIONS)
     parser.add_argument("--p38-materials",action="store_true",
                         help="仅受控世界：额外测试人工海底材料夹具自动识别")
     args=parser.parse_args()
